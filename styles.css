@@ -162,3 +162,54 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus{
 .chart.chart--tall { height: 420px; }
 .chart.chart--short { height: 240px; }
 .card canvas { width: 100% !important; height: 100% !important; }
+
+/* ----- Forms mobile-first ----- */
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .form-grid { grid-template-columns: 1fr 1fr; }
+}
+label { display: grid; gap: 6px; font-size: 14px; }
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font: inherit;
+}
+textarea { min-height: 80px; resize: vertical; }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.actions .btn { flex: 1 1 auto; }
+
+.card--sticky-footer {
+  position: sticky; bottom: 0; z-index: 5;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+/* Modal de edição */
+.modal[hidden]{ display:none }
+.modal {
+  position: fixed; inset: 0; z-index: 50;
+  display: grid; place-items: center; padding: 16px;
+  background: rgba(0,0,0,.35); backdrop-filter: blur(2px);
+}
+.modal__card {
+  width: min(100%, 640px);
+  background: #fff; border: 1px solid #e5e7eb;
+  border-radius: 14px; box-shadow: var(--shadow-card);
+  display: grid; gap: 12px; padding: 14px;
+  max-height: 90dvh; overflow: auto;
+}
+.modal__header{ display:flex; justify-content:space-between; align-items:center; gap:8px }
+.modal__title{ font-weight: 800 }
+.modal__close{ background:none; border:0; font-size:22px; cursor:pointer }
+.badge-muted{ font-size:12px; color:#475569 }
+.row-note{ font-size:12px; color:#64748b }
