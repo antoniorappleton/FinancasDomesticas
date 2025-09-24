@@ -156,3 +156,9 @@ a:focus, button:focus, input:focus, select:focus, textarea:focus{
   font: 600 12px/1.1 system-ui, -apple-system, Segoe UI, Roboto;
   text-align: center;
 }
+.card canvas { aspect-ratio: 16/9; height: auto !important; max-height: 360px; }
+@media (max-width: 640px){ .card canvas { max-height: 280px } }
+.chart { height: 340px; }
+.chart.chart--tall { height: 420px; }
+.chart.chart--short { height: 240px; }
+.card canvas { width: 100% !important; height: 100% !important; }

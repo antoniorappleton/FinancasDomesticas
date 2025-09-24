@@ -2,6 +2,7 @@
 import { initAuth } from "./src/auth.js";
 
 
+
 const sb = window.sb;
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
@@ -21,17 +22,6 @@ function setActiveTab() {
   document.querySelectorAll(".foot-item").forEach(a => {
     a.toggleAttribute("aria-current", hash.startsWith(a.getAttribute("href")));
   });
-}
-
-export async function handleRoute() {
-  const { data:{ session } } = await sb.auth.getSession();
-  const route = location.hash || "#/";
-  if (!session) { outlet.innerHTML = ""; footer.style.display = "none"; return; }
-
-  // 🔹 garante que o utilizador tem o setup mínimo (contas, etc.)
-  try { await sb.rpc('ensure_user_setup'); } catch (e) { console.warn(e); }
-
-  await loadScreen(route);
 }
 
 async function loadScreen(route) {
@@ -54,24 +44,42 @@ async function loadScreen(route) {
   }
 }
 
-export async function handleRoute() {
-  const { data:{ session } } = await sb.auth.getSession();
-  const route = location.hash || "#/";
-  if (!session) {
-    outlet.innerHTML = "";
-    footer.style.display = "none";
-    return;
-  }
+let __routing = false;
+
+async function handleRoute() {
+  if (__routing) return;
+  __routing = true;
   try {
+    const { data:{ session } } = await sb.auth.getSession();
+    const route = location.hash || "#/";
+    if (!session) {
+      outlet.innerHTML = "";
+      footer.style.display = "none";
+      return;
+    }
+
+    // Bootstrap mínimo (não bloqueia a UI se demorar/falhar)
+    try {
+      await Promise.race([
+        sb.rpc('ensure_user_setup'),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('rpc-timeout')), 1500))
+      ]);
+    } catch (e) {
+      console.warn('ensure_user_setup:', e.message || e);
+    }
+
     await loadScreen(route);
   } catch (e) {
     console.error(e);
-    outlet.innerHTML = `<div class="card">
+    outlet.innerHTML = `<div class="card" style="border-left:4px solid #ef4444">
       <strong>Erro ao carregar o ecrã.</strong><br>
       <small>${String(e.message || e)}</small>
     </div>`;
+  } finally {
+    __routing = false;
   }
 }
+
 
 window.addEventListener("hashchange", () => { handleRoute(); });
 window.addEventListener("DOMContentLoaded", () => { handleRoute(); setActiveTab(); });
