@@ -172,3 +172,25 @@ export async function init() {
   // aplica UI no arranque
   await applyTypeUI();
 }
+// depois de carregar accounts:
+const accounts = accRes.data || [];
+if (accounts.length === 0) {
+  const box = document.getElementById("tx-msg");
+  box.style.display = "block";
+  box.style.borderLeft = "4px solid #ef4444";
+  box.innerHTML = "Ainda não tens contas. <button id='mk-demo' class='btn'>Criar contas demo</button>";
+  document.getElementById("mk-demo").onclick = async () => {
+    const { data:{ user } } = await sb.auth.getUser();
+    await sb.from('accounts').insert([
+      { user_id: user.id, name:'CGD', type:'bank' },
+      { user_id: user.id, name:'Carteira', type:'cash' }
+    ]);
+    location.reload();
+  };
+  // Preenche selects com placeholder desativado
+  ["tx-account","tx-account-from","tx-account-to"].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.innerHTML = `<option>— Sem contas —</option>`; el.disabled = true;
+  });
+  return; // não prossegue até haver contas
+}

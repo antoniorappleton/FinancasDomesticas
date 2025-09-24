@@ -1,5 +1,12 @@
 <section class="card">
-  <h2>Definições</h2>
-  <p>Se vês isto, a rota #/settings está a renderizar.</p>
+  <h2>Perfil</h2>
+  <p id="whoami" style="color:#6b7280;margin:.5rem 0"></p>
   <button id="btn-logout" class="btn">Terminar sessão</button>
 </section>
+<script>
+  (async () => {
+    const { data:{ user } } = await window.sb.auth.getUser();
+    const who = document.getElementById("whoami");
+    who && (who.textContent = user ? `Ligado como: ${user.email}` : "");
+  })();
+</script>

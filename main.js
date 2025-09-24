@@ -23,6 +23,17 @@ function setActiveTab() {
   });
 }
 
+export async function handleRoute() {
+  const { data:{ session } } = await sb.auth.getSession();
+  const route = location.hash || "#/";
+  if (!session) { outlet.innerHTML = ""; footer.style.display = "none"; return; }
+
+  // 🔹 garante que o utilizador tem o setup mínimo (contas, etc.)
+  try { await sb.rpc('ensure_user_setup'); } catch (e) { console.warn(e); }
+
+  await loadScreen(route);
+}
+
 async function loadScreen(route) {
   const r = ROUTES[route] || ROUTES["#/"];
 
