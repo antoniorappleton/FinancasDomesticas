@@ -1,0 +1,30 @@
+<section class="card">
+  <h2 class="section-title">Resumo do mês</h2>
+  <div class="grid kpi">
+    <div class="kpi kpi--income"><div class="kpi__title">Receitas</div><div id="kpi-income" class="kpi__value">€ 0,00</div></div>
+    <div class="kpi kpi--expense"><div class="kpi__title">Despesas</div><div id="kpi-expense" class="kpi__value">€ 0,00</div></div>
+    <div class="kpi kpi--savings"><div class="kpi__title">Poupança</div><div id="kpi-savings" class="kpi__value">€ 0,00</div></div>
+    <div class="kpi kpi--balance"><div class="kpi__title">Saldo líquido</div><div id="kpi-balance" class="kpi__value">€ 0,00</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">Tendências mensais</h2>
+  <div class="chart chart--tall"><canvas id="chart-monthly"></canvas></div>
+</section>
+
+<section class="grid" style="grid-template-columns:1fr 1fr; gap:16px">
+  <div class="card">
+    <h2 class="section-title">Distribuição de despesas (ano)</h2>
+    <div class="chart"><canvas id="chart-categories"></canvas></div>
+  </div>
+  <div class="card">
+    <h2 class="section-title">Gastos diários (últimos 30 dias)</h2>
+    <div class="chart"><canvas id="chart-daily"></canvas></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">Métodos de pagamento</h2>
+  <div class="chart chart--short"><canvas id="chart-methods"></canvas></div>
+</section>

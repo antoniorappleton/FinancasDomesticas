@@ -1,0 +1,158 @@
+/* ======== Design tokens ======== */
+:root{
+  --bg:#f7f9fb; --surface:#fff; --text:#111827; --muted:#6b7280;
+  --green-900:#064e3b; --green-700:#047857; --green-600:#059669; --green-500:#10b981;
+  --red-500:#ef4444; --red-100:#fee2e2;
+  --blue-500:#3b82f6; --blue-100:#dbeafe;
+  --border:#e5e7eb; --ring:rgba(16,185,129,.25);
+  --shadow-card:0 8px 24px rgba(2,6,23,.06); --radius:14px;
+  --income:#16a34a; --expense:#ef4444; --savings:#2563eb; --balance:#065f46;
+  --footer-grad: linear-gradient(180deg, var(--green-900), #0b7a5d);
+}
+
+/* ======== Reset/Base ======== */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans";
+}
+a{color:inherit;text-decoration:none}
+.hidden{display:none !important}
+.visually-hidden{position:absolute!important;width:1px;height:1px;clip:rect(1px,1px,1px,1px);overflow:hidden;white-space:nowrap}
+
+/* ======== Ícones ======== */
+.icon{width:1em;height:1em;display:inline-block;vertical-align:middle}
+.icon--lg{width:22px;height:22px}
+.foot-item__icon{width:22px;height:22px;color:#fff}
+
+/* ======== Header ======== */
+.app-header{position:sticky;top:0;z-index:10;background:var(--footer-grad);color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
+.app-header__inner{max-width:1200px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:14px 20px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand__logo{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+.brand__title{font-weight:700;display:block}
+.brand__subtitle{font-size:12px;opacity:.9;display:block}
+.top-nav{display:flex;gap:10px}
+.top-nav__item{color:#e8fffa;font-weight:600;font-size:14px;padding:8px 12px;border-radius:10px;opacity:.95}
+.top-nav__item:hover{background:rgba(255,255,255,.12)}
+.top-nav__item--active{background:rgba(255,255,255,.18)}
+
+/* ======== Layout ======== */
+#app-main{padding:16px;min-height:calc(100dvh - 120px)}
+.outlet{max-width:1100px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-card)}
+
+/* ======== KPI (exemplo) ======== */
+.kpi__title{color:var(--muted);font-size:14px;font-weight:600}
+.kpi__value{font-size:28px;font-weight:800;margin-top:6px}
+.kpi--income .kpi__value{color:var(--income)}
+.kpi--expense .kpi__value{color:var(--expense)}
+.kpi--savings .kpi__value{color:var(--savings)}
+.kpi--balance .kpi__value{color:var(--balance)}
+
+/* ======== Footer (tab bar) ======== */
+.app-footer{
+  position:sticky;bottom:0;left:0;right:0;z-index:40;
+  padding-bottom:max(8px, env(safe-area-inset-bottom));
+  background:var(--footer-grad); color:#fff; border-top:1px solid rgba(255,255,255,.08);
+  box-shadow:0 -6px 16px rgba(2,6,23,.15);
+  display:grid; grid-template-columns:repeat(4,1fr); gap:6px; padding:6px 10px;
+}
+.foot-item{
+  display:grid; place-items:center; gap:4px; padding:10px 6px; border-radius:12px;
+  background:rgba(255,255,255,.08); color:#e8fffa; font:600 12px/1.1 system-ui;
+  transition:transform .05s ease, background .15s ease;
+}
+.foot-item:hover{background:rgba(255,255,255,.14)}
+.foot-item:active{transform:translateY(1px)}
+.foot-item[aria-current="page"]{background:rgba(255,255,255,.18); outline:1px solid rgba(255,255,255,.18); color:#fff}
+.foot-item--primary{background:#0ea5e9}
+.foot-item--primary[aria-current="page"]{background:#0284c7}
+
+/* etiquetas */
+.foot-item__label{font-size:11px}
+
+/* ======== Auth overlay ======== */
+.auth-overlay{position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.12);backdrop-filter:blur(3px);z-index:999}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.12);padding:20px;width:min(92vw, 420px)}
+.auth-overlay.hidden{display:none!important}
+label{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+input,select,textarea{border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;font:inherit}
+.btn{border:1px solid #cbd5e1;padding:10px 12px;border-radius:10px;background:#fff;cursor:pointer}
+.btn--primary{background:#065f46;color:#fff;border-color:#065f46}
+.link{background:transparent;border:0;padding:0;color:#0ea5e9;cursor:pointer}
+
+/* ======== Acessibilidade ======== */
+a:focus, button:focus, input:focus, select:focus, textarea:focus{
+  outline:2px solid var(--ring); outline-offset:2px
+}
+/* ---- Layout base responsivo ---- */
+:root{
+  --maxw: 1100px;
+  --footer-h: 64px;                /* altura base do footer em mobile */
+}
+
+#app-main{
+  padding: 12px 12px calc(var(--footer-h) + 12px);
+  min-height: calc(100svh - var(--footer-h)); /* mobile-first */
+}
+
+.outlet{ max-width: var(--maxw); margin: 0 auto; }
+
+/* grids responsivos */
+.grid{ display:grid; gap:12px }
+.grid.kpi{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+@media (min-width: 900px){
+  .grid.kpi{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+
+/* footer fixo e seguro no mobile */
+.app-footer{
+  position: sticky;
+  bottom: 0; left: 0; right: 0;
+  height: var(--footer-h);
+  align-items: center;
+}
+
+/* ---- Gráficos: contentor com altura, canvas 100% ---- */
+.chart{ position: relative; width:100%; height: clamp(220px, 38vh, 360px); }
+.chart--tall{ height: clamp(260px, 45vh, 420px); }
+.chart--short{ height: clamp(180px, 32vh, 300px); }
+
+/* MUITO IMPORTANTE: não controlar altura do canvas por CSS; deixa-o ocupar o contentor */
+.chart > canvas{ width:100% !important; height:100% !important; display:block }
+
+/* KPIs mais legíveis em mobile */
+.kpi__title{ font-size: 13px; color: var(--muted); font-weight:600 }
+.kpi__value{ font-size: clamp(20px, 4.8vw, 28px); font-weight:800; margin-top:4px }
+/* --- FOOTER FIX (override final) --- */
+.app-footer{
+  position: sticky;
+  bottom: 0; left: 0; right: 0;
+  z-index: 40;
+  width: 100%;
+  display: grid !important;                 /* força grid */
+  grid-template-columns: repeat(4, 1fr);    /* 4 botões iguais */
+  gap: 6px;
+  padding: 6px 10px max(8px, env(safe-area-inset-bottom));
+  background: var(--footer-grad);
+  color: #fff;
+  border-top: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 -6px 16px rgba(2,6,23,.15);
+}
+
+.app-footer .foot-item{
+  display: grid;                 /* centra ícone + label */
+  grid-auto-flow: row;
+  justify-items: center;
+  align-items: center;
+  justify-self: stretch;         /* o item ocupa toda a coluna */
+  width: 100%;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  color: #e8fffa;
+  font: 600 12px/1.1 system-ui, -apple-system, Segoe UI, Roboto;
+  text-align: center;
+}
