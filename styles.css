@@ -264,3 +264,31 @@ td:nth-child(5){                 /* Descrição */
 @media (max-width: 520px){
   td:nth-child(5){ max-width: 160px; }      /* descrição mais curta no telemóvel */
 }
+/* ===== Modal overlay (hardening) ===== */
+.modal[hidden]{ display: none !important; }
+
+.modal{
+  position: fixed !important;   /* garante overlay */
+  inset: 0;
+  z-index: 9999;                /* acima de header/footer */
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(2px);
+}
+
+.modal__card{
+  width: min(92vw, 640px);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(2,6,23,.25);
+  padding: 16px;
+}
+
+.modal__header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px }
+.modal__title{ font-weight:700 }
+.modal__close{ background:transparent; border:0; font-size:22px; cursor:pointer }
