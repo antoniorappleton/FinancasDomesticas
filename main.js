@@ -69,3 +69,9 @@ initAuth({
   onSignedIn: handleRoute,
   onSignedOut: () => { outlet.innerHTML = ""; footer.style.display = "none"; },
 });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => console.log('Service Worker registado com sucesso'))
+    .catch(error => console.log('Erro ao registar Service Worker:', error));
+}

@@ -1,0 +1,89 @@
+<section class="card">
+  <h2 class="section-title">Nova transação</h2>
+
+  <!-- Tipo -->
+  <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+    <label class="btn" style="display:flex;align-items:center;gap:8px">
+      <input type="radio" name="tx-type" value="INCOME" checked />
+      <span>Receita</span>
+    </label>
+    <label class="btn" style="display:flex;align-items:center;gap:8px">
+      <input type="radio" name="tx-type" value="EXPENSE" />
+      <span>Despesa</span>
+    </label>
+    <label class="btn" style="display:flex;align-items:center;gap:8px">
+      <input type="radio" name="tx-type" value="SAVINGS" />
+      <span>Poupança</span>
+    </label>
+    <label class="btn" style="display:flex;align-items:center;gap:8px">
+      <input type="radio" name="tx-type" value="TRANSFER" />
+      <span>Transferência</span>
+    </label>
+  </div>
+
+  <!-- Linha: Data + Valor -->
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <label>Data
+      <input id="tx-date" type="date" />
+    </label>
+    <label>Valor
+      <input id="tx-amount" type="number" step="0.01" inputmode="decimal" placeholder="0,00" />
+    </label>
+  </div>
+
+  <!-- Conta (simples) -->
+  <div id="row-account-single" class="grid" style="grid-template-columns:1fr;gap:10px;margin-top:10px">
+    <label>Conta
+      <select id="tx-account"></select>
+    </label>
+  </div>
+
+  <!-- Contas (transferência) -->
+  <div id="row-account-transfer" class="grid hidden" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <label>De
+      <select id="tx-account-from"></select>
+    </label>
+    <label>Para
+      <select id="tx-account-to"></select>
+    </label>
+  </div>
+
+  <!-- Categoria -->
+  <div id="row-category" class="grid" style="grid-template-columns:1fr;gap:10px;margin-top:10px">
+    <label>Categoria
+      <select id="tx-category"></select>
+    </label>
+  </div>
+
+  <!-- Regularidade / Método / Estado -->
+  <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px">
+    <label>Regularidade
+      <select id="tx-regularity"></select>
+    </label>
+    <label>Método
+      <select id="tx-method"></select>
+    </label>
+    <label>Estado
+      <select id="tx-status"></select>
+    </label>
+  </div>
+
+  <!-- Descrição / Local / Notas -->
+  <div class="grid" style="grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+    <label>Descrição
+      <input id="tx-desc" type="text" placeholder="ex.: Supermercado, Ordenado, ..." />
+    </label>
+    <label>Localização
+      <input id="tx-loc" type="text" placeholder="opcional" />
+    </label>
+  </div>
+  <label style="margin-top:10px">Notas
+    <textarea id="tx-notes" rows="3" placeholder="opcional"></textarea>
+  </label>
+
+  <div id="tx-msg" class="card" style="margin-top:10px;display:none"></div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button id="tx-save" class="btn btn--primary">Guardar</button>
+    <button id="tx-clear" class="btn">Limpar</button>
+  </div>
+</section>
