@@ -213,3 +213,54 @@ textarea { min-height: 80px; resize: vertical; }
 .modal__close{ background:none; border:0; font-size:22px; cursor:pointer }
 .badge-muted{ font-size:12px; color:#475569 }
 .row-note{ font-size:12px; color:#64748b }
+/* ----- Transações: filtros responsivos ----- */
+.filters-grid{
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 200px) minmax(160px, 220px) minmax(160px, 220px);
+  gap: 12px;
+  align-items: end;
+}
+.filters-grid > * { min-width: 0; }        /* evita overflow por placeholders longos */
+.filters-grid input,
+.filters-grid select { width: 100%; }
+
+/* input type=month costuma esticar; força dimensão estável */
+.filters-grid input[type="month"]{
+  height: 38px;
+  padding: 8px 10px;
+  line-height: 1.2;
+}
+
+/* Empilha em tablets */
+@media (max-width: 900px){
+  .filters-grid{
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Empilha tudo em telemóvel */
+@media (max-width: 520px){
+  .filters-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Botões abaixo dos filtros: quebrar linha certinho */
+.card .actions{
+  display:flex;
+  gap:8px;
+  flex-wrap: wrap;
+}
+
+/* ----- Tabela responsiva: colunas com corte elegante ----- */
+table { width: 100%; border-collapse: collapse; }
+th, td { white-space: nowrap; }
+td:nth-child(5){                 /* Descrição */
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 520px){
+  td:nth-child(5){ max-width: 160px; }      /* descrição mais curta no telemóvel */
+}
