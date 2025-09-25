@@ -405,4 +405,206 @@ export async function init({ sb, outlet } = {}) {
   window.addEventListener("hashchange", () => {
     if (!location.hash.startsWith("#/")) destroyCharts();
   });
+
+// ---- CORES para categorias (podes ajustar ao teu tema)
+const COLORS = [
+  "#ef4444","#22c55e","#3b82f6","#0f766e","#f59e0b",
+  "#8b5cf6","#10b981","#f43f5e","#64748b","#e11d48"
+];
+
+// === DISTRIBUIÇÃO + LISTA DETALHADA DE CATEGORIAS ===
+async function buildCategoryAnalysis() {
+  // 1) tenta a view (ano corrente)
+  let rows = [];
+  try {
+    const { data, error } = await sb
+      .from("v_expense_by_category")
+      .select("category,total_expense")
+      .order("total_expense", { ascending: false });
+    if (!error && data?.length) {
+      rows = data.map(r => ({
+        category: r.category,
+        total: Number(r.total_expense || 0)
+      }));
+    }
+  } catch {}
+
+  // 2) fallback: últimos 12 meses a partir de transactions
+  if (!rows.length) {
+    const from = new Date(); from.setMonth(from.getMonth() - 11); from.setDate(1);
+    const fromISO = from.toISOString().slice(0,10);
+
+    // id do tipo EXPENSE
+    const { data: ttype } = await sb
+      .from("transaction_types")
+      .select("id,code").eq("code","EXPENSE").single();
+    const expId = ttype?.id || -999;
+
+    // ler despesas + nome da categoria
+    const { data, error } = await sb
+      .from("transactions")
+      .select("amount, categories(name,parent_id)")
+      .eq("type_id", expId)
+      .gte("date", fromISO);
+
+    if (!error && data) {
+      // para compor "Pai > Filho" vamos buscar os pais
+      const parents = new Map();
+      try {
+        const { data: cats } = await sb.from("categories").select("id,name");
+        (cats||[]).forEach(c => parents.set(c.id, c.name));
+      } catch {}
+
+      const acc = new Map();
+      data.forEach(r => {
+        const child = r.categories?.name || "(Sem categoria)";
+        const parentName = parents.get(r.categories?.parent_id);
+        const path = parentName ? `${parentName} > ${child}` : child;
+        const v = Number(r.amount || 0);
+        acc.set(path, (acc.get(path)||0) + v);
+      });
+      rows = Array.from(acc.entries())
+        .map(([category,total]) => ({ category, total }))
+        .sort((a,b)=>b.total-a.total);
+    }
+  }
+
+  // limpar categorias vazias
+  rows = rows.filter(r => r.total > 0);
+
+  // totais + meses considerados para média (12 por default)
+  const total = rows.reduce((s,r)=>s+r.total, 0);
+  const monthsCount = 12;
+
+  renderCategoryPie(rows, total);
+  renderCategoryList(rows, total, monthsCount);
+}
+
+function renderCategoryPie(rows, total) {
+  const canvas = document.getElementById("chart-cat-pie");
+  const ctx = canvas?.getContext("2d");
+  if (!ctx) return;
+
+  // top 8 + "Outras"
+  const top = rows.slice(0, 8);
+  const other = rows.slice(8).reduce((s, r) => s + r.total, 0);
+
+  const labels = top.map((r) => r.category).concat(other > 0 ? ["Outras"] : []);
+  const data = top.map((r) => r.total).concat(other > 0 ? [other] : []);
+  const COLORS = [
+    "#ef4444",
+    "#22c55e",
+    "#3b82f6",
+    "#0f766e",
+    "#f59e0b",
+    "#8b5cf6",
+    "#10b981",
+    "#f43f5e",
+    "#64748b",
+    "#e11d48",
+  ];
+  const bg = labels.map((_, i) => COLORS[i % COLORS.length]);
+
+  // --- plugin para desenhar etiquetas nas fatias ---
+  const PieLabels = {
+    id: "pieLabels",
+    afterDatasetDraw(chart, args, pluginOptions) {
+      const { ctx } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const ds = chart.data.datasets[0].data;
+
+      ctx.save();
+      meta.data.forEach((arc, i) => {
+        const val = Number(ds[i] || 0);
+        if (!val) return;
+
+        const pct = total ? (val / total) * 100 : 0;
+        // ignora rótulos de fatias muito pequenas
+        if (pct < 4) return;
+
+        const label = chart.data.labels[i];
+        const angle = (arc.startAngle + arc.endAngle) / 2;
+        const r = arc.innerRadius + (arc.outerRadius - arc.innerRadius) * 0.72;
+        const x = arc.x + Math.cos(angle) * r;
+        const y = arc.y + Math.sin(angle) * r;
+
+        ctx.font =
+          "12px system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Noto Sans'";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#111827"; // quase preto; troca se estiver muito escuro no teu tema
+
+        // se o label for grande, mostra só percentagem; senão mostra o nome
+        const text =
+          label && label.length > 18 ? `${pct.toFixed(1)}%` : `${label}`;
+        ctx.fillText(text, x, y);
+
+        // segunda linha: percentagem quando couber
+        if (text !== `${pct.toFixed(1)}%`) {
+          ctx.fillStyle = "#6b7280";
+          ctx.fillText(`${pct.toFixed(1)}%`, x, y + 12);
+        }
+      });
+      ctx.restore();
+    },
+  };
+
+  addChart(
+    new Chart(ctx, {
+      type: "pie",
+      data: { labels, datasets: [{ data, backgroundColor: bg }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "right",
+            labels: { usePointStyle: true, boxWidth: 8 },
+          },
+          tooltip: {
+            callbacks: {
+              label: (tt) => {
+                const v = tt.parsed || 0;
+                const p = total ? ((v / total) * 100).toFixed(1) : "0.0";
+                return `${tt.label}: ${money(v)} (${p}%)`;
+              },
+            },
+          },
+        },
+      },
+      plugins: [PieLabels],
+    })
+  );
+}
+
+
+function renderCategoryList(rows, total, monthsCount) {
+  const box = document.getElementById("cat-list");
+  if (!box) return;
+
+  box.innerHTML = rows
+    .map((r, i) => {
+      const pct = total ? (r.total / total) * 100 : 0;
+      const avg = r.total / monthsCount;
+      const color = COLORS[i % COLORS.length];
+      return `
+      <div class="cat-item">
+        <div class="cat-left">
+          <span class="cat-dot" style="background:${color}"></span>
+          <div>
+            <div class="cat-name">${r.category}</div>
+            <div class="cat-meta">${pct.toFixed(1)}% do total de despesas</div>
+          </div>
+        </div>
+        <div class="cat-right">
+          <div class="cat-amount">${money(r.total)}</div>
+          <div class="cat-avg">${money(avg)}/mês</div>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
+
+await buildCategoryAnalysis();
 }
