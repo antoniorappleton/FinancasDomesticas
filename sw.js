@@ -1,43 +1,40 @@
-const CACHE_NAME = 'homefinance-cache-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/main.js',
-  '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
+const CACHE_NAME = "hf-v8";
+const ASSETS = [
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./main.js",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png",
 ];
 
-// Instala e faz cache dos ficheiros essenciais
-self.addEventListener('install', event => {
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  event.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(ASSETS)));
+});
+
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
+    Promise.all([
+      caches
+        .keys()
+        .then((keys) =>
+          Promise.all(
+            keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+          )
+        ),
+      self.clients.claim(),
+    ])
   );
 });
 
-// Ativa e limpa caches antigos se necessário
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames =>
-      Promise.all(
-        cacheNames.map(name => {
-          if (name !== CACHE_NAME) {
-            return caches.delete(name);
-          }
-        })
-      )
-    )
-  );
-});
-
-// Intercepta pedidos e serve do cache ou da rede
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
-  );
+// evita cachear recursos com ?v= (cache-busting) em dev
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.url.includes("?v=")) {
+    event.respondWith(fetch(req));
+    return;
+  }
+  event.respondWith(caches.match(req).then((res) => res || fetch(req)));
 });
