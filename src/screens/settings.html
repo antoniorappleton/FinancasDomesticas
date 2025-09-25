@@ -1,4 +1,4 @@
-<section class="card">
+<!--<section class="card">
   <h2>Perfil</h2>
   <p id="whoami" style="color:#6b7280;margin:.5rem 0"></p>
   <button id="btn-logout" class="btn">Terminar sessão</button>
@@ -9,4 +9,92 @@
     const who = document.getElementById("whoami");
     who && (who.textContent = user ? `Ligado como: ${user.email}` : "");
   })();
-</script>
+</script>-->
+<section class="card">
+  <h2 class="section-title">Definições</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button id="btn-logout" class="btn">Terminar sessão</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">Importar CSV</h2>
+
+  <!-- grid desktop 2 colunas, no mobile empilha -->
+  <div class="import-grid" style="display:grid;gap:16px;grid-template-columns:1fr">
+    <style>
+      @media (min-width: 900px){ .import-grid{ grid-template-columns:1fr 1fr; } }
+      .muted{ color:#64748b; font-size:.9rem }
+      .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+      .mini-table{ width:100%; border-collapse:collapse; font-size:.92rem }
+      .mini-table th,.mini-table td{ border-bottom:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
+      .right{ text-align:right }
+      .ok{ color:#16a34a } .err{ color:#ef4444 }
+      .hint{ background:#f8fafc; border:1px dashed #e5e7eb; padding:10px; border-radius:8px; }
+    </style>
+
+    <!-- ================== TRANSACÇÕES ================== -->
+    <div class="card" style="margin:0">
+      <h3 class="section-title" style="margin-top:0">Transações</h3>
+
+      <div class="hint mono" style="margin:.25rem 0 1rem">
+        Cabeçalho: <strong>date,type_code,amount,account_name,category_path,description,payment_method_code,status_code,regularity_code,currency,location,notes</strong><br>
+        Ex.: <span>2025-09-24,EXPENSE,23.05,Conta principal,Alimentação &gt; Cafés,Café,CASH,PENDING,ONCE,EUR,Lisboa,-</span>
+      </div>
+
+      <div style="display:grid;gap:10px">
+        <input id="imp-tx-file" type="file" accept=".csv" />
+        <label style="display:flex;align-items:center;gap:8px">
+          <input id="opt-create-cats" type="checkbox" checked />
+          <span>Criar <strong>categorias</strong> em falta</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px">
+          <input id="opt-create-accs" type="checkbox" />
+          <span>Criar <strong>contas</strong> em falta</span>
+        </label>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="btn-validate-tx" class="btn">Pré-validar</button>
+          <button id="btn-import-tx" class="btn btn--primary" disabled>Importar</button>
+        </div>
+
+        <div id="tx-summary" class="muted"></div>
+
+        <div id="tx-preview" style="overflow:auto;max-height:260px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;display:none">
+          <table class="mini-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== TRANSFERÊNCIAS ================== -->
+    <div class="card" style="margin:0">
+      <h3 class="section-title" style="margin-top:0">Transferências (entre contas)</h3>
+
+      <div class="hint mono" style="margin:.25rem 0 1rem">
+        Cabeçalho: <strong>date,from_account_name,to_account_name,amount,description,notes,status_code</strong><br>
+        Ex.: <span>2025-09-26,Conta principal,Conta poupança,200,Transferência mensal,,DONE</span>
+      </div>
+
+      <div style="display:grid;gap:10px">
+        <input id="imp-trf-file" type="file" accept=".csv" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="btn-validate-trf" class="btn">Pré-validar</button>
+          <button id="btn-import-trf" class="btn btn--primary" disabled>Importar</button>
+        </div>
+
+        <div id="trf-summary" class="muted"></div>
+
+        <div id="trf-preview" style="overflow:auto;max-height:260px;border:1px solid #e5e7eb;border-radius:8px;padding:8px;display:none">
+          <table class="mini-table">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+

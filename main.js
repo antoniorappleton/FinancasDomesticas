@@ -98,10 +98,13 @@ initAuth({
   },
 });
 
-// Service Worker — desliga em dev para não cachear ficheiros
-if (
-  "serviceWorker" in navigator &&
-  !["localhost", "127.0.0.1"].includes(location.hostname)
-) {
-  navigator.serviceWorker.register("./sw.js").catch(console.warn);
+// SW: só em produção (https e não localhost/127.x)
+if ('serviceWorker' in navigator && location.protocol === 'https:' && !/^127\.|^localhost$/.test(location.hostname)) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => console.log('SW registado'))
+    .catch(err => console.log('SW erro:', err));
+} else if ('serviceWorker' in navigator) {
+  // Dev: remove SWs antigos
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
 }
+
