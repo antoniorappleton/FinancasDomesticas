@@ -1,299 +1,301 @@
-//export async function init() {
-  //document.getElementById("btn-logout")?.addEventListener("click", async () => {
-    //await window.sb.auth.signOut();
-    //location.hash = "#/";
-  //});
-//}
 // src/screens/settings.js
-export async function init({ sb } = {}) {
+export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
+  outlet = outlet || document.getElementById("outlet");
 
-  // === logout, se já existia no teu settings ===
-  document.getElementById("btn-logout")?.addEventListener("click", async () => {
-    await sb.auth.signOut();
-    location.hash = "#/";
+  const $  = (sel) => outlet.querySelector(sel);
+  const log = (msg) => { const el=$("#imp-log"); if (el) el.textContent += (el.textContent? "\n":"") + msg; console.log("[import]", msg); };
+  const info= (msg) => { const el=$("#imp-info"); if (el) el.textContent = msg||""; };
+
+  const fileEl    = $("#imp-file");
+  const btnParse  = $("#imp-parse");
+  const btnImport = $("#imp-import");
+  const preview   = $("#imp-preview");
+  const progress  = $("#imp-progress");
+
+  if (!fileEl || !btnParse || !btnImport || !preview) {
+    console.warn("Import UI não encontrado. Garante que o settings.html tem a secção #csv-import.");
+    return;
+  }
+
+  // ===== helpers de texto/normalização =====
+  const normalizeHeader = (h) => String(h||"")
+    .replace(/^\uFEFF/,"")               // BOM
+    .trim().toLowerCase()
+    .replace(/\s+/g,' ')
+    .replace(/[ãâáàä]/g,'a').replace(/[êéèë]/g,'e')
+    .replace(/[îíìï]/g,'i').replace(/[õôóòö]/g,'o')
+    .replace(/[ûúùü]/g,'u').replace(/ç/g,'c');
+
+  const normalize = (v) => {
+    if (v == null) return "";
+    let t = String(v).trim();
+    if (/^(null|nil|na|—|-|)$/i.test(t)) return "";
+    // remove aspas exteriores
+    t = t.replace(/^"(.*)"$/,'$1').replace(/""/g,'"');
+    return t;
+  };
+
+  const detectDelimiter = (text) => {
+    const sample = text.split(/\r?\n/).slice(0, 20).join("\n");
+    const candidates = [",",";","\t","|"];
+    const scores = candidates.map(d => (sample.match(new RegExp(`\\${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`,"g"))||[]).length);
+    return candidates[scores.indexOf(Math.max(...scores))] || ";";
+  };
+
+  // split de linha que respeita aspas
+  const splitCSVLine = (line, delim) => {
+    const re = new RegExp(`${delim}(?=(?:[^"]*"[^"]*")*[^"]*$)`);
+    return line.split(re).map(s => s.replace(/^"(.*)"$/,'$1').replace(/""/g,'"'));
+  };
+
+  const parseAmount = (s) => {
+    s = normalize(s);
+    if (!s) return NaN;
+    let t = s.replace(/[€\s]/g,'');
+    // remove separador de milhares
+    t = t.replace(/\.(?=\d{3}(?:\D|$))/g,'');
+    // vírgula decimal -> ponto
+    t = t.replace(',', '.');
+    const v = Number(t);
+    return isFinite(v) ? v : NaN;
+  };
+
+  const toISO = (s) => {
+    s = normalize(s);
+    if (!s) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); // DD/MM/YYYY
+    if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+    const d = new Date(s);
+    return isNaN(d) ? null : d.toISOString().slice(0,10);
+  };
+
+  // ===== dicionários de referência =====
+  const [
+    { data: types },
+    { data: regs },
+    { data: pms },
+    { data: sts },
+    { data: accounts },
+    { data: cats }
+  ] = await Promise.all([
+    sb.from("transaction_types").select("id,code,name_pt"),
+    sb.from("regularities").select("id,code,name_pt"),
+    sb.from("payment_methods").select("id,code,name_pt"),
+    sb.from("statuses").select("id,code,name_pt"),
+    sb.from("accounts").select("id,name").order("name"),
+    sb.from("categories").select("id,name,parent_id")
+  ]);
+
+  const TYPE_BY_LABEL = new Map();
+  (types||[]).forEach(t => {
+    TYPE_BY_LABEL.set(normalizeHeader(t.code), t.id);
+    TYPE_BY_LABEL.set(normalizeHeader(t.name_pt), t.id);
+  });
+  const STATUS_BY_LABEL = new Map();
+  (sts||[]).forEach(s => {
+    STATUS_BY_LABEL.set(normalizeHeader(s.code), s.id);
+    STATUS_BY_LABEL.set(normalizeHeader(s.name_pt), s.id);
+  });
+  const PM_BY_LABEL = new Map();
+  (pms||[]).forEach(p => {
+    PM_BY_LABEL.set(normalizeHeader(p.code), p.id);
+    PM_BY_LABEL.set(normalizeHeader(p.name_pt), p.id);
+  });
+  const REG_BY_LABEL = new Map();
+  (regs||[]).forEach(r => {
+    REG_BY_LABEL.set(normalizeHeader(r.code), r.id);
+    REG_BY_LABEL.set(normalizeHeader(r.name_pt), r.id);
+  });
+  const ACC_BY_NAME = new Map((accounts||[]).map(a => [normalizeHeader(a.name), a.id]));
+
+  const catById = new Map((cats||[]).map(c => [c.id, c]));
+  const CAT_BY_PATH = new Map();
+  (cats||[]).forEach(c => {
+    if (c.parent_id) {
+      const p = catById.get(c.parent_id);
+      if (p) CAT_BY_PATH.set(normalizeHeader(`${p.name} > ${c.name}`), c.id);
+    }
+    CAT_BY_PATH.set(normalizeHeader(c.name), c.id);
   });
 
-  // -------- utilidades UI --------
-  const $ = (id) => document.getElementById(id);
-  const fmt = (n) => Number(n || 0).toLocaleString("pt-PT", { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const ALIASES = {
+  date:        ["date","data"],
+  amount:      ["amount","valor","montante","value"],
+  type:        ["type","tipo","type_code","tipo_codigo","tipo_code"],
+  account:     ["account","conta","account_name","nome_conta","conta_nome","accountid","account_id"],
+  category:    ["category","categoria","categoria_path","category_path","categoria pai > filho","pai > filho"],
+  description: ["description","descricao","descrição","desc"],
+  payment_method: ["payment_method","metodo","método","payment_method_code","metodo_code","metodo_codigo"],
+  status:      ["status","estado","status_code","estado_code","estado_codigo"],
+  regularity:  ["regularity","regularidade","regularity_code","regularidade_code","regularidade_codigo"],
+  notes:       ["notes","notas"],
+  location:    ["location","local","localizacao","localização"],
+  currency:    ["currency","moeda"],
+  expense_nature: ["expense_nature","natureza_despesa","fixa_variavel","fixa/variavel"]
+};
 
-  // Carregar PapaParse se necessário
-  async function ensurePapa() {
-    if (window.Papa) return;
-    await new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js";
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-
-  // Lê CSV para [{...}] (headers na 1ª linha)
-  async function readCSV(file) {
-    await ensurePapa();
-    return new Promise((resolve, reject) => {
-      window.Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: h => String(h||"").trim(),
-        complete: ({ data }) => resolve(data.map(row => {
-          const obj = {};
-          for (const k in row) obj[k.trim()] = typeof row[k]==="string" ? row[k].trim() : row[k];
-          return obj;
-        })),
-        error: reject
-      });
-    });
-  }
-
-  // ---------- caches do lado do cliente ----------
-  const cache = {
-    types: null, pm: null, st: null, reg: null, accs: null, cats: null,
-    hasTxNature: false
-  };
-
-  async function warmMeta() {
-    const [types, pm, st, reg, accs, cats, txNature] = await Promise.all([
-      sb.from("transaction_types").select("id,code"),
-      sb.from("payment_methods").select("id,code"),
-      sb.from("statuses").select("id,code"),
-      sb.from("regularities").select("id,code"),
-      sb.from("accounts").select("id,name").order("name"),
-      sb.from("categories").select("id,name,parent_id,user_id,kind"),
-      sb.from("transactions").select("id, expense_nature").limit(1) // se der erro, não existe
-    ]);
-
-    cache.types = new Map((types.data||[]).map(r => [r.code, r.id]));
-    cache.pm    = new Map((pm.data||[]).map(r => [r.code, r.id]));
-    cache.st    = new Map((st.data||[]).map(r => [r.code, r.id]));
-    cache.reg   = new Map((reg.data||[]).map(r => [r.code, r.id]));
-    cache.accs  = new Map((accs.data||[]).map(r => [r.name, r.id]));
-
-    cache.cats = new Map(); // key "parentId|name" → {id,name,parent_id,kind}
-    (cats.data||[]).forEach(c => {
-      const key = `${c.parent_id || "root"}|${c.name}`;
-      // preferir categoria do utilizador (user_id != null) em vez de global
-      const ex = cache.cats.get(key);
-      if (!ex || (ex.user_id == null && c.user_id != null)) cache.cats.set(key, c);
-    });
-
-    cache.hasTxNature = !txNature.error;
-  }
-  await warmMeta();
-
-  // helpers de mapeamento/normalização
-  const parseISO = (s) => (new Date(s).toString() !== "Invalid Date") ? s.slice(0,10) : null;
-  const parseAmount = (s) => {
-    if (s === null || s === undefined) return NaN;
-    const x = String(s).replace(/\s/g,"").replace(",",".");
-    return Number(x);
-  };
-
-  // garantir conta por nome (opcionalmente cria)
-  async function ensureAccountByName(name, createIfMissing = false) {
-    const id = cache.accs.get(name);
-    if (id) return id;
-    if (!createIfMissing) return null;
-    const { data:{ user } } = await sb.auth.getUser();
-    const { data, error } = await sb.from("accounts").insert([{
-      user_id: user.id, name, type: "bank", currency: "EUR"
-    }]).select("id").single();
-    if (error) throw error;
-    cache.accs.set(name, data.id);
-    return data.id;
-  }
-
-  // garantir categoria por "Pai > Filho" (cria se faltar)
-  async function ensureCategoryByPath(path, kind, userId, createIfMissing = true) {
-    if (!path) return null;
-    const parts = path.split(">").map(s => s.trim()).filter(Boolean);
-    let parentId = null;
-    for (let i = 0; i < parts.length; i++) {
-      const name = parts[i];
-      const key = `${parentId || "root"}|${name}`;
-      let hit = cache.cats.get(key);
-      if (!hit && createIfMissing) {
-        // criar categoria (sempre do utilizador)
-        const payload = { user_id: userId, parent_id: parentId, name, kind: (i===0 ? kind : kind) };
-        const { data, error } = await sb.from("categories").insert([payload]).select("id,parent_id,name,kind,user_id").single();
-        if (error) throw error;
-        hit = data;
-        cache.cats.set(key, data);
-      }
-      if (!hit) return null;
-      parentId = hit.id;
+  const pick = (row, key) => {
+    const keys = ALIASES[key] || [key];
+    for (const k of keys) {
+      const v = normalize(row[normalizeHeader(k)]);
+      if (v) return v;
     }
-    return parentId;
-  }
+    return "";
+  };
 
-  // ---------- UI: Transações ----------
-  let txRows = [];     // linhas cruas do CSV
-  let txValid = [];    // payloads prontos a inserir
-  let txErrors = [];   // mensagens
+  // ========= estado =========
+  let mappedRows = [];
 
-  function renderPreview(containerId, rows) {
-    const wrap = $(containerId);
-    const thead = wrap.querySelector("thead");
-    const tbody = wrap.querySelector("tbody");
-    if (!rows.length) { wrap.style.display="none"; return; }
-    wrap.style.display="block";
-    const cols = Object.keys(rows[0]);
-    thead.innerHTML = `<tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr>`;
-    tbody.innerHTML = rows.slice(0, 12).map(r =>
-      `<tr>${cols.map(c=>`<td>${(r[c]??"")}</td>`).join("")}</tr>`
-    ).join("");
-  }
+  // ========= PREVIEW =========
+  btnParse.addEventListener("click", async () => {
+    $("#imp-log").textContent = "";
+    info("");
+    mappedRows = [];
+    btnImport.disabled = true;
+    preview.innerHTML = "";
+    progress.hidden = true;
 
-  function summary(elId, ok, err) {
-    $(elId).innerHTML = `
-      <div><span class="ok">✔</span> Válidas: <strong>${ok}</strong> &nbsp; &middot; &nbsp;
-           <span class="err">✖</span> Erros: <strong>${err}</strong></div>
-    `;
-  }
+    const file = fileEl.files?.[0];
+    if (!file) { info("Escolhe um ficheiro .csv"); return; }
 
-  $("btn-validate-tx")?.addEventListener("click", async () => {
-    const f = $("imp-tx-file")?.files?.[0];
-    if (!f) return alert("Escolhe um CSV de transações.");
-    txErrors = []; txValid = []; txRows = await readCSV(f);
+    const rawText = await file.text();
+    const text = rawText.replace(/^\uFEFF/,"");
+    const delim = detectDelimiter(text);
 
-    const { data:{ user } } = await sb.auth.getUser();
-    const createCats = $("opt-create-cats")?.checked;
-    const createAccs = $("opt-create-accs")?.checked;
+    const allLines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (allLines.length < 2) { info("CSV sem linhas suficientes."); return; }
 
-    for (let i=0;i<txRows.length;i++) {
-      const r = txRows[i];
+    const headerCols = splitCSVLine(allLines[0], delim);
+    const headersNorm = headerCols.map(normalizeHeader);
 
-      const date = parseISO(r.date);
-      const typeCode = (r.type_code||"").toUpperCase();
-      const amount = parseAmount(r.amount);
-      const accName = r.account_name;
-      const catPath = r.category_path;
+    // para debug leve:
+    log(`Delimitador detetado: "${delim === "\t" ? "\\t" : delim}" | Cabeçalhos: ${headerCols.join(" | ")}`);
 
-      if (!date)           { txErrors.push(`L${i+2}: data inválida`); continue; }
-      if (!["INCOME","EXPENSE","SAVINGS"].includes(typeCode)) { txErrors.push(`L${i+2}: type_code inválido`); continue; }
-      if (!(amount > 0))   { txErrors.push(`L${i+2}: amount inválido`); continue; }
+    const rows = [];
+    for (let i=1;i<allLines.length;i++) {
+      const cols = splitCSVLine(allLines[i], delim);
+      const o = {};
+      headersNorm.forEach((hn, idx) => { o[hn] = cols[idx] ?? ""; });
+      rows.push(o);
+    }
 
-      let account_id = await ensureAccountByName(accName, createAccs);
-      if (!account_id)     { txErrors.push(`L${i+2}: conta "${accName}" não existe`); continue; }
+    const userId = (await sb.auth.getUser()).data?.user?.id || null;
+    const errors = [];
+    const out = [];
 
-      const kind = (typeCode==="INCOME")?"income" : (typeCode==="SAVINGS")?"savings" : "expense";
-      let category_id = await ensureCategoryByPath(catPath, kind, user.id, !!createCats);
-      if (!category_id && catPath) { txErrors.push(`L${i+2}: categoria "${catPath}" não encontrada`); continue; }
+    for (let i=0; i<rows.length; i++) {
+      const r = rows[i];
 
-      const payload = {
-        user_id: user.id,
-        type_id: cache.types.get(typeCode),
-        regularity_id: cache.reg.get((r.regularity_code||"").toUpperCase()) || null,
-        account_id,
-        category_id,
-        payment_method_id: cache.pm.get((r.payment_method_code||"").toUpperCase()) || null,
-        status_id: cache.st.get((r.status_code||"").toUpperCase()) || null,
-        date,
-        amount,
-        description: r.description || null,
-        location: r.location || null,
-        notes: r.notes || null,
-        currency: (r.currency||"EUR").toUpperCase()
-      };
+      // data
+      const dateISO = toISO(pick(r,"date"));
+      if (!dateISO) { errors.push(`L${i+2}: data inválida "${pick(r,"date")}"`); continue; }
 
-      // se a coluna existir no teu schema, podes importar expense_nature (fixa/variável)
-      if (cache.hasTxNature && r.expense_nature) {
-        const v = String(r.expense_nature).toLowerCase();
-        if (["fixed","variable","fixa","variável","var"].includes(v)) {
-          payload.expense_nature = (v.startsWith("fix")) ? "fixed" : "variable";
+      // valor (guarda sinal para inferência mas depois converte para abs)
+      let amountNum = parseAmount(pick(r,"amount"));
+      if (isNaN(amountNum)) { errors.push(`L${i+2}: valor inválido "${pick(r,"amount")}"`); continue; }
+      const sign = amountNum < 0 ? -1 : 1;
+      amountNum = Math.abs(amountNum);
+
+      // conta
+      const accName = pick(r,"account");
+      const accountId = ACC_BY_NAME.get(normalizeHeader(accName));
+      if (!accountId) { errors.push(`L${i+2}: conta não encontrada "${accName}"`); continue; }
+
+      // tipo (mapa + inferência por sinal/categoria)
+      const typeLabel = pick(r,"type");
+      let typeId = TYPE_BY_LABEL.get(normalizeHeader(typeLabel)) || null;
+
+      const catRaw = pick(r,"category");
+      let categoryId = null;
+      if (catRaw) categoryId = CAT_BY_PATH.get(normalizeHeader(catRaw)) || null;
+
+      if (!typeId) {
+        // inferir
+        if (/poupan/.test(normalizeHeader(catRaw))) {
+          typeId = TYPE_BY_LABEL.get("savings");
+        } else if (sign < 0) {
+          typeId = TYPE_BY_LABEL.get("expense");
+        } else if (sign > 0) {
+          typeId = TYPE_BY_LABEL.get("income");
         }
       }
+      if (!typeId) { errors.push(`L${i+2}: tipo inválido "${typeLabel}"`); continue; }
 
-      txValid.push(payload);
-    }
+      const statusId         = STATUS_BY_LABEL.get(normalizeHeader(pick(r,"status"))) || STATUS_BY_LABEL.get("done") || null;
+      const paymentMethodId  = PM_BY_LABEL.get(normalizeHeader(pick(r,"payment_method"))) || null;
+      const regularityId     = REG_BY_LABEL.get(normalizeHeader(pick(r,"regularity"))) || null;
 
-    $("btn-import-tx").disabled = txValid.length === 0;
-    summary("tx-summary", txValid.length, txErrors.length);
-    renderPreview("tx-preview", txRows);
-    if (txErrors.length) console.warn("Erros CSV (transações):", txErrors);
-  });
-
-  $("btn-import-tx")?.addEventListener("click", async () => {
-    if (!txValid.length) return;
-    $("btn-import-tx").disabled = true;
-
-    let ok = 0, fail = 0;
-    for (let i = 0; i < txValid.length; i += 300) {
-      const batch = txValid.slice(i, i+300);
-      const { error } = await sb.from("transactions").insert(batch);
-      if (error) { console.error(error); fail += batch.length; }
-      else ok += batch.length;
-      $("tx-summary").innerHTML = `A importar… ${ok+fail}/${txValid.length}`;
-    }
-
-    $("tx-summary").innerHTML = `<strong>Concluído.</strong> ✔ ${ok} &nbsp; ✖ ${fail}`;
-    $("btn-import-tx").disabled = false;
-  });
-
-  // ---------- UI: Transferências ----------
-  let trfRows = [];
-  let trfValid = [];
-  let trfErrors = [];
-
-  $("btn-validate-trf")?.addEventListener("click", async () => {
-    const f = $("imp-trf-file")?.files?.[0];
-    if (!f) return alert("Escolhe um CSV de transferências.");
-    trfErrors = []; trfValid = []; trfRows = await readCSV(f);
-
-    for (let i=0;i<trfRows.length;i++){
-      const r = trfRows[i];
-      const date = parseISO(r.date);
-      const amount = parseAmount(r.amount);
-      const fromName = r.from_account_name;
-      const toName   = r.to_account_name;
-
-      if (!date) { trfErrors.push(`L${i+2}: data inválida`); continue; }
-      if (!(amount>0)) { trfErrors.push(`L${i+2}: amount inválido`); continue; }
-
-      const fromId = cache.accs.get(fromName);
-      const toId   = cache.accs.get(toName);
-      if (!fromId) { trfErrors.push(`L${i+2}: conta origem "${fromName}" não existe`); continue; }
-      if (!toId)   { trfErrors.push(`L${i+2}: conta destino "${toName}" não existe`); continue; }
-      if (fromId === toId) { trfErrors.push(`L${i+2}: contas iguais`); continue; }
-
-      trfValid.push({
-        p_from_account: fromId,
-        p_to_account:   toId,
-        p_amount:       amount,
-        p_date:         date,
-        p_description:  r.description || null,
-        p_notes:        r.notes || null,
-        p_status_code: (r.status_code||"DONE").toUpperCase()
+      out.push({
+        user_id: userId,
+        type_id: typeId,
+        regularity_id: regularityId,
+        account_id: accountId,
+        category_id: categoryId,
+        payment_method_id: paymentMethodId,
+        status_id: statusId,
+        date: dateISO,
+        amount: amountNum, // o trigger vai aplicar o sinal via type_id
+        description: pick(r,"description") || null,
+        location: pick(r,"location") || null,
+        notes: pick(r,"notes") || null,
+        currency: pick(r,"currency") || "EUR",
       });
     }
 
-    $("btn-import-trf").disabled = trfValid.length === 0;
-    summary("trf-summary", trfValid.length, trfErrors.length);
-    renderPreview("trf-preview", trfRows);
-    if (trfErrors.length) console.warn("Erros CSV (transferências):", trfErrors);
+    mappedRows = out;
+
+    // preview (10 linhas)
+    const head = ["Data","Valor","Tipo/Conta","Categoria","Descrição"];
+    const html = [
+      `<table style="width:100%;font-size:.9rem;border-collapse:collapse">`,
+      `<thead><tr>${head.map(h=>`<th style="text-align:left;border-bottom:1px solid #eee;padding:6px">${h}</th>`).join("")}</tr></thead>`,
+      `<tbody>`,
+      ...out.slice(0,10).map(p => {
+        const tName = (types||[]).find(x => x.id===p.type_id)?.name_pt || (types||[]).find(x => x.id===p.type_id)?.code || "";
+        const acc   = (accounts||[]).find(a => a.id===p.account_id)?.name || "";
+        const cat   = p.category_id ? (catById.get(p.category_id)?.name) : "(sem)";
+        return `<tr>
+          <td style="padding:6px;border-bottom:1px solid #f3f3f3">${p.date}</td>
+          <td style="padding:6px;border-bottom:1px solid #f3f3f3">€ ${p.amount.toFixed(2)}</td>
+          <td style="padding:6px;border-bottom:1px solid #f3f3f3">${tName} / ${acc}</td>
+          <td style="padding:6px;border-bottom:1px solid #f3f3f3">${cat}</td>
+          <td style="padding:6px;border-bottom:1px solid #f3f3f3">${p.description||""}</td>
+        </tr>`;
+      }),
+      `</tbody></table>`
+    ].join("");
+    preview.innerHTML = html;
+
+    info(`Registos válidos: ${out.length} / ${rows.length}.`);
+    if (errors.length) log("Avisos:\n- " + errors.slice(0,10).join("\n- ") + (errors.length>10?`\n(+${errors.length-10} mais…)`:""));
+    btnImport.disabled = out.length === 0;
   });
 
-  $("btn-import-trf")?.addEventListener("click", async () => {
-    if (!trfValid.length) return;
-    $("btn-import-trf").disabled = true;
+  // ========= IMPORT =========
+  btnImport.addEventListener("click", async () => {
+    if (!mappedRows.length) { info("Nada para importar. Faz primeiro a pré-visualização."); return; }
+    progress.hidden = false; progress.value = 0;
+    btnImport.disabled = true; btnParse.disabled = true; fileEl.disabled = true;
+    $("#imp-log").textContent = ""; info("A importar…");
 
-    // pequena “pool” de concorrência para não saturar o PostgREST
-    const CONC = 4;
-    let idx = 0, ok = 0, fail = 0;
-
-    async function worker() {
-      while (idx < trfValid.length) {
-        const my = idx++;
-        const args = trfValid[my];
-        const { error } = await sb.rpc("create_transfer", args);
-        if (error) { console.error(error); fail++; }
-        else ok++;
-        $("trf-summary").innerHTML = `A importar… ${ok+fail}/${trfValid.length}`;
+    try {
+      const CHUNK = 200;
+      for (let i=0; i<mappedRows.length; i+=CHUNK) {
+        const batch = mappedRows.slice(i, i+CHUNK);
+        const { error } = await sb.from("transactions").insert(batch);
+        if (error) throw error;
+        progress.value = Math.round(((i+batch.length)/mappedRows.length)*100);
       }
+      info(`✅ Importação concluída: ${mappedRows.length} registos inseridos.`);
+      log("Concluído.");
+    } catch (e) {
+      info("❌ Falha na importação.");
+      log(e?.message || String(e));
+    } finally {
+      btnImport.disabled = false; btnParse.disabled = false; fileEl.disabled = false;
+      setTimeout(()=> progress.hidden = true, 1200);
     }
-    await Promise.all(Array.from({length:CONC}, worker));
-    $("trf-summary").innerHTML = `<strong>Concluído.</strong> ✔ ${ok} &nbsp; ✖ ${fail}`;
-    $("btn-import-trf").disabled = false;
   });
 }
