@@ -367,3 +367,45 @@ td:nth-child(5){                 /* Descrição */
 .modal__footer{border-top:1px solid #eee;border-bottom:0;display:flex;justify-content:flex-end;gap:8px}
 .modal__body{padding:16px}
 .icon-btn{background:none;border:0;font-size:22px;line-height:1;cursor:pointer}
+/* Modal */
+.rep-overlay {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, .45);
+  display: grid; place-items: center; padding: 16px; z-index: 60;
+}
+.rep-overlay.hidden { display: none; }
+
+.rep-modal {
+  width: min(1100px, 100%);
+  max-height: 92vh; overflow: auto;
+  background: #fff; color: #0f172a; border-radius: 16px;
+  box-shadow: 0 15px 50px rgba(0,0,0,.3);
+}
+@media (prefers-color-scheme: dark) {
+  .rep-modal { background: #0b1220; color: #e2e8f0; }
+}
+/*
+.rep-header, .rep-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.rep-footer { border-top: 1px solid rgba(0,0,0,.08); border-bottom: none; }
+
+.rep-filters {
+  display: grid; gap: 10px; padding: 12px 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.rep-field { display: flex; flex-direction: column; gap: 6px; }
+.rep-field > span { font-size: .85rem; opacity: .8; }
+
+.rep-body { padding: 16px; display: grid; gap: 16px; }
+.rep-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 800px) { .rep-grid { grid-template-columns: 1fr; } }
+
+.rep-kpis {
+  display: grid; gap: 8px; grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 600px) { .rep-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+*/
+/* opcional para legendas da pizza ficarem legíveis */
+.chart { height: 280px; }
+.chart--tall { height: 360px; }
