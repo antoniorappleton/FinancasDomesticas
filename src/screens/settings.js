@@ -247,6 +247,25 @@ export async function init({ sb, outlet } = {}) {
       });
     }
 
+    // …depois de construir 'out'
+const dedupe = new Map();
+for (const p of out) {
+  const key = [
+    p.date,
+    Number(p.amount).toFixed(2),
+    p.type_id,
+    p.account_id,
+    p.category_id || '_',
+    (p.description || '').trim()
+  ].join('|');
+  if (!dedupe.has(key)) dedupe.set(key, p);
+}
+const before = out.length;
+const after  = dedupe.size;
+if (before !== after) log(`⚠️ Deduplicadas ${before-after} linhas iguais no CSV.`);
+mappedRows = [...dedupe.values()];
+
+
     mappedRows = out;
 
     // preview (até 10)
