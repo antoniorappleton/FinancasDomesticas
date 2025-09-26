@@ -1,24 +1,72 @@
 <section class="card" id="csv-import">
   <h2 class="section-title">Importar CSV</h2>
 
-  <div class="import-grid" style="display:grid;grid-template-columns:1fr auto auto;gap:10px">
-    <label>
-      <span class="sr-only">Ficheiro CSV</span>
-      <input id="imp-file" type="file" accept=".csv" />
+  <div class="grid" style="grid-template-columns:1fr;gap:10px">
+    <label>Ficheiro CSV
+      <input id="imp-file" type="file" accept=".csv,text/csv" />
     </label>
-    <button id="imp-parse"  type="button" class="btn">Pré-visualizar</button>
-    <button id="imp-import" type="button" class="btn btn--primary" disabled>Importar</button>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap">
+      <button id="imp-parse"  class="btn">Pré-visualizar</button>
+      <button id="imp-import" class="btn btn--primary" disabled>Importar</button>
+    </div>
+
+    <progress id="imp-progress" max="100" value="0" hidden style="width:100%"></progress>
+
+    <div id="imp-info" class="card" style="display:block;white-space:pre-wrap"></div>
+    <div id="imp-preview" class="card" style="overflow:auto"></div>
+    <pre id="imp-log" class="card" style="max-height:220px;overflow:auto;background:#0b1020;color:#dbeafe"></pre>
   </div>
-
-  <small id="imp-info" class="muted"></small>
-  <progress id="imp-progress" max="100" value="0" style="width:100%;height:8px;margin:10px 0" hidden></progress>
-
-  <div id="imp-preview" class="table" style="overflow:auto;max-height:220px;border:1px solid #eee;border-radius:8px"></div>
-  <pre id="imp-log" style="white-space:pre-wrap;background:#0b1020;color:#cbe3ff;padding:12px;border-radius:8px;margin-top:10px;min-height:48px"></pre>
 </section>
 
-<style>
-@media (max-width: 640px) {
-  #csv-import .import-grid { grid-template-columns: 1fr; }
-}
-</style>
+<!-- RELATÓRIOS -->
+<section class="card" id="reports">
+  <h2 class="section-title">Relatórios</h2>
+  <p class="muted">Gera um relatório mensal ou anual com totais e análise por categoria.</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <button id="report-open" class="btn">Gerar relatório</button>
+  </div>
+</section>
+
+<!-- MODAL DE RELATÓRIO -->
+<div id="report-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="rep-title">
+  <div class="modal__panel" style="max-width:820px">
+    <header class="modal__header">
+      <h3 id="rep-title" class="section-title" style="margin:0">Gerar Relatório</h3>
+      <button id="report-close" class="icon-btn" aria-label="Fechar">×</button>
+    </header>
+
+    <div class="modal__body">
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
+        <label class="row" style="grid-column:1/-1;display:flex;align-items:center;gap:8px">
+          <input type="radio" name="rep-mode" value="monthly" checked>
+          <span>Relatório <strong>Mensal</strong></span>
+        </label>
+        <label style="grid-column:1/-1">Mês
+          <input id="rep-month" type="month">
+        </label>
+
+        <label class="row" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:6px">
+          <input type="radio" name="rep-mode" value="annual">
+          <span>Relatório <strong>Anual</strong></span>
+        </label>
+        <label style="grid-column:1/-1">Ano
+          <select id="rep-year"></select>
+        </label>
+
+        <label class="row" style="grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:6px">
+          <input id="rep-include-charts" type="checkbox" checked>
+          <span>Incluir mini-gráficos</span>
+        </label>
+        <label class="row" style="grid-column:1/-1;display:flex;align-items:center;gap:8px">
+          <input id="rep-include-notes" type="checkbox" checked>
+          <span>Incluir notas/observações</span>
+        </label>
+      </div>
+    </div>
+
+    <footer class="modal__footer">
+      <button id="report-generate" class="btn btn--primary">Gerar PDF</button>
+    </footer>
+  </div>
+</div>

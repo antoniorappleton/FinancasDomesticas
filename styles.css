@@ -355,5 +355,15 @@ td:nth-child(5){                 /* Descrição */
   .dash-2col .chart{ flex:1; min-height:320px; } /* dá altura ao canvas */
 }
 
-/* se ainda não tens, ajuda o Chart.js a dimensionar */
-.chart{ height:320px; } /* override se precisares */
+
+@media (max-width:640px){
+  .modal__dialog{min-width:100%}
+  .modal__body .grid{grid-template-columns:1fr !important}
+}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal.hidden{display:none}
+.modal__panel{background:#fff;border-radius:12px;max-height:90vh;overflow:auto;box-shadow:0 10px 34px rgba(0,0,0,.25)}
+.modal__header,.modal__footer{padding:12px 16px;border-bottom:1px solid #eee}
+.modal__footer{border-top:1px solid #eee;border-bottom:0;display:flex;justify-content:flex-end;gap:8px}
+.modal__body{padding:16px}
+.icon-btn{background:none;border:0;font-size:22px;line-height:1;cursor:pointer}

@@ -49,13 +49,19 @@ async function loadScreen(route) {
   footer.style.display = r.showFooter ? "flex" : "none";
   setActiveTab();
 
-  // 3) JS do ecrã (se existir)
+  // dentro de loadScreen(route)
+  // 3) carrega JS do ecrã
   if (r.js) {
-    const mod = await import(`./${r.js}?v=${Date.now()}`);
-    if (typeof mod.init === "function") await mod.init({ sb, outlet });
-    else if (typeof mod.default === "function")
-      await mod.default({ sb, outlet });
+    try {
+      const mod = await import(`./${r.js}?v=${Date.now()}`);
+      const fn = mod.init || mod.default;
+      if (typeof fn === "function") await fn({ sb, outlet });
+    } catch (e) {
+      console.error("Falha ao importar", r.js, e);
+      throw new Error(`Falha a carregar ${r.js}: ${String(e && e.message ? e.message : e)}`);
+    }
   }
+
 }
 
 let routing = false;
