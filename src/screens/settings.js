@@ -260,6 +260,49 @@ for (const p of out) {
   ].join('|');
   if (!dedupe.has(key)) dedupe.set(key, p);
 }
+// --- mesma chave do dedupe, mas em função reutilizável ---
+const makeKey = (p) => [
+  p.date,
+  Number(p.amount).toFixed(2),
+  p.type_id,
+  p.account_id,
+  p.category_id || '_',
+  (p.description || '').trim().toLowerCase()
+].join('|');
+
+// marca as linhas com a key
+mappedRows.forEach(p => p._key = makeKey(p));
+
+// intervalo de datas do ficheiro (para não fazer SELECT ao mundo inteiro)
+const dates = mappedRows.map(p => p.date).sort();
+const minDate = dates[0];
+const maxDate = dates[dates.length - 1];
+
+// vai buscar registos existentes nesse intervalo
+const { data: existing, error: exErr } = await sb
+  .from('transactions')
+  .select('date, amount, type_id, account_id, category_id, description')
+  .gte('date', minDate)
+  .lte('date', maxDate);
+
+if (exErr) log('Erro a verificar duplicados na BD: ' + exErr.message);
+
+const existingSet = new Set((existing || []).map(r => makeKey({
+  date: r.date,
+  amount: Number(r.amount),
+  type_id: r.type_id,
+  account_id: r.account_id,
+  category_id: r.category_id,
+  description: r.description
+})));
+
+// remove do lote tudo o que já existir na BD
+const beforeDB = mappedRows.length;
+mappedRows = mappedRows.filter(p => !existingSet.has(p._key));
+if (beforeDB !== mappedRows.length) {
+  log(`ℹ️ Ignoradas ${beforeDB - mappedRows.length} linhas que já existiam na BD.`);
+}
+
 const before = out.length;
 const after  = dedupe.size;
 if (before !== after) log(`⚠️ Deduplicadas ${before-after} linhas iguais no CSV.`);
