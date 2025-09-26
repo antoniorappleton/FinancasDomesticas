@@ -11,9 +11,9 @@ export async function init({ sb, outlet } = {}) {
       monthly: "Relatório Financeiro — mês de {MMMM} de {YYYY}",
       annual: "Relatório Financeiro — Ano {YYYY}",
     },
-    headerLeft: "Relatório Financeiro",
+    headerLeft: "®Wisebudget365",
     headerRight: "{SCOPE_LABEL}",
-    footerLeft: "Gerado automaticamente pelo Home Finance",
+    footerLeft: "Gerado automaticamente pela Wisebudget365",
     footerRight: "{DATE}  •  Página {PAGE}/{PAGES}",
   };
   // Onde editar os textos/títulos: ↑ aqui em cima
