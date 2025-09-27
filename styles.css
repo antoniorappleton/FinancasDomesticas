@@ -409,3 +409,20 @@ td:nth-child(5){                 /* Descrição */
 /* opcional para legendas da pizza ficarem legíveis */
 .chart { height: 280px; }
 .chart--tall { height: 360px; }
+
+.brand__text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-left: 8px; /* espaço entre o logo e o texto */
+}
+
+.brand__title {
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.brand__subtitle {
+  font-size: 0.9em;
+  color: #e8e3e3;
+}
