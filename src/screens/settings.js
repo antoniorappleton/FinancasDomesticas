@@ -5,12 +5,6 @@ export async function init({ sb, outlet } = {}) {
 
   // ------------------ helpers simples ------------------
   const $ = (sel) => outlet.querySelector(sel);
-  const money = (n) =>
-    "€ " +
-    Number(n || 0).toLocaleString("pt-PT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
   const todayYYYYMM = () => new Date().toISOString().slice(0, 7);
 
   // ------------------ Chart.js + datalabels ------------------
@@ -422,6 +416,387 @@ export async function init({ sb, outlet } = {}) {
   //                               RELATÓRIOS
   // =====================================================================
   // (assume que o teu settings.html tem a secção de relatórios + modal conforme partilhaste)
+
+  // ====== RELATÓRIOS: UI ======
+const S = {
+  scopeGroup: outlet.querySelector("#rpt-scope-group"),
+  monthMode:  outlet.querySelector("#rpt-month-mode"),
+  monthSingleWrap: outlet.querySelector("#rpt-month-single-wrap"),
+  monthInput: outlet.querySelector("#rpt-month"),
+  fromWrap:   outlet.querySelector("#rpt-from-wrap"),
+  toWrap:     outlet.querySelector("#rpt-to-wrap"),
+  fromInput:  outlet.querySelector("#rpt-from"),
+  toInput:    outlet.querySelector("#rpt-to"),
+  yearWrap:   outlet.querySelector("#rpt-year-wrap"),
+  yearInput:  outlet.querySelector("#rpt-year"),
+
+  openBtn:    outlet.querySelector("#btn-report-open"),
+  overlay:    outlet.querySelector("#report-overlay"),
+  closeBtn:   outlet.querySelector("#rpt-close"),
+  previewBtn: outlet.querySelector("#rpt-preview"),
+  pdfBtn:     outlet.querySelector("#rpt-pdf"),
+
+  kIncome: outlet.querySelector("#rpt-kpi-income"),
+  kExpense:outlet.querySelector("#rpt-kpi-expense"),
+  kSavings:outlet.querySelector("#rpt-kpi-savings"),
+  kBalance:outlet.querySelector("#rpt-kpi-balance"),
+
+  ctxCat: outlet.querySelector("#rpt-cat-pie")?.getContext("2d"),
+  ctxFix: outlet.querySelector("#rpt-fixed-donut")?.getContext("2d"),
+  ctxSer: outlet.querySelector("#rpt-series")?.getContext("2d"),
+
+  catLegend: outlet.querySelector("#rpt-cat-legend"),
+  insights:  outlet.querySelector("#rpt-insights"),
+  table:     outlet.querySelector("#rpt-table"),
+};
+
+const now = new Date();
+const pad2 = n => String(n).padStart(2,"0");
+const yyyyMM = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+S.monthInput.value = yyyyMM(now);
+S.fromInput.value  = yyyyMM(now);
+S.toInput.value    = yyyyMM(now);
+S.yearInput.value  = String(now.getFullYear());
+
+// active-pill styling
+S.scopeGroup?.addEventListener("click", (e)=>{
+  const lab = e.target.closest(".segmented__item"); if(!lab) return;
+  S.scopeGroup.querySelectorAll(".segmented__item").forEach(x=>x.classList.remove("is-active"));
+  lab.classList.add("is-active");
+  lab.querySelector('input[type="radio"]').checked = true;
+  updatePeriodControls();
+});
+S.monthMode?.addEventListener("change", updatePeriodControls);
+
+function currentScope(){
+  const checked = S.scopeGroup.querySelector('input[name="rpt-scope"]:checked');
+  return checked?.value || "month";
+}
+
+function updatePeriodControls(){
+  const scope = currentScope();
+  const isMonth = scope === "month";
+  // mostrar/esconder campos conforme modo
+  S.yearWrap.classList.toggle("hidden", isMonth);
+  S.monthMode.parentElement.classList.toggle("hidden", !isMonth);
+  const range = isMonth && S.monthMode.value === "range";
+  S.monthSingleWrap.classList.toggle("hidden", !isMonth || range);
+  S.fromWrap.classList.toggle("hidden", !range);
+  S.toWrap.classList.toggle("hidden", !range);
+}
+updatePeriodControls();
+
+// ====== RELATÓRIOS: dados + charts ======
+let rptCharts = [];
+const destroyRptCharts = () => { rptCharts.forEach(c=>{try{c.destroy()}catch{}}); rptCharts=[]; };
+
+async function ensureChartStack(){
+  if (!window.Chart) {
+    await new Promise((res,rej)=>{ const s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+      s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+  if (!window.ChartDataLabels) {
+    await new Promise((res,rej)=>{ const s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2";
+      s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+    Chart.register(ChartDataLabels);
+  }
+}
+
+function toDateISOFirst(ym){ // 'YYYY-MM' -> 'YYYY-MM-01'
+  return `${ym}-01`;
+}
+function addMonth(ym){ const y=+ym.slice(0,4), m=+ym.slice(5,7); return new Date(y,m,1).toISOString().slice(0,10); }
+
+function computePeriod() {
+  const scope = currentScope();
+  if (scope === "year") {
+    const y = Number(S.yearInput.value || now.getFullYear());
+    return { kind:"year", from: `${y}-01-01`, to: `${y+1}-01-01`, label: String(y)};
+  }
+  if (S.monthMode.value === "range") {
+    const a = S.fromInput.value || yyyyMM(now);
+    const b = S.toInput.value   || yyyyMM(now);
+    const from = toDateISOFirst(a);
+    const to   = addMonth(b); // exclusivo
+    return { kind:"range", from, to, label: `${a} → ${b}` };
+  }
+  // single month
+  const m = S.monthInput.value || yyyyMM(now);
+  return { kind:"month", from: toDateISOFirst(m), to: addMonth(m), label: m };
+}
+
+function money(n){ return "€ " + Number(n||0).toLocaleString("pt-PT",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function monthLabel(yyyy_mm){
+  const [y,m] = yyyy_mm.split("-").map(Number);
+  return new Date(y,m-1,1).toLocaleDateString("pt-PT",{month:"short"});
+}
+function listMonthsBetween(fromISO,toISO){
+  const a = new Date(fromISO); const b = new Date(toISO); // b exclusivo
+  const keys=[]; let d=new Date(a.getFullYear(),a.getMonth(),1);
+  while(d < b){ keys.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}`); d.setMonth(d.getMonth()+1); }
+  return keys;
+}
+
+async function fetchMetrics(period){
+  // metas e dicionários
+  const [{data:types},{data:cats}] = await Promise.all([
+    sb.from("transaction_types").select("id,code"),
+    sb.from("categories").select("id,name,parent_id,kind")
+  ]);
+  const TYPE_BY_ID = new Map((types||[]).map(t=>[t.id,t.code]));
+  const CAT_BY_ID  = new Map((cats||[]).map(c=>[c.id,c]));
+  const catPath = (id)=>{
+    const c = CAT_BY_ID.get(id); if(!c) return "(Sem categoria)";
+    if(!c.parent_id) return c.name;
+    const p = CAT_BY_ID.get(c.parent_id);
+    return (p?.name ? p.name+" > " : "") + c.name;
+  };
+
+  // transações do período (fechado)
+  const { data: tx } = await sb
+    .from("transactions")
+    .select("date, amount, type_id, category_id, expense_nature")
+    .gte("date", period.from).lt("date", period.to).order("date",{ascending:true});
+
+  // agregações
+  const months = listMonthsBetween(period.from, period.to);
+  const serie = new Map(months.map(k=>[k,{inc:0,exp:0,sav:0,net:0}]));
+
+  const catExp = new Map();        // despesas por categoria (pizza)
+  const incByCat = new Map();      // receitas por fonte (insight extra)
+  let fixed=0, variable=0;
+
+  (tx||[]).forEach(r=>{
+    const ym = String(r.date).slice(0,7);
+    const code = TYPE_BY_ID.get(r.type_id);
+    const a = Number(r.amount||0);
+    const s = serie.get(ym) || {inc:0,exp:0,sav:0,net:0};
+
+    if (code==="INCOME"){ s.inc+=a; s.net+=a;
+      const cat = catPath(r.category_id);
+      incByCat.set(cat, (incByCat.get(cat)||0)+a);
+    }
+    else if (code==="EXPENSE"){ s.exp+=a; s.net-=a;
+      const cat = catPath(r.category_id);
+      catExp.set(cat,(catExp.get(cat)||0)+a);
+      const nature = String(r.expense_nature||"").toLowerCase();
+      const looksFixed = /(renda|utilidades|internet|tv|luz|g[aá]s|seguro|cr[eé]dito|mensalid|assinatura|telem[oó]vel|empregada)/i.test(cat);
+      if (["fixed","fixa","mensal","f"].includes(nature) || looksFixed) fixed+=a; else variable+=a;
+    }
+    else if (code==="SAVINGS"){ s.sav+=a; s.net-=a; }
+
+    serie.set(ym,s);
+  });
+
+  const series = months.map(k=>({ key:k, label:monthLabel(k), ...serie.get(k) }));
+  const totals = series.reduce((acc,s)=>({
+    inc:acc.inc+s.inc, exp:acc.exp+s.exp, sav:acc.sav+s.sav, net:acc.net+s.net
+  }),{inc:0,exp:0,sav:0,net:0});
+
+  return { series, totals, catExp, fixed, variable, incByCat };
+}
+
+function renderKPIs(totals){
+  S.kIncome.textContent  = money(totals.inc);
+  S.kExpense.textContent = money(totals.exp);
+  S.kSavings.textContent = money(totals.sav);
+  S.kBalance.textContent = money(totals.net);
+}
+
+function renderCatPie(catExp){
+  if (!S.ctxCat) return;
+  const entries = Array.from(catExp.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const labels  = entries.map(e=>e[0]);
+  const values  = entries.map(e=>e[1]);
+  const total   = values.reduce((a,b)=>a+b,0) || 1;
+
+  const c = new Chart(S.ctxCat,{
+    type:"pie",
+    data:{ labels, datasets:[{ data:values }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        datalabels:{
+          color:"#0f172a", backgroundColor:"rgba(255,255,255,.85)", borderRadius:4, padding:4,
+          formatter:(v)=> `${money(v)} (${(v/total*100).toFixed(1)}%)`,
+          display:(ctx)=> (ctx.dataset.data[ctx.dataIndex]||0) >= total*0.05 // >=5%
+        }
+      }
+    }
+  });
+  rptCharts.push(c);
+
+  // legenda com valores
+  const colors = c.data.datasets[0].backgroundColor || [];
+  S.catLegend.innerHTML = labels.map((lab,i)=>(
+    `<div class="rpt-legend__item">
+       <span class="rpt-legend__dot" style="background:${colors[i]||'#64748b'}"></span>
+       <span style="flex:1">${lab}</span>
+       <strong>${money(values[i])}</strong>
+       <span style="color:#64748b">&nbsp;(${((values[i]/total)*100).toFixed(1)}%)</span>
+     </div>`
+  )).join("");
+}
+
+function renderFixedDonut(fixed, variable){
+  if (!S.ctxFix) return;
+  const c = new Chart(S.ctxFix,{
+    type:"doughnut",
+    data:{ labels:["Fixas","Variáveis"], datasets:[{ data:[fixed,variable] }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:"bottom" },
+        datalabels:{ color:"#0f172a", backgroundColor:"rgba(255,255,255,.85)", borderRadius:4, padding:4,
+          formatter:(v)=> money(v), display:true }
+      }
+    }
+  });
+  rptCharts.push(c);
+}
+
+function renderSeries(series){
+  if (!S.ctxSer) return;
+  const labels = series.map(s=>s.label);
+  const c = new Chart(S.ctxSer,{
+    data:{
+      labels,
+      datasets:[
+        { type:"bar",  label:"Receitas",  data:series.map(s=>s.inc) },
+        { type:"bar",  label:"Despesas",  data:series.map(s=>s.exp) },
+        { type:"bar",  label:"Poupanças", data:series.map(s=>s.sav) },
+        { type:"line", label:"Saldo",     data:series.map(s=>s.net), tension:.25, borderWidth:2, fill:false }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{ legend:{ position:"top" } },
+      scales:{ y:{ beginAtZero:true } }
+    }
+  });
+  rptCharts.push(c);
+}
+
+function renderInsights({series, totals, fixed, variable, incByCat}){
+  const msgs = [];
+  const effort = totals.inc ? (fixed/totals.inc*100) : 0;
+  const varPct = totals.exp ? (variable/totals.exp*100) : 0;
+  const savPct = totals.inc ? (totals.sav/totals.inc*100) : 0;
+
+  msgs.push(`Taxa de esforço (fixas/receitas): ${effort.toFixed(1)}%`);
+  msgs.push(`Despesas variáveis: ${varPct.toFixed(1)}% das despesas`);
+  msgs.push(`Taxa de poupança: ${savPct.toFixed(1)}% das receitas`);
+
+  if (series.length >= 2) {
+    const last = series[series.length-1].exp;
+    const prev = series[series.length-2].exp || 0;
+    if (prev) msgs.push(`Variação mensal de despesas: ${(((last-prev)/Math.abs(prev))*100).toFixed(1)}%`);
+  }
+  if (series.length >= 3) {
+    const avg = series.reduce((a,s)=>a+s.exp,0)/series.length;
+    const highs = series.filter(s=>s.exp > avg*1.2).map(s=>s.label);
+    if (highs.length) msgs.push(`Meses acima da média (despesas): ${highs.join(", ")}`);
+  }
+
+  const topIncome = Array.from(incByCat.entries()).sort((a,b)=>b[1]-a[1]).slice(0,3)
+                         .map(([k,v])=>`${k}: ${money(v)}`).join(" • ");
+  if (topIncome) msgs.push(`Receita por fonte (Top 3): ${topIncome}`);
+
+  S.insights.innerHTML = msgs.map(m=>`<li>${m}</li>`).join("");
+}
+
+function renderTable(series){
+  const head = `<tr><th>Mês</th><th>Receitas</th><th>Despesas</th><th>Poupanças</th><th>Saldo</th></tr>`;
+  const rows = series.map(s=>`<tr>
+    <td>${s.label}</td>
+    <td>${money(s.inc)}</td>
+    <td>${money(s.exp)}</td>
+    <td>${money(s.sav)}</td>
+    <td>${money(s.net)}</td>
+  </tr>`).join("");
+  S.table.innerHTML = `<thead>${head}</thead><tbody>${rows}</tbody>`;
+}
+
+async function buildReport(){
+  await ensureChartStack();
+  destroyRptCharts();
+
+  const period = computePeriod();
+  outlet.querySelector("#rpt-title").textContent =
+    period.kind === "year" ? `Relatório Financeiro — ${period.label}` :
+    period.kind === "range"? `Relatório Financeiro — ${period.label}` :
+                             `Relatório Financeiro — ${period.label}`;
+
+  const data = await fetchMetrics(period);
+  renderKPIs(data.totals);
+  renderCatPie(data.catExp);
+  renderFixedDonut(data.fixed, data.variable);
+  renderSeries(data.series);
+  renderInsights(data);
+  renderTable(data.series);
+}
+
+// abrir/fechar modal
+S.openBtn?.addEventListener("click", ()=>{ S.overlay.classList.remove("hidden"); buildReport(); });
+S.closeBtn?.addEventListener("click", ()=>{ S.overlay.classList.add("hidden"); destroyRptCharts(); });
+S.previewBtn?.addEventListener("click", buildReport);
+
+// ====== PDF (reutiliza os canvases do modal) ======
+async function ensureJsPDF(){
+  if (!window.jspdf) {
+    await new Promise((res,rej)=>{ const s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+      s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  }
+}
+S.pdfBtn?.addEventListener("click", async ()=>{
+  await ensureJsPDF(); const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"pt", format:"a4" });
+  const W = doc.internal.pageSize.getWidth(), M = 40; let y = M;
+
+  // título
+  doc.setFont("helvetica","bold"); doc.setFontSize(16);
+  doc.text(outlet.querySelector("#rpt-title").textContent || "Relatório Financeiro", M, y); y+=18;
+  doc.setDrawColor(230); doc.line(M,y,W-M,y); y+=12;
+
+  // KPIs
+  const k = [
+    ["Receitas", S.kIncome.textContent],
+    ["Despesas",S.kExpense.textContent],
+    ["Poupanças",S.kSavings.textContent],
+    ["Saldo",   S.kBalance.textContent],
+  ];
+  const cw = (W-2*M)/4; doc.setFont("helvetica","normal"); doc.setFontSize(11);
+  k.forEach((kv,i)=>{ const x=M+i*cw; doc.text(kv[0],x,y); doc.setFont("helvetica","bold");
+    doc.text(String(kv[1]), x, y+14); doc.setFont("helvetica","normal"); });
+  y+=34;
+
+  const addCanvas = (sel, title)=>{
+    const c = outlet.querySelector(sel); if(!c) return;
+    const img = c.toDataURL("image/png", 1.0);
+    doc.setFont("helvetica","bold"); doc.setFontSize(12);
+    doc.text(title,M,y); y+=10;
+    const iw=W-2*M, ih=220; doc.addImage(img,"PNG",M,y,iw,ih,"","FAST"); y+=ih+16;
+    if (y > 760) { doc.addPage(); y=M; }
+  };
+  addCanvas("#rpt-cat-pie",   "Distribuição de despesas por categorias");
+  addCanvas("#rpt-fixed-donut","Fixas vs Variáveis");
+  addCanvas("#rpt-series",    "Séries mensais");
+
+  // pequenos insights (texto)
+  const txt = S.insights.textContent || "";
+  if (txt) {
+    doc.setFont("helvetica","bold"); doc.text("Insights:", M, y); y+=12; doc.setFont("helvetica","normal");
+    const lines = doc.splitTextToSize(txt, W-2*M); doc.text(lines, M, y); y += 14 + lines.length*12;
+  }
+
+  doc.save("Relatorio.pdf");
+});
+
 
   // Utilidades de datas/labels
   const monthPT = (y, m) =>
