@@ -81,58 +81,60 @@ export async function init({ sb, outlet } = {}) {
 
   // Preferir parent "de sistema" se existir; limitar sempre a 1 linha; ao criar, passa user_id
   async function ensureCategoryPath(parentName, childName) {
-    try {
-      const uid = await getUserId();
-      let parentId = null;
+  try {
+    const uid = (await sb.auth.getUser()).data?.user?.id;
+    let parentId = null;
 
-      if (parentName) {
-        const { data: p, error: e1 } = await sb
-          .from("categories")
-          .select("id,is_system")
-          .eq("name", parentName)
-          .is("parent_id", null)
-          .order("is_system", { ascending: false }) // true (sistema) primeiro
-          .limit(1)
-          .maybeSingle();
-        if (e1) throw e1;
-
-        if (!p) {
-          const { data: created, error: e2 } = await sb
-            .from("categories")
-            .insert({ name: parentName, user_id: uid }) // RLS exige user_id
-            .select("id")
-            .single();
-          if (e2) throw e2;
-          parentId = created.id;
-        } else {
-          parentId = p.id;
-        }
-      }
-
-      const { data: c, error: e3 } = await sb
+    if (parentName) {
+      const { data: plist, error: e1 } = await sb
         .from("categories")
-        .select("id")
-        .eq("name", childName)
-        .eq("parent_id", parentId)
-        .limit(1)
-        .maybeSingle();
-      if (e3) throw e3;
+        .select("id,created_at")
+        .eq("name", parentName)
+        .is("parent_id", null)
+        .order("created_at", { ascending: true })
+        .limit(1);
+      if (e1) throw e1;
 
-      if (!c) {
-        const { data: createdChild, error: e4 } = await sb
+      const p = plist?.[0] || null;
+      if (!p) {
+        const { data: created, error: e2 } = await sb
           .from("categories")
-          .insert({ name: childName, parent_id: parentId, user_id: uid })
+          .insert({ name: parentName, user_id: uid })
           .select("id")
           .single();
-        if (e4) throw e4;
-        return createdChild.id;
+        if (e2) throw e2;
+        parentId = created.id;
+      } else {
+        parentId = p.id;
       }
-      return c.id;
-    } catch (err) {
-      console.error("ensureCategoryPath failed:", err);
-      throw new Error("Falha ao resolver categoria (rede/sessão).");
     }
+
+    const { data: clist, error: e3 } = await sb
+      .from("categories")
+      .select("id,created_at")
+      .eq("name", childName)
+      .eq("parent_id", parentId)
+      .order("created_at", { ascending: true })
+      .limit(1);
+    if (e3) throw e3;
+
+    const c = clist?.[0] || null;
+    if (!c) {
+      const { data: createdChild, error: e4 } = await sb
+        .from("categories")
+        .insert({ name: childName, parent_id: parentId, user_id: uid })
+        .select("id")
+        .single();
+      if (e4) throw e4;
+      return createdChild.id;
+    }
+    return c.id;
+  } catch (err) {
+    console.error("ensureCategoryPath failed:", err);
+    throw new Error("Falha ao resolver categoria (rede/sessão ou duplicados).");
   }
+}
+
 
   async function getExpenseTypeId() {
     const { data } = await sb.from("transaction_types").select("id").eq("code", "EXPENSE").single();
