@@ -31,11 +31,15 @@ const ROUTES = {
 
 function setActiveTab() {
   const hash = location.hash || "#/";
+  const base = hash.split("?")[0].split("/")[1] || ""; // "" para "#/"
+  const current = base ? `#/${base}` : "#/";
+
   document.querySelectorAll(".foot-item").forEach((a) => {
     const href = a.getAttribute("href") || "";
-    a.toggleAttribute("aria-current", hash.startsWith(href));
+    a.toggleAttribute("aria-current", href === current);
   });
 }
+
 
 async function loadScreen(route) {
   const r = ROUTES[route] || ROUTES["#/"];
@@ -46,8 +50,9 @@ async function loadScreen(route) {
   outlet.innerHTML = await res.text();
 
   // 2) footer + tab ativa
-  footer.style.display = r.showFooter ? "flex" : "none";
+  footer.style.display = r.showFooter ? "grid" : "none";
   setActiveTab();
+
 
   // dentro de loadScreen(route)
   // 3) carrega JS do ecrã

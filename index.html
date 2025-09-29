@@ -112,17 +112,6 @@
 
     <!-- Router/App -->
     <script type="module" src="main.js"></script>
-
-    <!-- Ativar estado ativo no footer (opcional, pequeno helper) -->
-    <script>
-      const setActiveTab = () => {
-        const hash = location.hash || "#/";
-        document.querySelectorAll(".foot-item").forEach(a => {
-          a.toggleAttribute("aria-current", hash.startsWith(a.getAttribute("href")));
-        });
-      };
-      window.addEventListener("hashchange", setActiveTab);
-      window.addEventListener("DOMContentLoaded", setActiveTab);
-    </script>
+  
   </body>
 </html>

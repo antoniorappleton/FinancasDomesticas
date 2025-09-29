@@ -605,6 +605,86 @@ function renderCategoryList(rows, total, monthsCount) {
     .join("");
 }
 
+// === DESPESAS POR REGULARIDADE (mês atual) ===
+(async () => {
+  // 1) descobrir o id de EXPENSE
+  const { data: ttypeExp } = await sb.from("transaction_types").select("id,code").eq("code","EXPENSE").single();
+  const expTypeId = ttypeExp?.id ?? -999;
+
+  // 2) limites do mês atual (já tens helper)
+  const { from, to } = currentMonthRangeISO();
+
+  // 3) ler despesas com o nome da regularidade (join implícito via PostgREST)
+  //    se não tiver regularidade, mapeamos para "Sem regularidade"
+  let rows = [];
+  try {
+    const { data, error } = await sb
+      .from("transactions")
+      .select("amount, regularities(name_pt,code)")
+      .eq("type_id", expTypeId)
+      .gte("date", from).lt("date", to);
+
+    if (error) throw error;
+    rows = data || [];
+  } catch (e) {
+    console.warn("regularities error:", e);
+  }
+
+  // 4) agregação por regularidade
+  const keyOf = (r) => r.regularities?.name_pt || r.regularities?.code || "Sem regularidade";
+  const agg = new Map();
+  rows.forEach(r => {
+    const k = keyOf(r);
+    agg.set(k, (agg.get(k) || 0) + Number(r.amount || 0));
+  });
+
+  // 5) preparar dados p/ chart + percentagens
+  const labels = Array.from(agg.keys());
+  const values = labels.map(k => agg.get(k) || 0);
+  const total  = values.reduce((a,b)=>a+b, 0) || 1;
+
+  mountChart("chart-regularities", {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ label: "Total (€)", data: values }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "top" } },
+      scales: { y: { beginAtZero: true } },
+      // Tooltips já mostram €; percentagens adicionais:
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = Number(ctx.parsed.y || 0);
+              const pct = ((v / total) * 100).toFixed(1) + "%";
+              return ` ${ctx.dataset.label}: € ${v.toLocaleString("pt-PT",{minimumFractionDigits:2})} (${pct})`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 6) legenda textual com € e %
+  const legendEl = outlet.querySelector("#regularities-legend");
+  if (legendEl) {
+    legendEl.innerHTML = labels.map((lab, i) => {
+      const v = values[i]; const pct = ((v/total)*100).toFixed(1);
+      return `
+        <div class="rpt-legend__item">
+          <span style="flex:1">${lab}</span>
+          <strong>€ ${v.toLocaleString("pt-PT",{minimumFractionDigits:2})}</strong>
+          <span style="color:#64748b">&nbsp;(${pct}%)</span>
+        </div>`;
+    }).join("");
+  }
+})();
 
 await buildCategoryAnalysis();
+
 }
