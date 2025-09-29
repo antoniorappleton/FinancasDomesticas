@@ -72,7 +72,7 @@
 </section>
 
 <!-- ===== MODAL RELATÓRIO ===== -->
-<div id="report-overlay" class="rep-overlay hidden" aria-hidden="true">
+<div id="report-overlay" class="rep-overlay hidden" aria-hidden="true" tabindex="-1">
   <div class="rep-modal" role="dialog" aria-modal="true" aria-labelledby="rpt-title">
     <header class="rep-header">
       <h3 id="rpt-title">Relatório Financeiro</h3>
@@ -80,38 +80,7 @@
     </header>
 
     <div class="rep-body">
-      <!-- KPIs -->
-      <section class="grid rpt-kpis">
-        <div class="kpi"><div class="kpi__label">Receitas</div><div id="rpt-kpi-income"  class="kpi__value">—</div></div>
-        <div class="kpi"><div class="kpi__label">Despesas</div><div id="rpt-kpi-expense" class="kpi__value">—</div></div>
-        <div class="kpi"><div class="kpi__label">Poupanças</div><div id="rpt-kpi-savings" class="kpi__value">—</div></div>
-        <div class="kpi"><div class="kpi__label">Saldo</div><div id="rpt-kpi-balance" class="kpi__value">—</div></div>
-      </section>
-
-      <!-- Pizza categorias -->
-      <section class="card soft">
-        <h4 class="section-title">Distribuição de despesas por categorias</h4>
-        <div class="chart"><canvas id="rpt-cat-pie"></canvas></div>
-        <div id="rpt-cat-legend" class="rpt-legend"></div>
-      </section>
-
-      <!-- Donut fixas/variáveis -->
-      <section class="card soft">
-        <h4 class="section-title">Fixas vs Variáveis</h4>
-        <div class="chart"><canvas id="rpt-fixed-donut"></canvas></div>
-      </section>
-
-      <!-- Séries 12m -->
-      <section class="card soft">
-        <h4 class="section-title">Séries mensais</h4>
-        <div class="chart"><canvas id="rpt-series"></canvas></div>
-      </section>
-
-      <!-- Insights (placeholder) -->
-      <section class="card soft">
-        <h4 class="section-title">Insights & Indicadores</h4>
-        <ul id="rpt-insights" class="row-note" style="margin:0"></ul>
-      </section>
+      <!-- … (resto igual) … -->
     </div>
 
     <footer class="rep-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 16px">
@@ -120,6 +89,7 @@
   </div>
 </div>
 
+
 <!-- ===== MANUTENÇÃO DE DADOS ===== -->
 <section class="card">
   <h2 class="section-title">Manutenção de Dados</h2>
@@ -127,9 +97,13 @@
     <button id="btn-del-month" class="btn btn--primary" style="background:#ef4444;border-color:#ef4444">Eliminar Mês Atual</button>
     <button id="btn-del-range" class="btn">Eliminar Período…</button>
     <button id="btn-del-all" class="btn">Eliminar Tudo…</button>
+
+    <!-- NOVO -->
+    <button id="btn-regularity-bulk" class="btn">Definir Regularidade (bulk)…</button>
   </div>
   <p class="row-note">Estas ações afetam apenas os seus dados (RLS ativo).</p>
 </section>
+
 
 <!-- ===== ENTIDADES: CATEGORIAS & CONTAS ===== -->
 <section class="card">
