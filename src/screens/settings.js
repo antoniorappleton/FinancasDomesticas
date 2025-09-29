@@ -3,15 +3,17 @@ export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
   outlet ||= document.getElementById("outlet");
 
-  // ------------ ligação/sessão (preflight) ------------
+  // =============== Ligação / sessão =====================
   async function preflight() {
     if (!navigator.onLine) throw new Error("Sem ligação à internet.");
     const {
       data: { session },
-      error: sErr,
+      error,
     } = await sb.auth.getSession();
-    if (sErr) throw sErr;
+    if (error) throw error;
     if (!session) throw new Error("Sessão expirada — faça login.");
+
+    // ping rápido ao PostgREST
     const { error: pingErr } = await sb
       .from("transaction_types")
       .select("id", { head: true, count: "exact" })
@@ -20,22 +22,19 @@ export async function init({ sb, outlet } = {}) {
   }
   const getUserId = async () => (await sb.auth.getUser()).data?.user?.id;
 
-  // -------------------- helpers base --------------------
-
-  const overlay = outlet.querySelector("#report-overlay");
-  const closeBtn = outlet.querySelector("#rpt-close");
-  let _lastFocus = null;
-
+  // ================= Helpers base =======================
   const $ = (sel) => outlet.querySelector(sel);
+  const $$ = (sel) => Array.from(outlet.querySelectorAll(sel));
+
   const pad2 = (n) => String(n).padStart(2, "0");
+  const ymd = (d) =>
+    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   const money = (n) =>
     "€ " +
     Number(n || 0).toLocaleString("pt-PT", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-  const ymd = (d) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
   const currentMonthStartISO = () => {
     const n = new Date();
@@ -71,37 +70,35 @@ export async function init({ sb, outlet } = {}) {
     }
   }
 
-  // perto do topo do ficheiro, junto dos “dicionários”
+  // ================= Regularidades ======================
+  // carrega tabela e prepara mapas (aceita PT ou CODE)
   const { data: regs } = await sb
     .from("regularities")
     .select("id,code,name_pt");
   const REG_BY_LABEL = new Map();
   (regs || []).forEach((r) => {
-    REG_BY_LABEL.set(r.code.toLowerCase(), r.id);
+    REG_BY_LABEL.set((r.code || "").toLowerCase(), r.id);
     REG_BY_LABEL.set((r.name_pt || "").toLowerCase(), r.id);
   });
-
-  // mapeia strings comuns para códigos
   function regularityFromLabel(label) {
     const t = (label || "").toString().trim().toLowerCase();
     if (!t) return null;
     const alias = {
-      diária: "DAILY",
       diaria: "DAILY",
+      diária: "DAILY",
       semanal: "WEEKLY",
+      quinzenal: "BIWEEKLY",
       mensal: "MONTHLY",
       "2 em 2 meses": "BIMONTHLY",
       bimensal: "BIMONTHLY",
       trimestral: "QUARTERLY",
       anual: "YEARLY",
-      única: "ONCE",
       unica: "ONCE",
+      única: "ONCE",
     };
-    const code = alias[t] || t.toUpperCase(); // aceita já “DAILY”, “WEEKLY”, etc.
-    return REG_BY_LABEL.get(code.toLowerCase()) || REG_BY_LABEL.get(t) || null;
+    const code = (alias[t] || t || "").toLowerCase();
+    return REG_BY_LABEL.get(code) || REG_BY_LABEL.get(t) || null;
   }
-
-  // heurística simples quando o CSV não traz coluna
   function inferRegularity(area, cat) {
     const s = `${area || ""} > ${cat || ""}`.toLowerCase();
     if (
@@ -112,12 +109,10 @@ export async function init({ sb, outlet } = {}) {
       return REG_BY_LABEL.get("monthly");
     if (/(iuc|inspe[cç][aã]o|im[ií]vel|seguro.*sa[úu]de|f[eé]rias)/.test(s))
       return REG_BY_LABEL.get("yearly");
-    return null; // fica “Sem regularidade”
+    return null;
   }
 
-  // ======================================================
-  //                      IMPORTAÇÃO CSV
-  // ======================================================
+  // =============== IMPORTAÇÃO CSV =======================
   const log = (m) => {
     const el = $("#imp-log");
     if (el) el.textContent += (el.textContent ? "\n" : "") + m;
@@ -143,12 +138,10 @@ export async function init({ sb, outlet } = {}) {
       .replace(/[ûúùü]/g, "u")
       .replace(/ç/g, "c");
 
-  const normalize = (v) => {
-    if (v == null) return "";
-    let t = String(v).trim();
-    if (/^(null|nil|na|—|-|)$/.test(t)) return "";
-    return t.replace(/^"(.*)"$/, "$1").replace(/""/g, '"');
-  };
+  const splitCSVLine = (line, d) =>
+    line
+      .split(new RegExp(`${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`))
+      .map((s) => s.replace(/^"(.*)"$/, "$1").replace(/""/g, '"'));
 
   const detectDelimiter = (text) => {
     const sample = text.split(/\r?\n/).slice(0, 20).join("\n");
@@ -163,11 +156,6 @@ export async function init({ sb, outlet } = {}) {
     return cand[scores.indexOf(Math.max(...scores))] || ",";
   };
 
-  const splitCSVLine = (line, d) =>
-    line
-      .split(new RegExp(`${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`))
-      .map((s) => s.replace(/^"(.*)"$/, "$1").replace(/""/g, '"'));
-
   const normalizeMoney = (s) => {
     if (typeof s === "number") return +s.toFixed(2);
     if (!s) return 0;
@@ -179,44 +167,37 @@ export async function init({ sb, outlet } = {}) {
     return isNaN(v) ? 0 : +v.toFixed(2);
   };
 
-  const natureFromTipo = (tipo) => {
-    const t = (tipo || "").toLowerCase();
-    if (t.startsWith("fix")) return "fixed";
-    if (t.startsWith("var")) return "variable";
-    return null;
-  };
-
-  // Preferir parent "de sistema" se existir; limitar sempre a 1 linha; ao criar, passa user_id
-  // Mapeamentos auxiliares
-  function mapKind(tipo) {
+  const mapKind = (tipo) => {
     const t = String(tipo || "").toLowerCase();
     if (t.includes("receit")) return "income";
     if (t.includes("poup")) return "savings";
-    return "expense"; // Fixos/Variáveis
-  }
-  function mapNature(tipo) {
-    const t = String(tipo || "").toLowerCase();
-    return t.startsWith("fix") ? "fixed" : "variable";
-  }
+    return "expense";
+  };
+  const mapNature = (tipo) =>
+    String(tipo || "")
+      .toLowerCase()
+      .startsWith("fix")
+      ? "fixed"
+      : "variable";
 
-  // parentName = área (ex.: "Casa"), childName = categoria (ex.: "NOS")
-  async function ensureCategoryPath({ parentName, childName, tipo }) {
-    const uid = (await sb.auth.getUser()).data?.user?.id;
+  // parentName(area), childName(categoria). Cria versões do utilizador se necessário.
+  async function ensureCategoryPath(parentName, childName, tipo) {
+    const uid = await getUserId();
     if (!uid) throw new Error("Sessão expirada.");
     const kind = mapKind(tipo);
     const nature = kind === "expense" ? mapNature(tipo) : null;
 
-    // 1) Tenta encontrar o PAI global (user_id IS NULL), senão o do utilizador
     let parentGlobal = null,
       parentId = null;
 
     if (parentName) {
+      // tenta pai global (user_id IS NULL)
       const { data: pGlob } = await sb
         .from("categories")
         .select("id")
         .eq("name", parentName)
         .is("parent_id", null)
-        .is("user_id", null) // global
+        .is("user_id", null)
         .maybeSingle();
       parentGlobal = pGlob?.id || null;
 
@@ -226,7 +207,7 @@ export async function init({ sb, outlet } = {}) {
           .select("id")
           .eq("name", parentName)
           .is("parent_id", null)
-          .eq("user_id", uid) // do utilizador
+          .eq("user_id", uid)
           .maybeSingle();
         parentId = pOwn?.id || null;
       } else {
@@ -234,8 +215,8 @@ export async function init({ sb, outlet } = {}) {
       }
 
       if (!parentId) {
-        // cria PAI do utilizador (não podes criar global por RLS)
-        const { data: created, error: e } = await sb
+        // cria pai do utilizador
+        const { data: created, error } = await sb
           .from("categories")
           .insert({
             user_id: uid,
@@ -246,15 +227,14 @@ export async function init({ sb, outlet } = {}) {
           })
           .select("id")
           .single();
-        if (e) throw e;
+        if (error) throw error;
         parentId = created.id;
       }
     }
 
-    // 2) Se não há filho, retorna o id do pai
     if (!childName) return parentId;
 
-    // 3) Tenta reutilizar FILHO global se o pai global existe
+    // filho global (quando existe pai global)
     if (parentGlobal) {
       const { data: cGlob } = await sb
         .from("categories")
@@ -266,7 +246,7 @@ export async function init({ sb, outlet } = {}) {
       if (cGlob?.id) return cGlob.id;
     }
 
-    // 4) Verifica FILHO do utilizador sob o parentId escolhido
+    // filho do utilizador
     const { data: cOwn } = await sb
       .from("categories")
       .select("id")
@@ -276,7 +256,6 @@ export async function init({ sb, outlet } = {}) {
       .maybeSingle();
     if (cOwn?.id) return cOwn.id;
 
-    // 5) Cria FILHO do utilizador
     const { data: createdChild, error: e4 } = await sb
       .from("categories")
       .insert({
@@ -289,7 +268,6 @@ export async function init({ sb, outlet } = {}) {
       .select("id")
       .single();
     if (e4) throw e4;
-
     return createdChild.id;
   }
 
@@ -303,6 +281,7 @@ export async function init({ sb, outlet } = {}) {
   }
   async function getDefaultAccountId() {
     const uid = await getUserId();
+    // tenta "Conta Principal"
     let { data: acc } = await sb
       .from("accounts")
       .select("id")
@@ -320,7 +299,7 @@ export async function init({ sb, outlet } = {}) {
           user_id: uid,
           currency: "EUR",
           type: "bank",
-        }) // <-- sem initial_balance
+        })
         .select("id")
         .single();
       return created.id;
@@ -380,15 +359,15 @@ export async function init({ sb, outlet } = {}) {
     info("A analisar CSV…");
     const rows = await parseCsvFile(f);
 
-    // normaliza: Tipo / area / categoria / montante
+    // normaliza: Tipo / area / categoria / montante / (opcional regularidade)
     previewRows = rows.map((r) => ({
       Tipo: r["tipo"] ?? r["Tipo"] ?? "",
       area: r["area"] ?? r["Area"] ?? "",
       categoria: r["categoria"] ?? r["Categoria"] ?? "",
+      regularidade: r["regularidade"] ?? r["Regularidade"] ?? "",
       montante:
         r["montante"] ?? r["Montante"] ?? r["valor"] ?? r["Valor"] ?? "",
     }));
-
     renderPreviewTable(previewRows);
     info(`Pré-visualização: ${previewRows.length} linhas.`);
   });
@@ -400,36 +379,29 @@ export async function init({ sb, outlet } = {}) {
       alert(e.message || "Falha de ligação.");
       return;
     }
-
     if (!previewRows.length) return alert("Faça a pré-visualização primeiro.");
+
     const m = $("#imp-month")?.value;
     if (!m) return alert("Indique o mês (YYYY-MM).");
-
     const [y, mo] = m.split("-").map(Number);
     const startISO = ymd(new Date(y, mo - 1, 1));
     const endISO = ymd(new Date(y, mo, 1));
 
-    const expenseTypeId = (
-      await sb
-        .from("transaction_types")
-        .select("id")
-        .eq("code", "EXPENSE")
-        .single()
-    ).data.id;
+    const expenseTypeId = await getExpenseTypeId();
     const accountId = await getDefaultAccountId();
-    const uid = (await sb.auth.getUser()).data?.user?.id;
+    const uid = await getUserId();
 
     if (!confirm(`Substituir dados de ${String(mo).padStart(2, "0")}/${y}?`))
       return;
 
-    // 1) apaga período
+    // apaga período
     await sb
       .from("transactions")
       .delete()
       .gte("date", startISO)
       .lt("date", endISO);
 
-    // 2) transforma CSV → transações
+    // CSV → transações
     const txs = [];
     for (const row of previewRows) {
       const tipo = row.Tipo ?? row.tipo;
@@ -439,30 +411,32 @@ export async function init({ sb, outlet } = {}) {
         row.Montante ?? row.montante ?? row.Valor ?? row.valor
       );
       if (!amount) continue;
-      const regCol =
-        row.Regularidade ?? row.regularidade ?? row["regularidade"];
-      let regularity_id = regularityFromLabel(regCol);
-      if (!regularity_id) regularity_id = inferRegularity(area, cat); // fallback heurístico
+
+      let regularity_id = regularityFromLabel(row.regularidade);
+      if (!regularity_id) regularity_id = inferRegularity(area, cat);
+
       const category_id = await ensureCategoryPath(
         area || null,
-        cat || area || "Outros"
+        cat || area || "Outros",
+        tipo
       );
+
       txs.push({
-        user_id: uid, // <-- RLS precisa disto
+        user_id: uid,
         type_id: expenseTypeId,
         account_id: accountId,
         category_id,
-        date: startISO, // regista no 1º dia do mês escolhido
-        amount, // <-- o teu schema usa 'amount'
+        date: startISO,
+        amount,
         currency: "EUR",
-        expense_nature: natureFromTipo(tipo),
+        expense_nature: mapNature(tipo),
         regularity_id,
         description:
           `${area || ""}${area ? " > " : ""}${cat || ""}`.trim() || null,
       });
     }
 
-    // 3) dedupe
+    // dedupe básico
     const dedupe = new Map();
     for (const t of txs) {
       const key = [
@@ -478,7 +452,7 @@ export async function init({ sb, outlet } = {}) {
     }
     const finalTxs = [...dedupe.values()];
 
-    // 4) insert em lotes
+    // insert por lotes
     const CHUNK = 200;
     let inserted = 0;
     for (let i = 0; i < finalTxs.length; i += CHUNK) {
@@ -492,56 +466,35 @@ export async function init({ sb, outlet } = {}) {
     alert("Importação concluída!");
   });
 
-  // ======================================================
-  //                         RELATÓRIOS
-  // ======================================================
+  // ================== RELATÓRIOS ========================
+  const overlay = $("#report-overlay");
+  const closeBtn = $("#rpt-close");
+  let _lastFocus = null;
 
   function openReport() {
     if (!overlay) return;
     _lastFocus = document.activeElement;
     overlay.classList.remove("hidden");
     overlay.removeAttribute("aria-hidden");
-    document.body.style.overflow = "hidden"; // lock scroll da página
-    overlay.focus(); // acessibilidade
+    document.body.style.overflow = "hidden";
+    overlay.focus();
   }
-
   function closeReport() {
     if (!overlay) return;
     overlay.classList.add("hidden");
     overlay.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = ""; // desbloqueia scroll
-    try {
-      destroyCharts();
-    } catch {}
-    if (_lastFocus && _lastFocus.focus) _lastFocus.focus();
+    document.body.style.overflow = "";
+    destroyCharts();
+    if (_lastFocus?.focus) _lastFocus.focus();
   }
-
-  // Fechar no X
   closeBtn?.addEventListener("click", closeReport);
-
-  // Fechar ao clicar fora (backdrop)
   overlay?.addEventListener("click", (e) => {
     if (e.target === overlay) closeReport();
   });
-
-  // Fechar com Esc
   document.addEventListener("keydown", (e) => {
-    if (
-      e.key === "Escape" &&
-      overlay &&
-      !overlay.classList.contains("hidden")
-    ) {
+    if (e.key === "Escape" && overlay && !overlay.classList.contains("hidden"))
       closeReport();
-    }
   });
-
-  // Abrir e construir relatório
-  outlet
-    .querySelector("#btn-report-open")
-    ?.addEventListener("click", async () => {
-      openReport();
-      await buildReport();
-    });
 
   function toggleReportInputs() {
     const t = $("#rpt-type")?.value || "monthly";
@@ -555,57 +508,15 @@ export async function init({ sb, outlet } = {}) {
 
   $("#btn-report-open")?.addEventListener("click", async () => {
     await ensureChartStack();
-    $("#report-overlay").classList.remove("hidden");
+    openReport();
     await buildReport();
   });
 
-  $("#rpt-close")?.addEventListener("click", () => {
-    $("#report-overlay").classList.add("hidden");
-    try {
-      _rptCat?.destroy();
-    } catch {}
-    try {
-      _rptFix?.destroy();
-    } catch {}
-    try {
-      _rptSeries?.destroy();
-    } catch {}
-  });
-
-  function computePeriod() {
-    const t = $("#rpt-type")?.value || "monthly";
-    if (t === "monthly") {
-      const m = $("#rpt-month")?.value || new Date().toISOString().slice(0, 7);
-      const [y, mm] = m.split("-").map(Number);
-      return {
-        label: m,
-        from: ymd(new Date(y, mm - 1, 1)),
-        to: ymd(new Date(y, mm, 1)),
-      };
-    }
-    if (t === "range") {
-      const a = $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
-      const b = $("#rpt-to")?.value || a;
-      const [ya, ma] = a.split("-").map(Number);
-      const [yb, mb] = b.split("-").map(Number);
-      return {
-        label: `${a} → ${b}`,
-        from: ymd(new Date(ya, ma - 1, 1)),
-        to: ymd(new Date(yb, mb, 1)),
-      };
-    }
-    const y = Number($("#rpt-year")?.value || new Date().getFullYear());
-    return {
-      label: String(y),
-      from: ymd(new Date(y, 0, 1)),
-      to: ymd(new Date(y + 1, 0, 1)),
-    };
-  }
-
-  // ===== Charts refs + destroy =====
   let _rptCat = null,
     _rptFix = null,
     _rptSeries = null;
+  let _catLegendPDF = [],
+    _fixLegendPDF = [];
   function destroyCharts() {
     try {
       _rptCat?.destroy();
@@ -617,20 +528,14 @@ export async function init({ sb, outlet } = {}) {
       _rptSeries?.destroy();
     } catch {}
     _rptCat = _rptFix = _rptSeries = null;
+    _catLegendPDF = [];
+    _fixLegendPDF = [];
   }
 
-  // ===== Build Report (substitui a tua função por esta) =====
   async function buildReport() {
-    await ensureChartStack();
-
     // período
     const t = $("#rpt-type")?.value || "monthly";
-    const ymd = (d) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-        d.getDate()
-      ).padStart(2, "0")}`;
     let from, to, label;
-
     if (t === "monthly") {
       const m = $("#rpt-month")?.value || new Date().toISOString().slice(0, 7);
       const [y, mm] = m.split("-").map(Number);
@@ -651,7 +556,6 @@ export async function init({ sb, outlet } = {}) {
       to = ymd(new Date(y + 1, 0, 1));
       label = String(y);
     }
-
     $("#rpt-title").textContent = `Relatório Financeiro — ${label}`;
 
     // tipos
@@ -665,60 +569,49 @@ export async function init({ sb, outlet } = {}) {
     const { data: rows, error } = await sb
       .from("transactions")
       .select(
-        `
-    date, amount, signed_amount, type_id, expense_nature,
-    category:categories(name,parent_id,nature)
-  `
+        `date, amount, signed_amount, type_id, expense_nature, categories(name, parent_id, nature)`
       )
       .gte("date", from)
       .lt("date", to)
       .order("date", { ascending: true });
-
     if (error) {
       console.error(error);
       return;
     }
     const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
 
-    // totais
-    const incRows = (rows || []).filter((x) => x.type_id === tInc.id);
-    const expRows = (rows || []).filter((x) => x.type_id === tExp.id);
-    const savRows = (rows || []).filter((x) => x.type_id === tSav.id);
+    const incRows = (rows || []).filter((r) => r.type_id === tInc.id);
+    const expRows = (rows || []).filter((r) => r.type_id === tExp.id);
+    const savRows = (rows || []).filter((r) => r.type_id === tSav.id);
 
     const income = sum(incRows.map((x) => x.amount));
     const expense = sum(expRows.map((x) => x.amount));
     const savings = sum(savRows.map((x) => x.amount));
     const balance = sum((rows || []).map((x) => x.signed_amount));
 
-    const money = (n) =>
-      "€ " +
-      Number(n || 0).toLocaleString("pt-PT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
     $("#rpt-kpi-income").textContent = money(income);
     $("#rpt-kpi-expense").textContent = money(expense);
     $("#rpt-kpi-savings").textContent = money(savings);
     $("#rpt-kpi-balance").textContent = money(balance);
 
     // pizza categorias (despesas)
-    destroyCharts(); // limpa charts anteriores
+    destroyCharts();
     const byCat = new Map();
     expRows.forEach((x) => {
-      const nm =
-        x.category && x.category.name ? x.category.name : "Sem categoria";
-      byCat.set(nm, (byCat.get(nm) || 0) + Number(x.amount || 0));
+      const name = x.categories?.name || "Sem categoria";
+      byCat.set(name, (byCat.get(name) || 0) + Number(x.amount || 0));
     });
-    const pieEntries = Array.from(byCat.entries())
+    const entries = [...byCat.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12);
-    const pieLabels = pieEntries.map(([k]) => k);
-    const pieValues = pieEntries.map(([, v]) => v);
-    const pieTotal = pieValues.reduce((a, b) => a + b, 0) || 1;
+    const labels = entries.map(([k]) => k);
+    const values = entries.map(([, v]) => v);
+    const total = values.reduce((a, b) => a + b, 0) || 1;
 
+    await ensureChartStack();
     _rptCat = new Chart($("#rpt-cat-pie"), {
       type: "pie",
-      data: { labels: pieLabels, datasets: [{ data: pieValues }] },
+      data: { labels, datasets: [{ data: values }] },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -730,40 +623,40 @@ export async function init({ sb, outlet } = {}) {
             borderRadius: 4,
             padding: 4,
             formatter: (v) =>
-              `${money(v)} (${((v / pieTotal) * 100).toFixed(1)}%)`,
+              `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
             display: (ctx) =>
-              (ctx.dataset.data[ctx.dataIndex] || 0) >= pieTotal * 0.05,
+              (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
           },
         },
       },
     });
-
-    // legenda textual
     const colors = _rptCat.data.datasets[0].backgroundColor || [];
-    $("#rpt-cat-legend").innerHTML = pieLabels
-      .map((lab, i) => {
-        const val = pieValues[i] || 0;
-        const pct = pieTotal ? (val / pieTotal) * 100 : 0;
-        const col = colors[i] || "#64748b";
-        return `
-      <div class="rpt-legend__item">
-        <span class="rpt-legend__dot" style="background:${col}"></span>
-        <span style="flex:1">${lab}</span>
-        <strong>${money(val)}</strong>
-        <span style="color:#64748b">&nbsp;(${pct.toFixed(1)}%)</span>
-      </div>`;
-      })
+    _catLegendPDF = labels.map((lab, i) => ({
+      label: lab,
+      value: values[i],
+      pct: values[i] / total || 0,
+      color: colors[i] || "#64748b",
+    }));
+    $("#rpt-cat-legend").innerHTML = _catLegendPDF
+      .map(
+        (x) =>
+          `<div class="rpt-legend__item">
+         <span class="rpt-legend__dot" style="background:${x.color}"></span>
+         <span style="flex:1">${x.label}</span>
+         <strong>${money(x.value)}</strong>
+         <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(1)}%)</span>
+       </div>`
+      )
       .join("");
 
-    // donut Fixas vs Variáveis
+    // donut fixas vs variáveis
     const isFixed = (x) =>
       x.expense_nature === "fixed" ||
-      (!x.expense_nature && x.category?.nature === "fixed");
+      (!x.expense_nature && x.categories?.nature === "fixed");
     const fixedAmt = sum(expRows.filter(isFixed).map((x) => x.amount));
     const variableAmt = sum(
       expRows.filter((x) => !isFixed(x)).map((x) => x.amount)
     );
-
     _rptFix = new Chart($("#rpt-fixed-donut"), {
       type: "doughnut",
       data: {
@@ -779,49 +672,53 @@ export async function init({ sb, outlet } = {}) {
         },
       },
     });
+    const totFV = fixedAmt + variableAmt || 1;
+    _fixLegendPDF = [
+      {
+        label: "Fixas",
+        value: fixedAmt,
+        pct: fixedAmt / totFV,
+        color: "#36a2eb",
+      },
+      {
+        label: "Variáveis",
+        value: variableAmt,
+        pct: variableAmt / totFV,
+        color: "#ff6384",
+      },
+    ];
 
-    // séries mensais (Receitas/Despesas/Poupanças + Saldo)
-    const monthsMap = new Map(); // "YYYY-MM" -> {inc,exp,sav,net}
-    (rows || []).forEach((x) => {
-      const ym = String(x.date).slice(0, 7);
-      const bucket = monthsMap.get(ym) || { inc: 0, exp: 0, sav: 0, net: 0 };
-      if (x.type_id === tInc.id) {
-        bucket.inc += Number(x.amount || 0);
-        bucket.net += Number(x.amount || 0);
+    // séries mensais
+    const months = {};
+    (rows || []).forEach((r) => {
+      const m = String(r.date).slice(0, 7);
+      months[m] ||= { inc: 0, exp: 0, sav: 0, net: 0 };
+      if (r.type_id === tInc.id) {
+        months[m].inc += +r.amount;
+        months[m].net += +r.amount;
       }
-      if (x.type_id === tExp.id) {
-        bucket.exp += Number(x.amount || 0);
-        bucket.net -= Number(x.amount || 0);
+      if (r.type_id === tExp.id) {
+        months[m].exp += +r.amount;
+        months[m].net -= +r.amount;
       }
-      if (x.type_id === tSav.id) {
-        bucket.sav += Number(x.amount || 0);
-        bucket.net -= Number(x.amount || 0);
+      if (r.type_id === tSav.id) {
+        months[m].sav += +r.amount;
+        months[m].net -= +r.amount;
       }
-      monthsMap.set(ym, bucket);
     });
-
-    const mlabels = Array.from(monthsMap.keys()).sort();
+    const mlabels = Object.keys(months).sort();
     _rptSeries = new Chart($("#rpt-series"), {
       type: "bar",
       data: {
         labels: mlabels,
         datasets: [
-          {
-            label: "Receitas",
-            data: mlabels.map((k) => monthsMap.get(k)?.inc || 0),
-          },
-          {
-            label: "Despesas",
-            data: mlabels.map((k) => monthsMap.get(k)?.exp || 0),
-          },
-          {
-            label: "Poupanças",
-            data: mlabels.map((k) => monthsMap.get(k)?.sav || 0),
-          },
+          { label: "Receitas", data: mlabels.map((k) => months[k].inc) },
+          { label: "Despesas", data: mlabels.map((k) => months[k].exp) },
+          { label: "Poupanças", data: mlabels.map((k) => months[k].sav) },
           {
             label: "Saldo",
             type: "line",
-            data: mlabels.map((k) => monthsMap.get(k)?.net || 0),
+            data: mlabels.map((k) => months[k].net),
             tension: 0.25,
             borderWidth: 2,
           },
@@ -830,18 +727,12 @@ export async function init({ sb, outlet } = {}) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "top" },
-          datalabels: {
-            formatter: (v, ctx) =>
-              ctx.dataset.type === "bar" && v > 0 ? money(v) : "",
-          },
-        },
+        plugins: { legend: { position: "top" } },
         scales: { y: { beginAtZero: true } },
       },
     });
 
-    // insights simples
+    // insights
     const effort = income ? ((fixedAmt + variableAmt) / income) * 100 : 0;
     const varPct = expense ? (variableAmt / expense) * 100 : 0;
     const savPct = income ? (savings / income) * 100 : 0;
@@ -854,16 +745,16 @@ export async function init({ sb, outlet } = {}) {
       .join("");
   }
 
-  // export PDF
+  // Export PDF
   $("#rpt-export")?.addEventListener("click", async () => {
     await buildReport();
     const { jsPDF } = await import(
       "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
     );
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const W = doc.internal.pageSize.getWidth();
-    const H = doc.internal.pageSize.getHeight();
-    const M = 40;
+    const W = doc.internal.pageSize.getWidth(),
+      H = doc.internal.pageSize.getHeight(),
+      M = 40;
     let y = M;
 
     const title = $("#rpt-title")?.textContent || "Relatório Financeiro";
@@ -885,15 +776,15 @@ export async function init({ sb, outlet } = {}) {
     const drawLegend = (items, x, y2, maxW) => {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      const lineH = 14;
-      items.forEach((it) => {
+      const lh = 14;
+      (items || []).forEach((it) => {
         doc.setFillColor(it.color || "#888");
         doc.circle(x + 5, y2 + 5, 3, "F");
         const txt = `${it.label} — ${money(it.value)} (${(it.pct * 100).toFixed(
           1
         )}%)`;
         doc.text(txt, x + 14, y2 + 9, { maxWidth: maxW - 14 });
-        y2 += lineH;
+        y2 += lh;
       });
       return y2;
     };
@@ -917,7 +808,7 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
-    // duas pizzas lado a lado
+    // duas pizzas
     const colW = (W - 2 * M - 16) / 2,
       pieH = 220,
       L = M,
@@ -931,18 +822,17 @@ export async function init({ sb, outlet } = {}) {
     const y1 = canvasToPage("#rpt-cat-pie", L, y, colW, pieH);
     const y2 = canvasToPage("#rpt-fixed-donut", R, y, colW, pieH);
     y = Math.max(y1, y2) + 8;
+
     y =
       Math.max(
         drawLegend(_catLegendPDF, L, y, colW),
         drawLegend(_fixLegendPDF, R, y, colW)
       ) + 16;
-
     if (y > H - 260) {
       doc.addPage();
       y = M;
     }
 
-    // série mensal
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Séries mensais", M, y);
@@ -952,9 +842,7 @@ export async function init({ sb, outlet } = {}) {
     doc.save("wisebudget-relatorio.pdf");
   });
 
-  // ======================================================
-  //                     MANUTENÇÃO DE DADOS
-  // ======================================================
+  // ============ MANUTENÇÃO DE DADOS =====================
   $("#btn-del-month")?.addEventListener("click", async () => {
     try {
       await preflight();
@@ -1006,15 +894,93 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
-  // ======================================================
-  //                CATEGORIAS & CONTAS (CRUD)
-  // ======================================================
+  // Regularidade em massa (botão opcional no HTML com id="btn-regularity-bulk")
+  async function pickRegularityId(
+    promptText = "Regularidade (ex: mensal, quinzenal, anual, única)"
+  ) {
+    const s = (prompt(promptText) || "").trim();
+    if (!s) return null;
+    const id = regularityFromLabel(s);
+    if (!id) alert("Regularidade não reconhecida.");
+    return id;
+  }
+  async function bulkSetRegularityForMonth(
+    yyyyMM,
+    regId,
+    categoryPath /* opcional */
+  ) {
+    const [y, m] = yyyyMM.split("-").map(Number);
+    const from = ymd(new Date(y, m - 1, 1));
+    const to = ymd(new Date(y, m, 1));
+    let q = sb
+      .from("transactions")
+      .update({ regularity_id: regId })
+      .gte("date", from)
+      .lt("date", to);
+
+    if (categoryPath) {
+      const [par, chi] = categoryPath.split(">").map((s) => s.trim());
+      let catId = null;
+      if (par && chi) {
+        const { data: parent } = await sb
+          .from("categories")
+          .select("id")
+          .eq("name", par)
+          .is("parent_id", null)
+          .limit(1);
+        if (parent?.[0]) {
+          const { data: child } = await sb
+            .from("categories")
+            .select("id")
+            .eq("name", chi)
+            .eq("parent_id", parent[0].id)
+            .limit(1);
+          catId = child?.[0]?.id || null;
+        }
+      } else if (par) {
+        const { data: only } = await sb
+          .from("categories")
+          .select("id")
+          .eq("name", par)
+          .is("parent_id", null)
+          .limit(1);
+        catId = only?.[0]?.id || null;
+      }
+      if (catId) q = q.eq("category_id", catId);
+    }
+    const { error } = await q;
+    if (error) throw error;
+  }
+  $("#btn-regularity-bulk")?.addEventListener("click", async () => {
+    try {
+      await preflight();
+      const month = prompt(
+        "Mês (YYYY-MM):",
+        new Date().toISOString().slice(0, 7)
+      );
+      if (!month) return;
+      const regId = await pickRegularityId(
+        "Regularidade (mensal, quinzenal, anual, única):"
+      );
+      if (!regId) return;
+      const catPath = prompt(
+        'Categoria opcional (ex: "Casa > Renda"; vazio = todas):',
+        ""
+      );
+      await bulkSetRegularityForMonth(month, regId, catPath || null);
+      alert("Regularidade atualizada.");
+    } catch (e) {
+      alert(e.message || "Falha de ligação.");
+    }
+  });
+
+  // ============ CATEGORIAS & CONTAS (CRUD) ==============
   async function listCategories() {
     const { data } = await sb
       .from("categories")
-      .select("id,name,parent_id")
-      .order("parent_id")
-      .order("name");
+      .select("id,name,parent_id,user_id")
+      .order("parent_id", { ascending: true })
+      .order("name", { ascending: true });
     const parents = (data || []).filter((c) => !c.parent_id);
     const children = (data || []).filter((c) => c.parent_id);
     return parents.map((p) => ({
@@ -1059,13 +1025,12 @@ export async function init({ sb, outlet } = {}) {
               : ""
           }
         </div>
-        <div class="actions" style="gap:6px">
+        <div class="actions" style="gap:6px;display:flex">
           <button data-edit="${p.id}" class="btn">Renomear</button>
           <button data-newsub="${p.id}" class="btn">Nova Sub</button>
           <button data-del="${p.id}" class="btn">Apagar</button>
         </div>
-      </div>
-    `
+      </div>`
       )
       .join("");
 
@@ -1097,59 +1062,17 @@ export async function init({ sb, outlet } = {}) {
     );
   }
 
-  async function renderAccounts() {
-    const el = $("#list-accs");
-    if (!el) return;
-    const accs = await listAccounts();
-    el.innerHTML = accs
-      .map(
-        (a) => `
-    <div class="row" style="display:flex;justify-content:space-between;gap:10px;border:1px solid #e5e7eb;border-radius:12px;padding:12px">
-      <div>
-        <strong>${a.name}</strong>
-        <div class="row-note">Tipo: ${a.type || "bank"} • Moeda: ${
-          a.currency
-        }</div>
-      </div>
-      <div class="actions" style="gap:6px">
-        <button data-edit="${a.id}" class="btn">Renomear</button>
-        <button data-del="${a.id}" class="btn">Apagar</button>
-      </div>
-    </div>
-  `
-      )
-      .join("");
-
-    el.querySelectorAll("[data-edit]").forEach(
-      (b) =>
-        (b.onclick = async () => {
-          const name = prompt("Novo nome da conta:");
-          if (!name) return;
-          await sb.from("accounts").update({ name }).eq("id", b.dataset.edit);
-          renderAccounts();
-        })
-    );
-    el.querySelectorAll("[data-del]").forEach(
-      (b) =>
-        (b.onclick = async () => {
-          if (!confirm("Apagar conta?")) return;
-          const { count } = await sb
-            .from("transactions")
-            .select("*", { count: "exact", head: true })
-            .eq("account_id", b.dataset.del);
-          if ((count || 0) > 0)
-            return alert("Conta com movimentos. Transfira/apague primeiro.");
-          await sb.from("accounts").delete().eq("id", b.dataset.del);
-          renderAccounts();
-        })
-    );
+  async function listAccounts() {
+    const { data } = await sb
+      .from("accounts")
+      .select("id,name,currency,type")
+      .order("name");
+    return data || [];
   }
-
   async function createAccount(name, currency = "EUR", type = "bank") {
-    const uid = (await sb.auth.getUser()).data?.user?.id;
+    const uid = await getUserId();
     await sb.from("accounts").insert({ name, currency, type, user_id: uid });
   }
-
   async function renameAccount(id, name) {
     await sb.from("accounts").update({ name }).eq("id", id);
   }
@@ -1173,16 +1096,15 @@ export async function init({ sb, outlet } = {}) {
       <div class="row" style="display:flex;justify-content:space-between;gap:10px;border:1px solid #e5e7eb;border-radius:12px;padding:12px">
         <div>
           <strong>${a.name}</strong>
-          <div class="row-note">Moeda: ${a.currency} • Saldo inicial: ${money(
-          +a.initial_balance
-        )}</div>
+          <div class="row-note">Tipo: ${a.type || "bank"} • Moeda: ${
+          a.currency
+        }</div>
         </div>
-        <div class="actions" style="gap:6px">
+        <div class="actions" style="gap:6px;display:flex">
           <button data-edit="${a.id}" class="btn">Renomear</button>
           <button data-del="${a.id}" class="btn">Apagar</button>
         </div>
-      </div>
-    `
+      </div>`
       )
       .join("");
 
@@ -1205,9 +1127,10 @@ export async function init({ sb, outlet } = {}) {
     );
   }
 
+  // Botões “Novo …”
   $("#btn-new-cat")?.addEventListener("click", async () => {
     const parent = prompt("Área (vazio para categoria raiz):", "");
-    const name = prompt("Nome da categoria:", "");
+    const name = prompt("Nome da categoria/subcategoria:", "");
     if (!name) return;
     let parentId = null;
     if (parent) {
@@ -1216,18 +1139,17 @@ export async function init({ sb, outlet } = {}) {
         .select("id")
         .eq("name", parent)
         .is("parent_id", null)
-        .order("is_system", { ascending: false })
-        .limit(1)
         .maybeSingle();
       parentId = p?.id ?? null;
       if (!parentId) {
-        const uid = await getUserId();
-        const { data: c } = await sb
+        await createCategory(null, parent);
+        const again = await sb
           .from("categories")
-          .insert({ name: parent, user_id: uid })
           .select("id")
-          .single();
-        parentId = c.id;
+          .eq("name", parent)
+          .is("parent_id", null)
+          .maybeSingle();
+        parentId = again.data?.id || null;
       }
     }
     await createCategory(parentId, name);
@@ -1241,95 +1163,7 @@ export async function init({ sb, outlet } = {}) {
     renderAccounts();
   });
 
-  // arrancar listas
+  // arranque
   renderCategories();
   renderAccounts();
 }
-
-async function listAccounts() {
-  const { data } = await sb
-    .from("accounts")
-    .select("id,name,currency,type")
-    .order("name");
-  return data || [];
-}
-
-async function pickRegularityId(
-  promptText = "Regularidade (ex: mensal, semanal, anual, once)"
-) {
-  const s = (prompt(promptText) || "").trim();
-  if (!s) return null;
-  const id = regularityFromLabel(s);
-  if (!id) alert("Regularidade não reconhecida.");
-  return id;
-}
-
-async function bulkSetRegularityForMonth(
-  yyyyMM,
-  regId,
-  categoryPath /* opcional */
-) {
-  const [y, m] = yyyyMM.split("-").map(Number);
-  const from = ymd(new Date(y, m - 1, 1));
-  const to = ymd(new Date(y, m, 1));
-  let q = sb
-    .from("transactions")
-    .update({ regularity_id: regId })
-    .gte("date", from)
-    .lt("date", to);
-
-  if (categoryPath) {
-    // resolve id da categoria por path "Pai > Filho"
-    const [par, chi] = categoryPath.split(">").map((s) => s.trim());
-    let catId = null;
-    if (par && chi) {
-      const { data: parent } = await sb
-        .from("categories")
-        .select("id")
-        .eq("name", par)
-        .is("parent_id", null)
-        .limit(1);
-      if (parent?.[0]) {
-        const { data: child } = await sb
-          .from("categories")
-          .select("id")
-          .eq("name", chi)
-          .eq("parent_id", parent[0].id)
-          .limit(1);
-        catId = child?.[0]?.id || null;
-      }
-    } else if (par) {
-      const { data: only } = await sb
-        .from("categories")
-        .select("id")
-        .eq("name", par)
-        .limit(1);
-      catId = only?.[0]?.id || null;
-    }
-    if (catId) q = q.eq("category_id", catId);
-  }
-
-  const { error } = await q;
-  if (error) throw error;
-}
-
-// exemplo de uso (liga a um botão teu):
-document
-  .getElementById("btn-regularity-bulk")
-  ?.addEventListener("click", async () => {
-    const month = prompt(
-      "Mês (YYYY-MM):",
-      new Date().toISOString().slice(0, 7)
-    );
-    if (!month) return;
-    const regId = await pickRegularityId(
-      "Regularidade (mensal, semanal, anual, once):"
-    );
-    if (!regId) return;
-    const catPath = prompt(
-      'Categoria opcional (ex: "Casa > Renda"; vazio = todas as despesas do mês):',
-      ""
-    );
-    await bulkSetRegularityForMonth(month, regId, catPath || null);
-    alert("Regularidade atualizada.");
-  });

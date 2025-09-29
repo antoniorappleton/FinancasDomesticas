@@ -497,3 +497,4 @@ td:nth-child(5){                 /* Descrição */
 .rpt-legend { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
 .rpt-legend__item { display:flex; align-items:center; gap:8px; }
 .rpt-legend__dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
+.hidden{display:none !important;}

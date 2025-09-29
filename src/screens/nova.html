@@ -49,11 +49,21 @@
   </div>
 
   <!-- Categoria -->
-  <div id="row-category" class="grid" style="grid-template-columns:1fr;gap:10px;margin-top:10px">
-    <label>Categoria
-      <select id="tx-category"></select>
-    </label>
+<div id="row-category">
+  <!-- Select antigo: usado para Receitas/Poupanças e fallback -->
+  <select id="tx-category"></select>
+
+  <!-- Bloco novo: apenas para DESPESA -->
+  <div id="exp-cat-wrap" class="hidden">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <select id="cat-parent"></select>
+      <select id="cat-child"></select>
+    </div>
+    <input type="hidden" id="tx-category-exp" />
   </div>
+</div>
+
+
 
   <!-- Natureza (apenas Despesa) -->
   <div id="row-nature" class="grid hidden" style="grid-template-columns:1fr;gap:10px;margin-top:10px">
