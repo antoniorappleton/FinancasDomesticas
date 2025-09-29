@@ -101,6 +101,7 @@ export async function init() {
   // ==========================================================
   //               CATEGORIAS — UI DEPENDENTE (DESPESA)
   // ==========================================================
+
   const _collPT = new Intl.Collator("pt-PT", { sensitivity: "base" });
   const PREFERRED_ORDER = [
     "Alimentação",
@@ -111,44 +112,91 @@ export async function init() {
     "Carros",
     "Saúde",
   ];
+  
+  // remove acentos e normaliza para chave de comparação
+  const normalizeKey = (s) =>
+  (s || "")
+    .toLocaleLowerCase("pt-PT")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+
   const CAT_DEFAULT_NATURE = new Map(); // category_id -> 'fixed'|'variable'|null
+  
+  
   let _CAT_TREE = null; // {parents, children}
 
   async function loadExpenseCategoryTree() {
-    // kind='expense' e traz também nature para pre-selecionar
     if (_CAT_TREE) return _CAT_TREE;
+
+    // traz também user_id para distinguir globais de próprias
     const { data, error } = await sb
       .from("categories")
-      .select("id,name,parent_id,kind,nature")
+      .select("id,name,parent_id,kind,nature,user_id")
       .eq("kind", "expense");
+
     if (error) {
       console.error(error);
       toast("Erro a carregar categorias", false);
-      return { parents: [], children: [] };
+      return {
+        parents: [],
+        children: [],
+        idsByKey: new Map(),
+        nameById: new Map(),
+      };
     }
 
-    const parents = (data || []).filter((c) => !c.parent_id);
-    const children = (data || []).filter((c) => c.parent_id);
+    const all = data || [];
+    const parentsAll = all.filter((c) => !c.parent_id);
+    const children = all.filter((c) => c.parent_id);
 
-    // ordem dos pais: preferidos → A–Z
-    const rank = new Map(PREFERRED_ORDER.map((n, i) => [n.toLowerCase(), i]));
-    parents.sort((a, b) => {
-      const ra = rank.has(a.name.toLowerCase())
-        ? rank.get(a.name.toLowerCase())
-        : 9999;
-      const rb = rank.has(b.name.toLowerCase())
-        ? rank.get(b.name.toLowerCase())
-        : 9999;
-      return ra !== rb ? ra - rb : _collPT.compare(a.name, b.name);
+    // ---- agrupar pais por nome (ignorando acentos) ----
+    const groups = new Map(); // key -> [parents...]
+    const nameById = new Map(); // parent_id -> name
+    parentsAll.forEach((p) => {
+      const k = normalizeKey(p.name);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(p);
+      nameById.set(p.id, p.name);
     });
-    children.sort((a, b) => _collPT.compare(a.name, b.name));
 
-    // nature por id
-    (data || []).forEach((c) => CAT_DEFAULT_NATURE.set(c.id, c.nature || null));
+    // para cada grupo escolhemos um representante (para o dropdown)
+    // e guardamos o conjunto de todos os ids que partilham esse nome
+    const idsByKey = new Map(); // key -> [parent_ids...]
+    const parentsUniq = [];
+    for (const [k, arr] of groups.entries()) {
+      // preferir global ou própria? é indiferente aqui; escolhemos a primeira
+      // mas garantimos nomes consistentes
+      const rep = arr[0];
+      parentsUniq.push({ id: rep.id, name: rep.name });
+      idsByKey.set(
+        k,
+        arr.map((x) => x.id)
+      );
+    }
 
-    _CAT_TREE = { parents, children };
+    // ordenar pais: preferidos -> A–Z
+    const rank = new Map(PREFERRED_ORDER.map((n, i) => [normalizeKey(n), i]));
+    const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+    parentsUniq.sort((a, b) => {
+      const ra = rank.has(normalizeKey(a.name))
+        ? rank.get(normalizeKey(a.name))
+        : 9999;
+      const rb = rank.has(normalizeKey(b.name))
+        ? rank.get(normalizeKey(b.name))
+        : 9999;
+      return ra !== rb ? ra - rb : coll.compare(a.name, b.name);
+    });
+
+    // nature por id (para pré-selecionar “Fixa/Variável”)
+    all.forEach((c) => CAT_DEFAULT_NATURE.set(c.id, c.nature || null));
+
+    _CAT_TREE = { parents: parentsUniq, children, idsByKey, nameById };
     return _CAT_TREE;
   }
+
 
   function fillSelect(el, items, { placeholder = "— escolher —" } = {}) {
     if (!el) return;
@@ -172,17 +220,27 @@ export async function init() {
     currentCategoryId = null,
   }) {
     if (!parentEl || !childEl || !hiddenEl) return;
-    const { parents, children } = await loadExpenseCategoryTree();
+
+    const { parents, children, idsByKey, nameById } =
+      await loadExpenseCategoryTree();
 
     fillSelect(parentEl, parents, { placeholder: "Categoria (ex.: Casa)" });
     fillSelect(childEl, [], { placeholder: "Subcategoria" });
 
     parentEl.addEventListener("change", () => {
-      const pid = parentEl.value || null;
-      const subs = pid ? children.filter((c) => c.parent_id === pid) : [];
+      const pid = parentEl.value || "";
+      const name =
+        nameById.get(pid) || parents.find((p) => p.id === pid)?.name || "";
+      const key = normalizeKey(name);
+      const parentIds = idsByKey.get(key) || (pid ? [pid] : []);
+      const subs = children
+        .filter((c) => parentIds.includes(c.parent_id))
+        .sort((a, b) => _collPT.compare(a.name, b.name));
+
       fillSelect(childEl, subs, { placeholder: "Subcategoria" });
       hiddenEl.value = "";
-      // limpar natureza enquanto não houver sub
+
+      // limpar natureza até escolher sub
       const rFixed = document.querySelector(
         'input[name="tx-nature"][value="fixed"]'
       );
@@ -197,8 +255,6 @@ export async function init() {
 
     childEl.addEventListener("change", () => {
       hiddenEl.value = childEl.value || "";
-
-      // preseleciona Natureza (se houver)
       const def = CAT_DEFAULT_NATURE.get(childEl.value) || null;
       const rFixed = document.querySelector(
         'input[name="tx-nature"][value="fixed"]'
@@ -220,23 +276,22 @@ export async function init() {
       }
     });
 
-    // preselect quando a edição já traz category_id
+    // pré-seleção ao editar
     if (currentCategoryId) {
       const child = children.find((c) => c.id === currentCategoryId);
       if (child) {
-        parentEl.value = child.parent_id || "";
-        parentEl.dispatchEvent(new Event("change"));
-        setTimeout(() => {
-          childEl.value = currentCategoryId;
-          hiddenEl.value = currentCategoryId;
-          childEl.dispatchEvent(new Event("change"));
-        }, 0);
-      } else {
-        const parent = parents.find((p) => p.id === currentCategoryId);
-        if (parent) {
-          parentEl.value = parent.id;
+        // descobrir a chave (nome) do pai desse filho e escolher o representante
+        const parentName = nameById.get(child.parent_id) || "";
+        const key = normalizeKey(parentName);
+        const repParent = parents.find((p) => normalizeKey(p.name) === key);
+        if (repParent) {
+          parentEl.value = repParent.id;
           parentEl.dispatchEvent(new Event("change"));
-          hiddenEl.value = parent.id;
+          setTimeout(() => {
+            childEl.value = currentCategoryId;
+            hiddenEl.value = currentCategoryId;
+            childEl.dispatchEvent(new Event("change"));
+          }, 0);
         }
       }
     }
