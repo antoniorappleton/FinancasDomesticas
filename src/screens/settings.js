@@ -23,8 +23,24 @@ export async function init({ sb, outlet } = {}) {
   const getUserId = async () => (await sb.auth.getUser()).data?.user?.id;
 
   // ================= Helpers base =======================
-  const $ = (sel) => outlet.querySelector(sel);
-  const $$ = (sel) => Array.from(outlet.querySelectorAll(sel));
+
+  // normaliza para chave de agrupamento (sem acentos / espaços duplicados)
+const normalizeKey = (s) =>
+  (s || "")
+    .toLocaleLowerCase("pt-PT")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+
+    const $ = (sel) =>
+    (outlet && outlet.querySelector(sel)) || document.querySelector(sel);
+
+    const $$ = (sel) => {
+      const inOutlet = outlet ? outlet.querySelectorAll(sel) : null;
+      return Array.from(inOutlet && inOutlet.length ? inOutlet : document.querySelectorAll(sel));
+    };
 
   const pad2 = (n) => String(n).padStart(2, "0");
   const ymd = (d) =>
@@ -532,218 +548,201 @@ export async function init({ sb, outlet } = {}) {
     _fixLegendPDF = [];
   }
 
+  let _isBuildingReport = false;
   async function buildReport() {
-    // período
-    const t = $("#rpt-type")?.value || "monthly";
-    let from, to, label;
-    if (t === "monthly") {
-      const m = $("#rpt-month")?.value || new Date().toISOString().slice(0, 7);
-      const [y, mm] = m.split("-").map(Number);
-      from = ymd(new Date(y, mm - 1, 1));
-      to = ymd(new Date(y, mm, 1));
-      label = m;
-    } else if (t === "range") {
-      const a = $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
-      const b = $("#rpt-to")?.value || a;
-      const [ya, ma] = a.split("-").map(Number);
-      const [yb, mb] = b.split("-").map(Number);
-      from = ymd(new Date(ya, ma - 1, 1));
-      to = ymd(new Date(yb, mb, 1));
-      label = `${a} → ${b}`;
-    } else {
-      const y = Number($("#rpt-year")?.value || new Date().getFullYear());
-      from = ymd(new Date(y, 0, 1));
-      to = ymd(new Date(y + 1, 0, 1));
-      label = String(y);
-    }
-    $("#rpt-title").textContent = `Relatório Financeiro — ${label}`;
+     if (_isBuildingReport) return;      // evita chamadas concorrentes
+  _isBuildingReport = true;
+  try {
+    // limpa tudo para não acumular
+    destroyCharts();
+    const legendEl = $("#rpt-cat-legend");
+    if (legendEl) legendEl.innerHTML = "";
+  // período
+  const t = $("#rpt-type")?.value || "monthly";
+  let from, to, label;
+  if (t === "monthly") {
+    const m = $("#rpt-month")?.value || new Date().toISOString().slice(0, 7);
+    const [y, mm] = m.split("-").map(Number);
+    from = ymd(new Date(y, mm - 1, 1));
+    to = ymd(new Date(y, mm, 1));
+    label = m;
+  } else if (t === "range") {
+    const a = $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
+    const b = $("#rpt-to")?.value || a;
+    const [ya, ma] = a.split("-").map(Number);
+    const [yb, mb] = b.split("-").map(Number);
+    from = ymd(new Date(ya, ma - 1, 1));
+    to = ymd(new Date(yb, mb, 1));
+    label = `${a} → ${b}`;
+  } else {
+    const y = Number($("#rpt-year")?.value || new Date().getFullYear());
+    from = ymd(new Date(y, 0, 1));
+    to = ymd(new Date(y + 1, 0, 1));
+    label = String(y);
+  }
+  $("#rpt-title").textContent = `Relatório Financeiro — ${label}`;
 
-    // tipos
-    const [{ data: tInc }, { data: tExp }, { data: tSav }] = await Promise.all([
-      sb.from("transaction_types").select("id").eq("code", "INCOME").single(),
-      sb.from("transaction_types").select("id").eq("code", "EXPENSE").single(),
-      sb.from("transaction_types").select("id").eq("code", "SAVINGS").single(),
-    ]);
+  // tipos
+  const [{ data: tInc }, { data: tExp }, { data: tSav }] = await Promise.all([
+    sb.from("transaction_types").select("id").eq("code", "INCOME").single(),
+    sb.from("transaction_types").select("id").eq("code", "EXPENSE").single(),
+    sb.from("transaction_types").select("id").eq("code", "SAVINGS").single(),
+  ]);
 
-    // dados
-    const { data: rows, error } = await sb
+  // dados (com alias; e fallback se não houver colunas de natureza)
+  let rows = [];
+  try {
+    const sel =
+      "date, amount, signed_amount, type_id, expense_nature, category:categories(name,parent_id,nature)";
+    const r = await sb
       .from("transactions")
-      .select(
-        `date, amount, signed_amount, type_id, expense_nature, categories(name, parent_id, nature)`
-      )
+      .select(sel)
       .gte("date", from)
       .lt("date", to)
       .order("date", { ascending: true });
-    if (error) {
-      console.error(error);
-      return;
-    }
-    const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
-
-    const incRows = (rows || []).filter((r) => r.type_id === tInc.id);
-    const expRows = (rows || []).filter((r) => r.type_id === tExp.id);
-    const savRows = (rows || []).filter((r) => r.type_id === tSav.id);
-
-    const income = sum(incRows.map((x) => x.amount));
-    const expense = sum(expRows.map((x) => x.amount));
-    const savings = sum(savRows.map((x) => x.amount));
-    const balance = sum((rows || []).map((x) => x.signed_amount));
-
-    $("#rpt-kpi-income").textContent = money(income);
-    $("#rpt-kpi-expense").textContent = money(expense);
-    $("#rpt-kpi-savings").textContent = money(savings);
-    $("#rpt-kpi-balance").textContent = money(balance);
-
-    // pizza categorias (despesas)
-    destroyCharts();
-    const byCat = new Map();
-    expRows.forEach((x) => {
-      const name = x.categories?.name || "Sem categoria";
-      byCat.set(name, (byCat.get(name) || 0) + Number(x.amount || 0));
-    });
-    const entries = [...byCat.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 12);
-    const labels = entries.map(([k]) => k);
-    const values = entries.map(([, v]) => v);
-    const total = values.reduce((a, b) => a + b, 0) || 1;
-
-    await ensureChartStack();
-    _rptCat = new Chart($("#rpt-cat-pie"), {
-      type: "pie",
-      data: { labels, datasets: [{ data: values }] },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          datalabels: {
-            color: "#0f172a",
-            backgroundColor: "rgba(255,255,255,.85)",
-            borderRadius: 4,
-            padding: 4,
-            formatter: (v) =>
-              `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
-            display: (ctx) =>
-              (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
-          },
-        },
-      },
-    });
-    const colors = _rptCat.data.datasets[0].backgroundColor || [];
-    _catLegendPDF = labels.map((lab, i) => ({
-      label: lab,
-      value: values[i],
-      pct: values[i] / total || 0,
-      color: colors[i] || "#64748b",
-    }));
-    $("#rpt-cat-legend").innerHTML = _catLegendPDF
-      .map(
-        (x) =>
-          `<div class="rpt-legend__item">
-         <span class="rpt-legend__dot" style="background:${x.color}"></span>
-         <span style="flex:1">${x.label}</span>
-         <strong>${money(x.value)}</strong>
-         <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(1)}%)</span>
-       </div>`
-      )
-      .join("");
-
-    // donut fixas vs variáveis
-    const isFixed = (x) =>
-      x.expense_nature === "fixed" ||
-      (!x.expense_nature && x.categories?.nature === "fixed");
-    const fixedAmt = sum(expRows.filter(isFixed).map((x) => x.amount));
-    const variableAmt = sum(
-      expRows.filter((x) => !isFixed(x)).map((x) => x.amount)
-    );
-    _rptFix = new Chart($("#rpt-fixed-donut"), {
-      type: "doughnut",
-      data: {
-        labels: ["Fixas", "Variáveis"],
-        datasets: [{ data: [fixedAmt, variableAmt] }],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: "bottom" },
-          datalabels: { formatter: (v) => money(v) },
-        },
-      },
-    });
-    const totFV = fixedAmt + variableAmt || 1;
-    _fixLegendPDF = [
-      {
-        label: "Fixas",
-        value: fixedAmt,
-        pct: fixedAmt / totFV,
-        color: "#36a2eb",
-      },
-      {
-        label: "Variáveis",
-        value: variableAmt,
-        pct: variableAmt / totFV,
-        color: "#ff6384",
-      },
-    ];
-
-    // séries mensais
-    const months = {};
-    (rows || []).forEach((r) => {
-      const m = String(r.date).slice(0, 7);
-      months[m] ||= { inc: 0, exp: 0, sav: 0, net: 0 };
-      if (r.type_id === tInc.id) {
-        months[m].inc += +r.amount;
-        months[m].net += +r.amount;
-      }
-      if (r.type_id === tExp.id) {
-        months[m].exp += +r.amount;
-        months[m].net -= +r.amount;
-      }
-      if (r.type_id === tSav.id) {
-        months[m].sav += +r.amount;
-        months[m].net -= +r.amount;
-      }
-    });
-    const mlabels = Object.keys(months).sort();
-    _rptSeries = new Chart($("#rpt-series"), {
-      type: "bar",
-      data: {
-        labels: mlabels,
-        datasets: [
-          { label: "Receitas", data: mlabels.map((k) => months[k].inc) },
-          { label: "Despesas", data: mlabels.map((k) => months[k].exp) },
-          { label: "Poupanças", data: mlabels.map((k) => months[k].sav) },
-          {
-            label: "Saldo",
-            type: "line",
-            data: mlabels.map((k) => months[k].net),
-            tension: 0.25,
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: "top" } },
-        scales: { y: { beginAtZero: true } },
-      },
-    });
-
-    // insights
-    const effort = income ? ((fixedAmt + variableAmt) / income) * 100 : 0;
-    const varPct = expense ? (variableAmt / expense) * 100 : 0;
-    const savPct = income ? (savings / income) * 100 : 0;
-    $("#rpt-insights").innerHTML = [
-      `Taxa de esforço: ${effort.toFixed(1)}%`,
-      `Despesas variáveis: ${varPct.toFixed(1)}% das despesas`,
-      `Taxa de poupança: ${savPct.toFixed(1)}% das receitas`,
-    ]
-      .map((x) => `<li>${x}</li>`)
-      .join("");
+    if (r.error) throw r.error;
+    rows = r.data || [];
+  } catch (e) {
+    console.warn("Select com natureza falhou, a usar fallback simples:", e?.message || e);
+    const r2 = await sb
+      .from("transactions")
+      .select("date, amount, signed_amount, type_id")
+      .gte("date", from)
+      .lt("date", to)
+      .order("date", { ascending: true });
+    rows = r2.data || [];
   }
+
+  const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
+
+  const incRows = (rows || []).filter((r) => r.type_id === tInc.id);
+  const expRows = (rows || []).filter((r) => r.type_id === tExp.id);
+  const savRows = (rows || []).filter((r) => r.type_id === tSav.id);
+
+  const income = sum(incRows.map((x) => x.amount));
+  const expense = sum(expRows.map((x) => x.amount));
+  const savings = sum(savRows.map((x) => x.amount));
+  const balance = sum((rows || []).map((x) => x.signed_amount));
+
+  $("#rpt-kpi-income").textContent = money(income);
+  $("#rpt-kpi-expense").textContent = money(expense);
+  $("#rpt-kpi-savings").textContent = money(savings);
+  $("#rpt-kpi-balance").textContent = money(balance);
+
+  // pizza categorias (despesas)
+  destroyCharts();
+  const byCat = new Map();
+  expRows.forEach((x) => {
+    const name = x.category?.name || "Sem categoria";
+    byCat.set(name, (byCat.get(name) || 0) + Number(x.amount || 0));
+  });
+  const entries = [...byCat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  const labels = entries.map(([k]) => k);
+  const values = entries.map(([, v]) => v);
+  const total = values.reduce((a, b) => a + b, 0) || 1;
+
+  await ensureChartStack();
+  _rptCat = new Chart($("#rpt-cat-pie"), {
+    type: "pie",
+    data: { labels, datasets: [{ data: values }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: "#0f172a",
+          backgroundColor: "rgba(255,255,255,.85)",
+          borderRadius: 4,
+          padding: 4,
+          formatter: (v) => `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
+          display: (ctx) =>
+            (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
+        },
+      },
+    },
+  });
+  const colors = _rptCat.data.datasets[0].backgroundColor || [];
+  _catLegendPDF = labels.map((lab, i) => ({
+    label: lab,
+    value: values[i],
+    pct: values[i] / total || 0,
+    color: colors[i] || "#64748b",
+  }));
+  $("#rpt-cat-legend").innerHTML = _catLegendPDF
+    .map(
+      (x) => `
+      <div class="rpt-legend__item">
+        <span class="rpt-legend__dot" style="background:${x.color}"></span>
+        <span style="flex:1">${x.label}</span>
+        <strong>${money(x.value)}</strong>
+        <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(1)}%)</span>
+      </div>`
+    )
+    .join("");
+
+  // donut fixas vs variáveis
+  const isFixed = (x) =>
+  x.expense_nature === "fixed" ||
+  (!x.expense_nature && x.category?.nature === "fixed");
+
+  const fixedAmt = sum(expRows.filter(isFixed).map((x) => x.amount));
+  const variableAmt = sum(expRows.filter((x) => !isFixed(x)).map((x) => x.amount));
+  _rptFix = new Chart($("#rpt-fixed-donut"), {
+    type: "doughnut",
+    data: { labels: ["Fixas", "Variáveis"], datasets: [{ data: [fixedAmt, variableAmt] }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" }, datalabels: { formatter: (v) => money(v) } },
+    },
+  });
+  const totFV = fixedAmt + variableAmt || 1;
+  _fixLegendPDF = [
+    { label: "Fixas", value: fixedAmt, pct: fixedAmt / totFV, color: "#36a2eb" },
+    { label: "Variáveis", value: variableAmt, pct: variableAmt / totFV, color: "#ff6384" },
+  ];
+
+  // séries mensais
+  const months = {};
+  (rows || []).forEach((r) => {
+    const m = String(r.date).slice(0, 7);
+    months[m] ||= { inc: 0, exp: 0, sav: 0, net: 0 };
+    if (r.type_id === tInc.id) { months[m].inc += +r.amount; months[m].net += +r.amount; }
+    if (r.type_id === tExp.id) { months[m].exp += +r.amount; months[m].net -= +r.amount; }
+    if (r.type_id === tSav.id) { months[m].sav += +r.amount; months[m].net -= +r.amount; }
+  });
+  const mlabels = Object.keys(months).sort();
+  _rptSeries = new Chart($("#rpt-series"), {
+    type: "bar",
+    data: {
+      labels: mlabels,
+      datasets: [
+        { label: "Receitas", data: mlabels.map((k) => months[k].inc) },
+        { label: "Despesas", data: mlabels.map((k) => months[k].exp) },
+        { label: "Poupanças", data: mlabels.map((k) => months[k].sav) },
+        { label: "Saldo", type: "line", data: mlabels.map((k) => months[k].net), tension: 0.25, borderWidth: 2 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "top" } },
+      scales: { y: { beginAtZero: true } },
+    },
+  });
+
+  // insights
+  const effort = income ? ((fixedAmt + variableAmt) / income) * 100 : 0;
+  const varPct = expense ? (variableAmt / expense) * 100 : 0;
+  const savPct = income ? (savings / income) * 100 : 0;
+  $("#rpt-insights").innerHTML = [
+    `Taxa de esforço: ${effort.toFixed(1)}%`,
+    `Despesas variáveis: ${varPct.toFixed(1)}% das despesas`,
+    `Taxa de poupança: ${savPct.toFixed(1)}% das receitas`,
+  ].map((x) => `<li>${x}</li>`).join("");
+}
+
 
   // Export PDF
   $("#rpt-export")?.addEventListener("click", async () => {
@@ -976,18 +975,48 @@ export async function init({ sb, outlet } = {}) {
 
   // ============ CATEGORIAS & CONTAS (CRUD) ==============
   async function listCategories() {
-    const { data } = await sb
-      .from("categories")
-      .select("id,name,parent_id,user_id")
-      .order("parent_id", { ascending: true })
-      .order("name", { ascending: true });
-    const parents = (data || []).filter((c) => !c.parent_id);
-    const children = (data || []).filter((c) => c.parent_id);
-    return parents.map((p) => ({
-      ...p,
-      subs: children.filter((s) => s.parent_id === p.id),
-    }));
+  const uid = await getUserId();
+  // Só as TUAS categorias (evita globais R/O no ecrã de gestão)
+  const { data, error } = await sb
+    .from("categories")
+    .select("id,name,parent_id,user_id")
+    .eq("user_id", uid);
+
+  if (error) {
+    console.error(error);
+    return [];
   }
+  const all = data || [];
+  const parents = all.filter((c) => !c.parent_id);
+  const children = all.filter((c) => c.parent_id);
+
+  // agrupa pais por nome (ignora acentos) e escolhe um representante
+  const groups = new Map(); // key -> { name, parentIds:[], parentId }
+  parents.forEach((p) => {
+    const k = normalizeKey(p.name);
+    if (!groups.has(k)) groups.set(k, { name: p.name, parentIds: [], parentId: p.id });
+    const g = groups.get(k);
+    g.parentIds.push(p.id);
+    if (!g.parentId) g.parentId = p.id; // 1º visto é o representante
+  });
+
+  // junta subcategorias de TODOS os pais do grupo e faz dedupe por nome
+  const result = [];
+  for (const g of groups.values()) {
+    const subsAll = children.filter((s) => g.parentIds.includes(s.parent_id));
+    const seen = new Map();
+    subsAll.forEach((s) => {
+      const ks = normalizeKey(s.name);
+      if (!seen.has(ks)) seen.set(ks, { id: s.id, name: s.name });
+    });
+    result.push({ id: g.parentId, name: g.name, subs: Array.from(seen.values()) });
+  }
+
+  // também apanha casos em que ainda não tens pais (lista vazia) — devolve []
+  result.sort((a, b) => new Intl.Collator("pt-PT", { sensitivity: "base" }).compare(a.name, b.name));
+  return result;
+}
+
   async function createCategory(parentId, name) {
     const uid = await getUserId();
     await sb
@@ -1166,4 +1195,7 @@ export async function init({ sb, outlet } = {}) {
   // arranque
   renderCategories();
   renderAccounts();
-}
+} finally {
+    _isBuildingReport = false;
+  }
+}}

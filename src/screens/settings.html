@@ -72,22 +72,53 @@
 </section>
 
 <!-- ===== MODAL RELATÓRIO ===== -->
-<div id="report-overlay" class="rep-overlay hidden" aria-hidden="true" tabindex="-1">
-  <div class="rep-modal" role="dialog" aria-modal="true" aria-labelledby="rpt-title">
-    <header class="rep-header">
-      <h3 id="rpt-title">Relatório Financeiro</h3>
-      <button id="rpt-close" class="icon-btn" aria-label="Fechar">✕</button>
-    </header>
+<div id="report-overlay" class="hidden rpt-overlay" aria-hidden="true" tabindex="-1">
+  <div class="rpt-modal">
+    <button id="rpt-close" class="rpt-close" aria-label="Fechar">×</button>
+    <h2 id="rpt-title">Relatório Financeiro</h2>
 
-    <div class="rep-body">
-      <!-- … (resto igual) … -->
+    <div class="rpt-kpis">
+      <div><div>Receitas</div><strong id="rpt-kpi-income">€ 0,00</strong></div>
+      <div><div>Despesas</div><strong id="rpt-kpi-expense">€ 0,00</strong></div>
+      <div><div>Poupanças</div><strong id="rpt-kpi-savings">€ 0,00</strong></div>
+      <div><div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong></div>
     </div>
 
-    <footer class="rep-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 16px">
+    <div class="rpt-grid">
+      <div class="rpt-card">
+        <canvas id="rpt-cat-pie" height="260"></canvas>
+        <div id="rpt-cat-legend" class="rpt-legend"></div>
+      </div>
+      <div class="rpt-card">
+        <canvas id="rpt-fixed-donut" height="260"></canvas>
+      </div>
+    </div>
+
+    <div class="rpt-card">
+      <canvas id="rpt-series" height="280"></canvas>
+    </div>
+
+    <ul id="rpt-insights" class="rpt-insights"></ul>
+
+    <div class="rpt-actions">
       <button id="rpt-export" class="btn">Exportar PDF</button>
-    </footer>
+    </div>
   </div>
 </div>
+
+<style>
+  .hidden{display:none}
+  .rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px;z-index:1000}
+  .rpt-modal{background:#f2f4f9;color:#e5e7eb;width:min(1100px,92vw);border-radius:12px;padding:16px 20px 28px;position:relative}
+  .rpt-close{position:absolute;top:8px;right:10px;font-size:22px;line-height:1}
+  .rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0;color:#1d1e1e}
+  .rpt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .rpt-card{background:#f1f3f6;border:1px solid #e2e9f2;border-radius:12px;padding:12px}
+  .rpt-legend__item{display:flex;align-items:center;gap:8px;padding:4px 0}
+  .rpt-legend__dot{width:10px;height:10px;border-radius:50%}
+  .btn{padding:8px 12px;border:1px solid #334155;border-radius:10px;background:#111827;color:#e5e7eb}
+</style>
+
 
 
 <!-- ===== MANUTENÇÃO DE DADOS ===== -->
