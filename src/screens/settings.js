@@ -1,11 +1,5 @@
 // src/screens/settings.js
 
-// settings.js (importa util)
-import { onCategoriesChanged } from "../lib/categories.js";
-
-// depois de um INSERT / UPDATE / DELETE bem-sucedido:
-onCategoriesChanged();
-
 export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
   outlet ||= document.getElementById("outlet");
