@@ -109,12 +109,28 @@ initAuth({
 });
 
 // SW: só em produção (https e não localhost/127.x)
-if ('serviceWorker' in navigator && location.protocol === 'https:' && !/^127\.|^localhost$/.test(location.hostname)) {
-  navigator.serviceWorker.register('/sw.js')
-    .then(() => console.log('SW registado'))
-    .catch(err => console.log('SW erro:', err));
-} else if ('serviceWorker' in navigator) {
-  // Dev: remove SWs antigos
-  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister()));
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        // força update quando o SW novo estiver pronto
+        reg.onupdatefound = () => {
+          const nw = reg.installing;
+          nw &&
+            (nw.onstatechange = () => {
+              if (
+                nw.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                // nova versão instalada, recarrega para apanhar assets novos
+                location.reload();
+              }
+            });
+        };
+      })
+      .catch(console.warn);
+  });
 }
+
 
