@@ -29,6 +29,14 @@ const ROUTES = {
     js:   "./src/screens/settings.js",
     showFooter: true,
   },
+
+  "#/categories" : {
+  file: "./src/screens/categories.html",
+  js:   "./src/screens/categories.js",
+  showFooter: true
+},
+
+
 };
 
 function setActiveTab() {

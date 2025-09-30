@@ -1,0 +1,73 @@
+<section class="screen categories">
+  <div class="container">
+    <h1>Categorias</h1>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Nova categoria</h3>
+        <form id="cat-form" class="form">
+          <label>Nome
+            <input type="text" id="cat-name" required />
+          </label>
+
+          <label>Tipo
+            <select id="cat-kind">
+              <option value="expense">Despesa</option>
+              <option value="income">Receita</option>
+              <option value="savings">Poupança</option>
+              <option value="transfer">Transferência</option>
+            </select>
+          </label>
+
+          <label>Pai (opcional)
+            <select id="cat-parent">
+              <option value="">(sem pai)</option>
+            </select>
+          </label>
+
+          <div class="actions">
+            <button type="submit" class="btn btn--primary">Criar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Pesquisar</h3>
+        <input id="cat-search" type="search" placeholder="Filtrar por nome..." />
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Lista (Pai > Filho)</h3>
+      <div id="cat-list" class="table like"></div>
+    </div>
+  </div>
+
+  <!-- Modal Editar -->
+  <dialog id="cat-edit">
+    <form method="dialog" id="edit-form" class="form">
+      <h3>Editar categoria</h3>
+      <input type="hidden" id="edit-id" />
+      <label>Nome
+        <input type="text" id="edit-name" required />
+      </label>
+      <label>Tipo
+        <select id="edit-kind">
+          <option value="expense">Despesa</option>
+          <option value="income">Receita</option>
+          <option value="savings">Poupança</option>
+          <option value="transfer">Transferência</option>
+        </select>
+      </label>
+      <label>Pai
+        <select id="edit-parent">
+          <option value="">(sem pai)</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button type="submit" class="btn btn--primary">Guardar</button>
+        <button type="button" id="edit-cancel" class="btn">Cancelar</button>
+      </div>
+    </form>
+  </dialog>
+</section>
