@@ -371,6 +371,14 @@ export async function init() {
     const hiddenEl = $("tx-category-exp");
 
     // helper de fallback para select antigo
+    const uid = (await sb.auth.getUser()).data.user.id;
+    const { data: cats } = await sb
+      .from('categories')
+      .select('id,name,parent_id,user_id,kind,nature')
+      .or(`user_id.eq.${uid},user_id.is.null`)
+      .order('name', { ascending: true });
+
+    
     const useLegacy = async (kind) => {
       show(wrap, false);
       selectLegacy?.classList.remove("hidden");
@@ -528,5 +536,7 @@ export async function init() {
     .forEach((r) => r.addEventListener("change", applyTypeUI));
   await applyTypeUI();
 
+  window.addEventListener("categories:changed", loadCategoriesIntoDropdowns);
+  window.addEventListener("accounts:changed", loadAccountsIntoDropdowns);
 
 }

@@ -1335,4 +1335,9 @@ export async function init({ sb, outlet } = {}) {
   // arranque
   renderCategories();
   renderAccounts();
+
+  window.dispatchEvent(new Event('categories:changed'));
+  window.dispatchEvent(new Event('accounts:changed'));
+
+  
 }
