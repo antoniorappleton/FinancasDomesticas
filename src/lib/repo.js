@@ -133,7 +133,6 @@
 
       const u = await requireUser();
       const { error } = await sb.rpc("create_transfer", {
-        p_user_id: u.id,
         p_from_account: from_account_id,
         p_to_account: to_account_id,
         p_amount: amount,

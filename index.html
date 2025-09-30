@@ -1,60 +1,51 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
-    <script>window.APP_VERSION = "v7";</script>
+    <script>window.APP_VERSION = "v8";</script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#0ea5e9" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>by AppletonFinance</title>
 
+    <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
     <script>
-      // PANIC SWITCH: desregista o SW e limpa caches quando ?sw=off
       (function () {
         if (!location.search.includes('sw=off')) return;
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations()
-            .then(regs => Promise.all(regs.map(r => r.unregister())))
-            .then(() => caches.keys())
-            .then(keys => Promise.all(keys.map(k => caches.delete(k))))
-            .then(() => location.replace(location.pathname));
-        } else {
-          caches?.keys?.().then(keys => Promise.all(keys.map(k => caches.delete(k))))
-            .finally(()=>location.replace(location.pathname));
-        }
+        const clear = async () => {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+          }
+          if (window.caches?.keys) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          }
+          location.replace(location.pathname);
+        };
+        clear();
       })();
     </script>
 
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>by AppletonFinance</title>
-    <link rel="stylesheet" href="styles.css" />
-    <link rel="manifest" href="./manifest.json?v=8">
-
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="manifest" href="./manifest.json?v=8" />
   </head>
   <body>
-    <!-- Sprite de ícones (reutilizável em toda a app) -->
+    <!-- Sprite de ícones -->
     <svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;left:-9999px;top:-9999px">
-      <!-- carteira / marca -->
       <symbol id="i-wallet" viewBox="0 0 24 24">
         <path fill="currentColor" d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v1h1.5A2.5 2.5 0 0 1 23 10.5v7A2.5 2.5 0 0 1 20.5 20h-15A2.5 2.5 0 0 1 3 17.5v-10Zm14-1.5H5.5A1.5 1.5 0 0 0 4 7.5V8h13V6Z"/>
         <circle cx="18.5" cy="14.5" r="1.5" fill="currentColor"/>
       </symbol>
-
-      <!-- home -->
       <symbol id="i-home" viewBox="0 0 24 24">
         <path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/>
       </symbol>
-
-      <!-- lista / transações -->
       <symbol id="i-list" viewBox="0 0 24 24">
         <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/>
       </symbol>
-
-      <!-- mais / nova -->
       <symbol id="i-plus" viewBox="0 0 24 24">
         <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/>
       </symbol>
-
-      <!-- definições -->
       <symbol id="i-cog" viewBox="0 0 24 24">
         <path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/>
       </symbol>
@@ -63,18 +54,18 @@
     <header class="app-header">
       <div class="app-header__inner">
         <a class="brand" href="#/" aria-label="Ir para o dashboard">
-          <img src="./wisebudget.png" alt="" class="brand__logo" aria-hidden="true" />
+          <!-- ATENÇÃO: nome do ficheiro com maiúsculas -->
+          <img src="./WISEBUDGET.png" alt="" class="brand__logo" aria-hidden="true" />
           <span class="brand__text">
             <span class="brand__title">Wisebudget®</span>
             <span class="brand__subtitle">sua aplicação de gestão doméstica</span>
           </span>
         </a>
-
         <nav class="top-nav" aria-label="Navegação principal"></nav>
       </div>
     </header>
 
-      <main id="app-main">
+    <main id="app-main">
       <div id="outlet" class="outlet"></div>
     </main>
 
@@ -113,26 +104,26 @@
       </div>
     </section>
 
-    <!-- Supabase JS -->
+    <!-- Supabase (global 'supabase') e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       window.sb = supabase.createClient(
-        window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
+        window.SUPABASE_URL      || "https://brakxcumzdleufrpyipm.supabase.co",
         window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
       );
     </script>
 
-    <!-- SW
+    <!-- Service Worker -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js").catch(console.error);
+        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(console.error);
       }
-    </script>-->
+    </script>
 
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
     <!-- Router/App -->
-    <script type="module" src="main.js"></script>
-  
+    <script type="module" src="./main.js"></script>
   </body>
 </html>
