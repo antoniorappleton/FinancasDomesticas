@@ -1,25 +1,37 @@
 <section class="card">
   <h2 class="section-title">Resumo do mês</h2>
+
   <div class="grid kpi">
     <div class="kpi kpi--income">
       <div class="kpi__title">Receitas</div>
       <div id="kpi-income" class="kpi__value">€ 0,00</div>
       <div><span id="kpi-income-trend" class="pill">+0.0%</span></div>
     </div>
+
     <div class="kpi kpi--expense">
       <div class="kpi__title">Despesas</div>
       <div id="kpi-expense" class="kpi__value">€ 0,00</div>
       <div><span id="kpi-expense-trend" class="pill">+0.0%</span></div>
     </div>
+
     <div class="kpi kpi--savings">
       <div class="kpi__title">Poupanças</div>
       <div id="kpi-savings" class="kpi__value">€ 0,00</div>
+      <div><span id="kpi-savings-trend" class="pill">+0.0%</span></div>
     </div>
+
     <div class="kpi kpi--balance">
       <div class="kpi__title">Saldo líquido</div>
       <div id="kpi-balance" class="kpi__value">€ 0,00</div>
+      <div><span id="kpi-net-trend" class="pill">+0.0%</span></div>
     </div>
   </div>
+</section>
+
+<section class="card">
+  <h2 class="section-title">Cashflow anual (acumulado)</h2>
+  <p class="row-note">Linha 1: saldo líquido acumulado (Receitas − Despesas). Linha 2: poupanças acumuladas.</p>
+  <div class="chart chart--tall"><canvas id="chart-cashflow"></canvas></div>
 </section>
 
 <section class="card">
@@ -65,27 +77,18 @@
   <div class="chart chart--short"><canvas id="chart-methods"></canvas></div>
 </section>
 
-
-<!-- Distribuição de Despesas por Regularidade -->
 <section class="card">
   <h2 class="section-title">Despesas por Regularidade (mês)</h2>
   <div class="chart chart--short"><canvas id="chart-regularities"></canvas></div>
   <div id="regularities-legend" class="rpt-legend"></div>
 </section>
 
-<!-- Distribuição de Despesas -->
 <section class="card">
   <h2 class="section-title">Distribuição de Despesas</h2>
-  <div class="chart chart--short">
-    <canvas id="chart-cat-pie"></canvas>
-  </div>
+  <div class="chart chart--short"><canvas id="chart-cat-pie"></canvas></div>
 </section>
 
-
-<!-- Análise Detalhada por Categoria -->
 <section class="card">
   <h2 class="section-title">Análise Detalhada por Categoria</h2>
   <div id="cat-list" class="cat-list"></div>
 </section>
-
-<script type="module" src="/src/main.js?v=v7"></script>
