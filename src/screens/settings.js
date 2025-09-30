@@ -1301,52 +1301,55 @@ export async function init({ sb, outlet } = {}) {
 
   // ============ CATEGORIAS & CONTAS (CRUD) ==============
   async function listCategories() {
-  
     const uid = await getUserId();
     const { data, error } = await sb
       .from("categories")
       .select("id,name,parent_id,user_id")
-      .eq("user_id", uid);
+      .eq("user_id", uid)
+      .order("name");
+
     if (error) {
       console.error(error);
       return [];
     }
+
     const all = data || [];
     const parents = all.filter((c) => !c.parent_id);
     const children = all.filter((c) => c.parent_id);
 
-    const groups = new Map(); // key -> { name, parentIds:[], parentId }
+    // agrupar pais por nome normalizado
+    const groups = new Map(); // key -> { name, parentIds:[], repId }
     parents.forEach((p) => {
       const k = normalizeKey(p.name);
       if (!groups.has(k))
-        groups.set(k, { name: p.name, parentIds: [], parentId: p.id });
+        groups.set(k, { name: p.name, parentIds: [], repId: p.id });
       const g = groups.get(k);
       g.parentIds.push(p.id);
-      if (!g.parentId) g.parentId = p.id;
+      if (!g.repId) g.repId = p.id;
     });
 
     const result = [];
     for (const g of groups.values()) {
       const subsAll = children.filter((s) => g.parentIds.includes(s.parent_id));
-      const seen = new Map();
+      // dedup por nome normalizado
+      const dedup = new Map();
       subsAll.forEach((s) => {
-        const ks = normalizeKey(s.name);
-        if (!seen.has(ks)) seen.set(ks, { id: s.id, name: s.name });
+        const key = normalizeKey(s.name);
+        if (!dedup.has(key)) dedup.set(key, { id: s.id, name: s.name });
       });
       result.push({
-        id: g.parentId,
+        id: g.repId,
         name: g.name,
-        subs: Array.from(seen.values()),
+        subs: Array.from(dedup.values()),
       });
     }
-    result.sort((a, b) =>
-      new Intl.Collator("pt-PT", { sensitivity: "base" }).compare(
-        a.name,
-        b.name
-      )
-    );
+
+    // ordenar alfabeticamente PT-PT
+    const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+    result.sort((a, b) => coll.compare(a.name, b.name));
     return result;
   }
+
   async function createCategory(parentId, name) {
     const uid = await getUserId();
     await sb

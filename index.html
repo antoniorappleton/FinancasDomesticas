@@ -1,9 +1,28 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
+    <script>window.APP_VERSION = "v7";</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0ea5e9" />
+
+    <script>
+      // PANIC SWITCH: desregista o SW e limpa caches quando ?sw=off
+      (function () {
+        if (!location.search.includes('sw=off')) return;
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations()
+            .then(regs => Promise.all(regs.map(r => r.unregister())))
+            .then(() => caches.keys())
+            .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+            .then(() => location.replace(location.pathname));
+        } else {
+          caches?.keys?.().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+            .finally(()=>location.replace(location.pathname));
+        }
+      })();
+    </script>
+
     <title>by AppletonFinance</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="manifest" href="./manifest.json?v=4">
