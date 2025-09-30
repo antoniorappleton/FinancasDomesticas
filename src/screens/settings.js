@@ -23,8 +23,6 @@ export async function init({ sb, outlet } = {}) {
   const getUserId = async () => (await sb.auth.getUser()).data?.user?.id;
 
   // ================= Helpers base =======================
-
-  // normaliza para chave de agrupamento (sem acentos / espaços duplicados)
   const normalizeKey = (s) =>
     (s || "")
       .toLocaleLowerCase("pt-PT")
@@ -35,6 +33,7 @@ export async function init({ sb, outlet } = {}) {
 
   const $ = (sel) =>
     (outlet && outlet.querySelector(sel)) || document.querySelector(sel);
+
   const $$ = (sel) => {
     const inOutlet = outlet ? outlet.querySelectorAll(sel) : null;
     return Array.from(
@@ -51,6 +50,7 @@ export async function init({ sb, outlet } = {}) {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+  const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
 
   const currentMonthStartISO = () => {
     const n = new Date();
@@ -61,35 +61,39 @@ export async function init({ sb, outlet } = {}) {
     return ymd(new Date(n.getFullYear(), n.getMonth() + 1, 1));
   };
 
+  // carrega Chart.js + plugin datalabels (regista só uma vez)
+  async function loadScript(src) {
+    await new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  // --- substitui ensureChartStack() ---
+  async function loadScript(src) {
+    await new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = res;
+      s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
   async function ensureChartStack() {
-    // Chart.js
     if (!window.Chart) {
-      await new Promise((res, rej) => {
-        const s = document.createElement("script");
-        s.src =
-          "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
-        s.onload = res;
-        s.onerror = rej;
-        document.head.appendChild(s);
-      });
+      await loadScript(
+        "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+      );
     }
-
-    // chartjs-plugin-datalabels — carregar mas NÃO registar globalmente
+    // Carrega o ficheiro do plugin, mas NÃO regista globalmente
     if (!window.ChartDataLabels && !window.__loadingCDL__) {
       window.__loadingCDL__ = true;
       try {
-        await new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src =
-            "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js";
-          s.onload = res;
-          s.onerror = rej;
-          document.head.appendChild(s);
-        });
-        // garantir que não fica registado globalmente
-        try {
-          Chart.unregister(window.ChartDataLabels);
-        } catch {}
+        await loadScript(
+          "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"
+        );
       } catch (e) {
         console.warn(
           "Falhou a carregar chartjs-plugin-datalabels — sigo sem rótulos.",
@@ -102,7 +106,6 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // ================= Regularidades ======================
-  // carrega tabela e prepara mapas (aceita PT ou CODE)
   const { data: regs } = await sb
     .from("regularities")
     .select("id,code,name_pt");
@@ -155,7 +158,6 @@ export async function init({ sb, outlet } = {}) {
       el.style.color = ok ? "#16a34a" : "";
     }
   };
-
   const normalizeHeader = (h) =>
     String(h || "")
       .replace(/^\uFEFF/, "")
@@ -168,12 +170,10 @@ export async function init({ sb, outlet } = {}) {
       .replace(/[õôóòö]/g, "o")
       .replace(/[ûúùü]/g, "u")
       .replace(/ç/g, "c");
-
   const splitCSVLine = (line, d) =>
     line
       .split(new RegExp(`${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`))
       .map((s) => s.replace(/^"(.*)"$/, "$1").replace(/""/g, '"'));
-
   const detectDelimiter = (text) => {
     const sample = text.split(/\r?\n/).slice(0, 20).join("\n");
     const cand = [",", ";", "\t", "|"];
@@ -186,7 +186,6 @@ export async function init({ sb, outlet } = {}) {
     );
     return cand[scores.indexOf(Math.max(...scores))] || ",";
   };
-
   const normalizeMoney = (s) => {
     if (typeof s === "number") return +s.toFixed(2);
     if (!s) return 0;
@@ -197,7 +196,6 @@ export async function init({ sb, outlet } = {}) {
     const v = parseFloat(n);
     return isNaN(v) ? 0 : +v.toFixed(2);
   };
-
   const mapKind = (tipo) => {
     const t = String(tipo || "").toLowerCase();
     if (t.includes("receit")) return "income";
@@ -222,7 +220,6 @@ export async function init({ sb, outlet } = {}) {
       parentId = null;
 
     if (parentName) {
-      // tenta pai global (user_id IS NULL)
       const { data: pGlob } = await sb
         .from("categories")
         .select("id")
@@ -241,12 +238,9 @@ export async function init({ sb, outlet } = {}) {
           .eq("user_id", uid)
           .maybeSingle();
         parentId = pOwn?.id || null;
-      } else {
-        parentId = parentGlobal;
-      }
+      } else parentId = parentGlobal;
 
       if (!parentId) {
-        // cria pai do utilizador
         const { data: created, error } = await sb
           .from("categories")
           .insert({
@@ -265,7 +259,6 @@ export async function init({ sb, outlet } = {}) {
 
     if (!childName) return parentId;
 
-    // filho global (quando existe pai global)
     if (parentGlobal) {
       const { data: cGlob } = await sb
         .from("categories")
@@ -277,7 +270,6 @@ export async function init({ sb, outlet } = {}) {
       if (cGlob?.id) return cGlob.id;
     }
 
-    // filho do utilizador
     const { data: cOwn } = await sb
       .from("categories")
       .select("id")
@@ -312,7 +304,6 @@ export async function init({ sb, outlet } = {}) {
   }
   async function getDefaultAccountId() {
     const uid = await getUserId();
-    // tenta "Conta Principal"
     let { data: acc } = await sb
       .from("accounts")
       .select("id")
@@ -375,22 +366,18 @@ export async function init({ sb, outlet } = {}) {
   }
 
   let previewRows = [];
-
   $("#imp-clear")?.addEventListener("click", () => {
     previewRows = [];
     $("#imp-table-wrap").style.display = "none";
     $("#imp-log").textContent = "";
     info("");
   });
-
   $("#imp-preview")?.addEventListener("click", async () => {
     const f = $("#imp-file")?.files?.[0];
     if (!f) return alert("Escolha um ficheiro CSV.");
     $("#imp-log").textContent = "";
     info("A analisar CSV…");
     const rows = await parseCsvFile(f);
-
-    // normaliza: Tipo / area / categoria / montante / (opcional regularidade)
     previewRows = rows.map((r) => ({
       Tipo: r["tipo"] ?? r["Tipo"] ?? "",
       area: r["area"] ?? r["Area"] ?? "",
@@ -402,7 +389,6 @@ export async function init({ sb, outlet } = {}) {
     renderPreviewTable(previewRows);
     info(`Pré-visualização: ${previewRows.length} linhas.`);
   });
-
   $("#imp-import")?.addEventListener("click", async () => {
     try {
       await preflight();
@@ -411,7 +397,6 @@ export async function init({ sb, outlet } = {}) {
       return;
     }
     if (!previewRows.length) return alert("Faça a pré-visualização primeiro.");
-
     const m = $("#imp-month")?.value;
     if (!m) return alert("Indique o mês (YYYY-MM).");
     const [y, mo] = m.split("-").map(Number);
@@ -425,14 +410,12 @@ export async function init({ sb, outlet } = {}) {
     if (!confirm(`Substituir dados de ${String(mo).padStart(2, "0")}/${y}?`))
       return;
 
-    // apaga período
     await sb
       .from("transactions")
       .delete()
       .gte("date", startISO)
       .lt("date", endISO);
 
-    // CSV → transações
     const txs = [];
     for (const row of previewRows) {
       const tipo = row.Tipo ?? row.tipo;
@@ -442,16 +425,13 @@ export async function init({ sb, outlet } = {}) {
         row.Montante ?? row.montante ?? row.Valor ?? row.valor
       );
       if (!amount) continue;
-
       let regularity_id = regularityFromLabel(row.regularidade);
       if (!regularity_id) regularity_id = inferRegularity(area, cat);
-
       const category_id = await ensureCategoryPath(
         area || null,
         cat || area || "Outros",
         tipo
       );
-
       txs.push({
         user_id: uid,
         type_id: expenseTypeId,
@@ -467,7 +447,6 @@ export async function init({ sb, outlet } = {}) {
       });
     }
 
-    // dedupe básico
     const dedupe = new Map();
     for (const t of txs) {
       const key = [
@@ -482,8 +461,6 @@ export async function init({ sb, outlet } = {}) {
       if (!dedupe.has(key)) dedupe.set(key, t);
     }
     const finalTxs = [...dedupe.values()];
-
-    // insert por lotes
     const CHUNK = 200;
     let inserted = 0;
     for (let i = 0; i < finalTxs.length; i += CHUNK) {
@@ -492,7 +469,6 @@ export async function init({ sb, outlet } = {}) {
       if (error) throw error;
       inserted += chunk.length;
     }
-
     info(`✅ Importação concluída: ${inserted} registos.`, true);
     alert("Importação concluída!");
   });
@@ -502,14 +478,53 @@ export async function init({ sb, outlet } = {}) {
   const closeBtn = $("#rpt-close");
   let _lastFocus = null;
 
+  async function getJsPDF() {
+    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+    try {
+      const mod = await import(
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
+      );
+      return mod.jsPDF || window.jspdf?.jsPDF;
+    } catch {
+      await (async () =>
+        new Promise((res, rej) => {
+          const s = document.createElement("script");
+          s.src =
+            "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
+          s.onload = res;
+          s.onerror = rej;
+          document.head.appendChild(s);
+        }))();
+      return window.jspdf?.jsPDF;
+    }
+  }
+
+  // util: carrega imagem e devolve dataURL (usa assets no mesmo domínio p/ evitar CORS)
+  async function toDataURL(url) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise((resolve) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.readAsDataURL(blob);
+    });
+  }
+
   // trava alturas dos canvases para evitar “crescimento infinito”
+ 
+  function lockCanvas(el, h) {
+    if (!el) return;
+    const px = String(h) + "px";
+    el.setAttribute("height", h); // altura interna
+    el.style.height = px; // altura CSS
+    el.style.maxHeight = px; // trava crescimento
+    el.style.minHeight = px;
+    el.style.display = "block";
+  }
   function fixCanvasHeights() {
-    const c1 = $("#rpt-cat-pie");
-    const c2 = $("#rpt-fixed-donut");
-    const c3 = $("#rpt-series");
-    if (c1) c1.style.height = "240px";
-    if (c2) c2.style.height = "240px";
-    if (c3) c3.style.height = "260px";
+    lockCanvas($("#rpt-cat-pie"), 240);
+    lockCanvas($("#rpt-fixed-donut"), 240);
+    lockCanvas($("#rpt-series"), 260);
   }
 
   function openReport() {
@@ -552,6 +567,12 @@ export async function init({ sb, outlet } = {}) {
     openReport();
     await buildReport();
   });
+  // atualizar ao mexer nos inputs do modal
+  ["#rpt-month", "#rpt-from", "#rpt-to", "#rpt-year"].forEach((sel) => {
+    $(sel)?.addEventListener("change", () => {
+      if (!overlay?.classList.contains("hidden")) buildReport();
+    });
+  });
 
   let _rptCat = null,
     _rptFix = null,
@@ -572,32 +593,29 @@ export async function init({ sb, outlet } = {}) {
     _catLegendPDF = [];
     _fixLegendPDF = [];
   }
-
-  let _isBuildingReport = false;
-
+  // --- substitui makeChart() ---
   function makeChart(canvasEl, config) {
     const el =
       typeof canvasEl === "string"
         ? document.querySelector(canvasEl)
         : canvasEl;
     if (!el) return null;
-    // destrói qualquer gráfico anterior nesse canvas (evita “Canvas is already in use”)
-    const existing = Chart.getChart(el);
-    if (existing) existing.destroy();
+    const prev = Chart.getChart(el);
+    if (prev) prev.destroy(); // evita "Canvas is already in use"
     return new Chart(el, config);
   }
 
+  let _isBuildingReport = false;
   async function buildReport() {
-    if (_isBuildingReport) return; // evita concorrência
+    if (_isBuildingReport) return;
     _isBuildingReport = true;
-
     try {
-      destroyCharts(); // limpa instâncias antigas
+      destroyCharts();
       fixCanvasHeights();
       const legendEl = $("#rpt-cat-legend");
       if (legendEl) legendEl.innerHTML = "";
 
-      // -------- período
+      // período
       const selType = $("#rpt-type")?.value || "monthly";
       let from, to, label;
       if (selType === "monthly") {
@@ -608,8 +626,7 @@ export async function init({ sb, outlet } = {}) {
         to = ymd(new Date(y, mm, 1));
         label = m;
       } else if (selType === "range") {
-        const a =
-          $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
+        const a = $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
         const b = $("#rpt-to")?.value || a;
         const [ya, ma] = a.split("-").map(Number);
         const [yb, mb] = b.split("-").map(Number);
@@ -625,7 +642,7 @@ export async function init({ sb, outlet } = {}) {
       const titleEl = $("#rpt-title");
       if (titleEl) titleEl.textContent = `Relatório Financeiro — ${label}`;
 
-      // -------- tipos
+      // tipos
       const [{ data: tInc }, { data: tExp }, { data: tSav }] =
         await Promise.all([
           sb
@@ -645,7 +662,7 @@ export async function init({ sb, outlet } = {}) {
             .single(),
         ]);
 
-      // -------- dados (com alias + fallback)
+      // dados (com alias + fallback)
       let rows = [];
       try {
         const sel =
@@ -665,34 +682,35 @@ export async function init({ sb, outlet } = {}) {
         );
         const r2 = await sb
           .from("transactions")
-          .select("date,amount,type_id") // sem signed_amount aqui
+          .select("date,amount,type_id")
           .gte("date", from)
           .lt("date", to)
           .order("date", { ascending: true });
         rows = r2.data || [];
       }
 
-      const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
-
-      const incRows = (rows || []).filter((r) => r.type_id === tInc.id);
-      const expRows = (rows || []).filter((r) => r.type_id === tExp.id);
-      const savRows = (rows || []).filter((r) => r.type_id === tSav.id);
+      const incRows = rows.filter((r) => r.type_id === tInc.id);
+      const expRows = rows.filter((r) => r.type_id === tExp.id);
+      const savRows = rows.filter((r) => r.type_id === tSav.id);
 
       const income = sum(incRows.map((x) => x.amount));
       const expense = sum(expRows.map((x) => x.amount));
       const savings = sum(savRows.map((x) => x.amount));
-      const balance = sum((rows || []).map((x) => x.signed_amount));
+      const balance =
+        rows.length && "signed_amount" in rows[0]
+          ? sum(rows.map((x) => x.signed_amount))
+          : income - expense - savings;
 
-      const k1 = $("#rpt-kpi-income"),
-        k2 = $("#rpt-kpi-expense"),
-        k3 = $("#rpt-kpi-savings"),
-        k4 = $("#rpt-kpi-balance");
-      if (k1) k1.textContent = money(income);
-      if (k2) k2.textContent = money(expense);
-      if (k3) k3.textContent = money(savings);
-      if (k4) k4.textContent = money(balance);
+      $("#rpt-kpi-income") &&
+        ($("#rpt-kpi-income").textContent = money(income));
+      $("#rpt-kpi-expense") &&
+        ($("#rpt-kpi-expense").textContent = money(expense));
+      $("#rpt-kpi-savings") &&
+        ($("#rpt-kpi-savings").textContent = money(savings));
+      $("#rpt-kpi-balance") &&
+        ($("#rpt-kpi-balance").textContent = money(balance));
 
-      // -------- pizza por categoria (despesas)
+      // pizza por categoria (despesas)
       await ensureChartStack();
       const byCat = new Map();
       expRows.forEach((x) => {
@@ -704,44 +722,39 @@ export async function init({ sb, outlet } = {}) {
         .slice(0, 12);
       const labels = entries.map(([k]) => k);
       const values = entries.map(([, v]) => v);
-      const total = values.reduce((a, b) => a + b, 0) || 1;
+      const total = values.reduce((a, b) => a + b, 0);
 
-      const dlEnabled = !!window.ChartDataLabels;
-
+      const showDL = !!window.ChartDataLabels && total > 0;
       _rptCat = makeChart($("#rpt-cat-pie"), {
         type: "pie",
         data: { labels, datasets: [{ data: values }] },
-        plugins: dlEnabled ? [window.ChartDataLabels] : [],
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          resizeDelay: 150,
           animation: false,
           plugins: {
             legend: { display: false },
-            ...(dlEnabled
+            datalabels: showDL
               ? {
-                  datalabels: {
-                    color: "#0f172a",
-                    backgroundColor: "rgba(255,255,255,.85)",
-                    borderRadius: 4,
-                    padding: 4,
-                    formatter: (v) =>
-                      `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
-                    display: (ctx) =>
-                      (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
-                  },
+                  color: "#0f172a",
+                  backgroundColor: "rgba(255,255,255,.85)",
+                  borderRadius: 4,
+                  padding: 4,
+                  formatter: (v) =>
+                    `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
+                  display: (ctx) =>
+                    (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
                 }
-              : {}),
+              : { display: false },
           },
         },
       });
 
-      const colors = _rptCat.data.datasets[0].backgroundColor || [];
+      const colors = _rptCat?.data?.datasets?.[0]?.backgroundColor || [];
       _catLegendPDF = labels.map((lab, i) => ({
         label: lab,
         value: values[i],
-        pct: values[i] / total || 0,
+        pct: total ? values[i] / total : 0,
         color: colors[i] || "#64748b",
       }));
       const leg = $("#rpt-cat-legend");
@@ -749,25 +762,28 @@ export async function init({ sb, outlet } = {}) {
         leg.innerHTML = _catLegendPDF
           .map(
             (x) => `
-        <div class="rpt-legend__item">
-          <span class="rpt-legend__dot" style="background:${x.color}"></span>
-          <span style="flex:1">${x.label}</span>
-          <strong>${money(x.value)}</strong>
-          <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(1)}%)</span>
-        </div>`
+          <div class="rpt-legend__item">
+            <span class="rpt-legend__dot" style="background:${x.color}"></span>
+            <span style="flex:1">${x.label}</span>
+            <strong>${money(x.value)}</strong>
+            <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(
+              1
+            )}%)</span>
+          </div>
+        `
           )
           .join("");
       }
 
-      // -------- donut Fixas vs Variáveis
+      // donut Fixas vs Variáveis
       const isFixed = (x) =>
         x.expense_nature === "fixed" ||
         (!x.expense_nature && x.category?.nature === "fixed");
-
       const fixedAmt = sum(expRows.filter(isFixed).map((x) => x.amount));
       const variableAmt = sum(
         expRows.filter((x) => !isFixed(x)).map((x) => x.amount)
       );
+      const totFV = fixedAmt + variableAmt;
 
       _rptFix = makeChart($("#rpt-fixed-donut"), {
         type: "doughnut",
@@ -775,26 +791,33 @@ export async function init({ sb, outlet } = {}) {
           labels: ["Fixas", "Variáveis"],
           datasets: [{ data: [fixedAmt, variableAmt] }],
         },
-        plugins: dlEnabled ? [window.ChartDataLabels] : [],
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          resizeDelay: 150,
           animation: false,
           plugins: {
             legend: { position: "bottom" },
-            ...(dlEnabled ? { datalabels: { formatter: (v) => money(v) } } : {}),
+            datalabels:
+              totFV > 0 ? { formatter: (v) => money(v) } : { display: false },
           },
         },
       });
-
-      const totFV = fixedAmt + variableAmt || 1;
       _fixLegendPDF = [
-        { label: "Fixas", value: fixedAmt, pct: fixedAmt / totFV, color: "#36a2eb" },
-        { label: "Variáveis", value: variableAmt, pct: variableAmt / totFV, color: "#ff6384" },
+        {
+          label: "Fixas",
+          value: fixedAmt,
+          pct: totFV ? fixedAmt / totFV : 0,
+          color: "#36a2eb",
+        },
+        {
+          label: "Variáveis",
+          value: variableAmt,
+          pct: totFV ? variableAmt / totFV : 0,
+          color: "#ff6384",
+        },
       ];
 
-      // -------- séries mensais
+      // séries mensais
       const months = {};
       (rows || []).forEach((r) => {
         const m = String(r.date).slice(0, 7);
@@ -813,7 +836,6 @@ export async function init({ sb, outlet } = {}) {
         }
       });
       const mlabels = Object.keys(months).sort();
-
       _rptSeries = makeChart($("#rpt-series"), {
         type: "bar",
         data: {
@@ -834,14 +856,16 @@ export async function init({ sb, outlet } = {}) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          resizeDelay: 150,
           animation: false,
-          plugins: { legend: { position: "top" } },
+          plugins: {
+            legend: { position: "top" },
+            datalabels: { display: false },
+          }, // desativa Datalabels aqui
           scales: { y: { beginAtZero: true } },
         },
       });
 
-      // -------- insights
+      // insights
       const effort = income ? ((fixedAmt + variableAmt) / income) * 100 : 0;
       const varPct = expense ? (variableAmt / expense) * 100 : 0;
       const savPct = income ? (savings / income) * 100 : 0;
@@ -856,71 +880,110 @@ export async function init({ sb, outlet } = {}) {
           .join("");
       }
     } finally {
-      _isBuildingReport = false; // SEMPRE dentro da função
+      _isBuildingReport = false;
     }
   }
 
   // -------- Export PDF
-  $("#rpt-export")?.addEventListener("click", async () => {
-    // garante que os charts estão atualizados
+  async function getJsPDF() {
+    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+    // tenta ESM; se falhar, UMD
     try {
-      if (!_isBuildingReport) await buildReport();
-    } catch (e) {
-      console.warn(
-        "buildReport falhou antes do export — continuo com o que houver.",
-        e
+      const mod = await import(
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
       );
+      return mod.jsPDF || window.jspdf?.jsPDF;
+    } catch {
+      await loadScript(
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+      );
+      return window.jspdf?.jsPDF;
     }
+  }
 
-    const { jsPDF } = await import(
-      "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
-    );
+  $("#rpt-export")?.addEventListener("click", async () => {
+    // garante dados/charts atualizados
+    try {
+      if (typeof _isBuildingReport !== "undefined" && !_isBuildingReport)
+        await buildReport();
+    } catch {}
+
+    const jsPDF = await getJsPDF();
+    if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
+
+    // ======= CONFIGURÁVEL PELO DEV =======
+    const REPORT_CFG = {
+      title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
+      author: "António R. Appleton",
+      subject: "Relatório Financeiro",
+      creator: "WiseBudget®",
+      filename: "wisebudget-relatorio.pdf",
+      showDetailsPage: true, // 2ª página com detalhe por categoria
+      signature: {
+        enabled: true,
+        name: "Finance Dept.",
+        textFallback: "________________________",
+        // Se tiveres um PNG/SVG local (mesmo domínio), mete o caminho:
+        imageUrl: null, // ex: "/assets/signature.png"
+        // medidas da assinatura (em pontos)
+        width: 140,
+        height: 60,
+      },
+    };
+    // =====================================
+
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const W = doc.internal.pageSize.getWidth(),
-      H = doc.internal.pageSize.getHeight(),
-      M = 40;
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const M = 40;
     let y = M;
 
-    const title = $("#rpt-title")?.textContent || "Relatório Financeiro";
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(title, M, y);
-    y += 18;
-    doc.setDrawColor(230);
-    doc.line(M, y, W - M, y);
-    y += 12;
+    // metadata
+    doc.setProperties({
+      title: REPORT_CFG.title,
+      subject: REPORT_CFG.subject,
+      author: REPORT_CFG.author,
+      creator: REPORT_CFG.creator,
+      keywords: "finance, report, wisebudget",
+    });
 
-    const moneyPDF = (n) =>
-      "€ " +
-      Number(n || 0).toLocaleString("pt-PT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-
-    const canvasToPage = (sel, x, y2, w, h) => {
-      const c = $(sel);
-      if (!c) return y2;
-      const img = c.toDataURL("image/png", 1.0);
-      doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
-      return y2 + h;
+    // helpers de layout
+    const line = (x1, y1, x2, y2) => {
+      doc.setDrawColor(230);
+      doc.line(x1, y1, x2, y2);
     };
-    const drawLegend = (items, x, y2, maxW) => {
+    const header = (title, subtitle = null) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(title, M, y);
+      if (subtitle) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(subtitle, W - M, y, { align: "right" });
+      }
+      y += 18;
+      line(M, y, W - M, y);
+      y += 12;
+    };
+    const footer = () => {
+      const txt = "Relatório automáticamente por WiseBudget®";
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      const lh = 14;
-      (items || []).forEach((it) => {
-        doc.setFillColor(it.color || "#888");
-        doc.circle(x + 5, y2 + 5, 3, "F");
-        const txt = `${it.label} — ${moneyPDF(it.value)} (${(
-          (it.pct || 0) * 100
-        ).toFixed(1)}%)`;
-        doc.text(txt, x + 14, y2 + 9, { maxWidth: maxW - 14 });
-        y2 += lh;
-      });
-      return y2;
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(txt, M, H - M + 12);
+      doc.setTextColor(0);
     };
+    const ensureSpace = (need) => {
+      if (y + need <= H - M) return;
+      footer();
+      doc.addPage();
+      y = M;
+      header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+    };
+    // desenha cabeçalho inicial
+    header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
 
-    // KPIs visíveis no modal
+    // ======= KPIs =======
     const k = [
       ["Receitas", $("#rpt-kpi-income")?.textContent || "—"],
       ["Despesas", $("#rpt-kpi-expense")?.textContent || "—"],
@@ -928,8 +991,8 @@ export async function init({ sb, outlet } = {}) {
       ["Saldo", $("#rpt-kpi-balance")?.textContent || "—"],
     ];
     const cellW = (W - 2 * M) / 4;
-    doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
     k.forEach((kv, i) => {
       const x = M + i * cellW;
       doc.text(kv[0], x, y);
@@ -939,39 +1002,168 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
-    // duas pizzas lado a lado
-    const colW = (W - 2 * M - 16) / 2,
-      pieH = 220,
-      L = M,
-      R = M + colW + 16;
+    // ======= GRÁFICOS (1ª página) =======
+    const canvasToPage = (sel, x, y2, w, h) => {
+      const c = document.querySelector(sel);
+      if (!c) return y2;
+      const img = c.toDataURL("image/png", 1.0);
+      doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
+      return y2 + h;
+    };
+    const drawLegend = (items, x, y2, maxW) => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      const lh = 14;
+      for (const it of items || []) {
+        const color = it?.color || "#888";
+        const pct = ((it?.pct || 0) * 100).toFixed(1);
+        const label = it?.label || "—";
+        const val = it?.value ?? 0;
+        doc.setFillColor(color);
+        doc.circle(x + 5, y2 + 5, 3, "F");
+        doc.text(
+          `${label} — € ${Number(val || 0).toLocaleString("pt-PT", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} (${pct}%)`,
+          x + 14,
+          y2 + 9,
+          { maxWidth: maxW - 14 }
+        );
+        y2 += lh;
+      }
+      return y2;
+    };
+
+    // títulos dos blocos
+    ensureSpace(260 + 12);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("Distribuição por categorias", L, y);
-    doc.text("Fixas vs Variáveis", R, y);
+    doc.text("Distribuição por categorias", M, y);
+    doc.text("Fixas vs Variáveis", W / 2 + 8, y);
     y += 10;
 
-    const y1 = canvasToPage("#rpt-cat-pie", L, y, colW, pieH);
-    const y2 = canvasToPage("#rpt-fixed-donut", R, y, colW, pieH);
+    const colW = (W - 2 * M - 16) / 2,
+      pieH = 220;
+    const y1 = canvasToPage("#rpt-cat-pie", M, y, colW, pieH);
+    const y2 = canvasToPage("#rpt-fixed-donut", M + colW + 16, y, colW, pieH);
     y = Math.max(y1, y2) + 8;
 
-    y = Math.max(
-      drawLegend(_catLegendPDF, L, y, colW),
-      drawLegend(_fixLegendPDF, R, y, colW)
-    ) + 16;
+    // lendas
+    const yLegL = drawLegend(window._catLegendPDF || _catLegendPDF, M, y, colW);
+    const yLegR = drawLegend(
+      window._fixLegendPDF || _fixLegendPDF,
+      M + colW + 16,
+      y,
+      colW
+    );
+    y = Math.max(yLegL, yLegR) + 16;
 
-    if (y > H - 260) {
-      doc.addPage();
-      y = M;
-    }
-
+    // séries
+    ensureSpace(260 + 18);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Séries mensais", M, y);
     y += 10;
     y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 12;
 
-    doc.save("wisebudget-relatorio.pdf");
+    // ======= PÁGINA DE DETALHE (opcional) =======
+    if (REPORT_CFG.showDetailsPage) {
+      footer();
+      doc.addPage();
+      y = M;
+      header("Detalhe — Categorias", new Date().toLocaleDateString("pt-PT"));
+
+      // tabela simples (categoria | € | %)
+      const rows = window._catLegendPDF || _catLegendPDF || [];
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Categoria", M, y);
+      doc.text("Montante", W - M - 160, y);
+      doc.text("%", W - M - 40, y, { align: "right" });
+      y += 8;
+      line(M, y, W - M, y);
+      y += 10;
+      doc.setFont("helvetica", "normal");
+
+      rows.forEach((r) => {
+        ensureSpace(16);
+        doc.text(String(r.label || "—"), M, y, { maxWidth: W - 2 * M - 220 });
+        const val =
+          "€ " +
+          Number(r.value || 0).toLocaleString("pt-PT", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          });
+        doc.text(val, W - M - 160, y);
+        doc.text(((r.pct || 0) * 100).toFixed(1) + "%", W - M - 40, y, {
+          align: "right",
+        });
+        y += 14;
+      });
+    }
+
+    // ======= ASSINATURA (opcional) =======
+    if (REPORT_CFG.signature?.enabled) {
+      ensureSpace(120);
+      const sig = REPORT_CFG.signature;
+      const blockTop = Math.max(y, H - M - 110); // empurra para perto do fim
+      y = blockTop;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text("Assinatura", M, y);
+      y += 6;
+      doc.setDrawColor(210);
+      line(M, y, M + 200, y);
+      y += 8;
+
+      // tenta imagem; se não houver, usa texto fallback
+      if (sig.imageUrl) {
+        try {
+          const dataUrl = await toDataURL(sig.imageUrl);
+          doc.addImage(
+            dataUrl,
+            "PNG",
+            M,
+            y,
+            sig.width || 140,
+            sig.height || 60
+          );
+        } catch {
+          doc.setFont("helvetica", "italic");
+          doc.text(sig.textFallback || "__________________", M, y + 28);
+        }
+      } else {
+        doc.setFont("helvetica", "italic");
+        doc.text(sig.textFallback || "__________________", M, y + 28);
+      }
+      y += (sig.height || 60) + 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(sig.name || "", M, y);
+    }
+
+    // ======= PAGINAÇÃO + RODAPÉ EM TODAS =======
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      // numeração
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
+        align: "right",
+      });
+      // rodapé
+      doc.setTextColor(120);
+      doc.text("Gerado por WiseBudget", M, H - M + 12);
+      doc.setTextColor(0);
+    }
+
+    // guarda
+    doc.save(REPORT_CFG.filename);
   });
+
   // ================== /RELATÓRIOS ========================
 
   // ============ MANUTENÇÃO DE DADOS =====================
@@ -996,7 +1188,9 @@ export async function init({ sb, outlet } = {}) {
       const endISO = prompt("Fim EXCLUSIVO (YYYY-MM-DD):", nextMonthStartISO());
       if (!startISO || !endISO) return;
       if (
-        !confirm(`Eliminar transações de ${startISO} até ${endISO} (exclusivo)?`)
+        !confirm(
+          `Eliminar transações de ${startISO} até ${endISO} (exclusivo)?`
+        )
       )
         return;
       await sb
@@ -1024,7 +1218,7 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
-  // Regularidade em massa (opcional)
+  // Regularidade em massa
   async function pickRegularityId(
     promptText = "Regularidade (ex: mensal, quinzenal, anual, única)"
   ) {
@@ -1107,12 +1301,10 @@ export async function init({ sb, outlet } = {}) {
   // ============ CATEGORIAS & CONTAS (CRUD) ==============
   async function listCategories() {
     const uid = await getUserId();
-    // Só as TUAS categorias (evita globais R/O no ecrã de gestão)
     const { data, error } = await sb
       .from("categories")
       .select("id,name,parent_id,user_id")
       .eq("user_id", uid);
-
     if (error) {
       console.error(error);
       return [];
@@ -1121,7 +1313,6 @@ export async function init({ sb, outlet } = {}) {
     const parents = all.filter((c) => !c.parent_id);
     const children = all.filter((c) => c.parent_id);
 
-    // agrupa pais por nome (ignora acentos) e escolhe um representante
     const groups = new Map(); // key -> { name, parentIds:[], parentId }
     parents.forEach((p) => {
       const k = normalizeKey(p.name);
@@ -1129,10 +1320,9 @@ export async function init({ sb, outlet } = {}) {
         groups.set(k, { name: p.name, parentIds: [], parentId: p.id });
       const g = groups.get(k);
       g.parentIds.push(p.id);
-      if (!g.parentId) g.parentId = p.id; // 1º visto é o representante
+      if (!g.parentId) g.parentId = p.id;
     });
 
-    // junta subcategorias de TODOS os pais do grupo e faz dedupe por nome
     const result = [];
     for (const g of groups.values()) {
       const subsAll = children.filter((s) => g.parentIds.includes(s.parent_id));
@@ -1147,7 +1337,6 @@ export async function init({ sb, outlet } = {}) {
         subs: Array.from(seen.values()),
       });
     }
-
     result.sort((a, b) =>
       new Intl.Collator("pt-PT", { sensitivity: "base" }).compare(
         a.name,
@@ -1156,15 +1345,16 @@ export async function init({ sb, outlet } = {}) {
     );
     return result;
   }
-
   async function createCategory(parentId, name) {
     const uid = await getUserId();
     await sb
       .from("categories")
       .insert({ name, parent_id: parentId || null, user_id: uid });
+    window.dispatchEvent(new Event("categories:changed"));
   }
   async function renameCategory(id, name) {
     await sb.from("categories").update({ name }).eq("id", id);
+    window.dispatchEvent(new Event("categories:changed"));
   }
   async function deleteCategory(id) {
     const { count } = await sb
@@ -1174,8 +1364,8 @@ export async function init({ sb, outlet } = {}) {
     if ((count || 0) > 0)
       return alert("Categoria com movimentos. Mova/apague primeiro.");
     await sb.from("categories").delete().eq("id", id);
+    window.dispatchEvent(new Event("categories:changed"));
   }
-
   async function renderCategories() {
     const el = $("#list-cats");
     if (!el) return;
@@ -1241,9 +1431,11 @@ export async function init({ sb, outlet } = {}) {
   async function createAccount(name, currency = "EUR", type = "bank") {
     const uid = await getUserId();
     await sb.from("accounts").insert({ name, currency, type, user_id: uid });
+    window.dispatchEvent(new Event("accounts:changed"));
   }
   async function renameAccount(id, name) {
     await sb.from("accounts").update({ name }).eq("id", id);
+    window.dispatchEvent(new Event("accounts:changed"));
   }
   async function deleteAccount(id) {
     const { count } = await sb
@@ -1253,8 +1445,8 @@ export async function init({ sb, outlet } = {}) {
     if ((count || 0) > 0)
       return alert("Conta com movimentos. Transfira/apague primeiro.");
     await sb.from("accounts").delete().eq("id", id);
+    window.dispatchEvent(new Event("accounts:changed"));
   }
-
   async function renderAccounts() {
     const el = $("#list-accs");
     if (!el) return;
@@ -1324,7 +1516,6 @@ export async function init({ sb, outlet } = {}) {
     await createCategory(parentId, name);
     renderCategories();
   });
-
   $("#btn-new-acc")?.addEventListener("click", async () => {
     const name = prompt("Nome da conta:", "Conta Secundária");
     if (!name) return;
@@ -1335,9 +1526,4 @@ export async function init({ sb, outlet } = {}) {
   // arranque
   renderCategories();
   renderAccounts();
-
-  window.dispatchEvent(new Event('categories:changed'));
-  window.dispatchEvent(new Event('accounts:changed'));
-
-  
 }
