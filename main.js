@@ -1,81 +1,71 @@
-// main.js
+// main.js — Router SPA com imports dinâmicos à prova de PWA
 import { initAuth } from "./src/lib/auth.js";
+
 const sb = window.sb;
+if (!sb) throw new Error("Supabase client não inicializado (window.sb).");
+
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
+const APPV = (window.APP_VERSION || "v10") + "-" + Date.now();
 
-// Rotas (ajusta caminhos conforme as tuas pastas)
 const ROUTES = {
   "#/": {
-    file: "src/screens/dashboard.html",
-    js: "src/screens/dashboard.js",
+    file: "./src/screens/dashboard.html",
+    js:   "./src/screens/dashboard.js",
     showFooter: true,
   },
   "#/transactions": {
-    file: "src/screens/transactions.html",
-    js: "src/screens/transactions.js",
+    file: "./src/screens/transactions.html",
+    js:   "./src/screens/transactions.js",
     showFooter: true,
   },
   "#/new": {
-    file: "src/screens/nova.html",
-    js: "src/screens/nova.js",
+    file: "./src/screens/nova.html",
+    js:   "./src/screens/nova.js",
     showFooter: true,
   },
   "#/settings": {
-    file: "src/screens/settings.html",
-    js: "src/screens/settings.js",
+    file: "./src/screens/settings.html",
+    js:   "./src/screens/settings.js",
     showFooter: true,
   },
 };
 
 function setActiveTab() {
-  const hash = location.hash || "#/";
-  const base = hash.split("?")[0].split("/")[1] || ""; // "" para "#/"
+  const hash = (location.hash || "#/").split("?")[0];
+  const base = hash.split("/")[1] || "";
   const current = base ? `#/${base}` : "#/";
-
   document.querySelectorAll(".foot-item").forEach((a) => {
-    const href = a.getAttribute("href") || "";
-    a.toggleAttribute("aria-current", href === current);
+    a.toggleAttribute("aria-current", (a.getAttribute("href") || "") === current);
   });
 }
-
 
 async function loadScreen(route) {
   const r = ROUTES[route] || ROUTES["#/"];
 
-  // 1) carrega HTML parcial
-  const res = await fetch(r.file, { cache: "no-store" });
+  // Carregar HTML parcial (sem cache)
+  const res = await fetch(`${r.file}?v=${APPV}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
   outlet.innerHTML = await res.text();
 
-  // 2) footer + tab ativa
+  // Footer + tab ativa
   footer.style.display = r.showFooter ? "grid" : "none";
   setActiveTab();
 
-
-  // dentro de loadScreen(route)
-  // 3) carrega JS do ecrã
+  // Carregar controller JS (com cache-busting)
   if (r.js) {
-    try {
-      const mod = await import(`./${r.js}?v=${Date.now()}`);
-      const fn = mod.init || mod.default;
-      if (typeof fn === "function") await fn({ sb, outlet });
-    } catch (e) {
-      console.error("Falha ao importar", r.js, e);
-      throw new Error(`Falha a carregar ${r.js}: ${String(e && e.message ? e.message : e)}`);
-    }
+    const mod = await import(`${r.js}?v=${APPV}`);
+    const fn = mod.init || mod.default;
+    if (typeof fn === "function") await fn({ sb, outlet, route });
   }
-
 }
 
 let routing = false;
 async function handleRoute() {
-  if (routing) return; // evita reentrâncias
+  if (routing) return;
   routing = true;
   try {
-    const {
-      data: { session },
-    } = await sb.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession();
     const route = location.hash || "#/";
     if (!session) {
       outlet.innerHTML = "";
@@ -85,9 +75,9 @@ async function handleRoute() {
     }
   } catch (e) {
     console.error(e);
-    outlet.innerHTML = `<div class="card">
+    outlet.innerHTML = `<div class="card" style="margin:12px">
       <strong>Erro ao carregar o ecrã.</strong><br/>
-      <small>${String(e && e.message ? e.message : e)}</small>
+      <small>${(e && e.message) || String(e)}</small>
     </div>`;
   } finally {
     routing = false;
@@ -108,29 +98,22 @@ initAuth({
   },
 });
 
-// SW: só em produção (https e não localhost/127.x)
+// SW: registo relativo (scope seguro)
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("./sw.js", { scope: "./" })
       .then((reg) => {
-        // força update quando o SW novo estiver pronto
         reg.onupdatefound = () => {
           const nw = reg.installing;
-          nw &&
-            (nw.onstatechange = () => {
-              if (
-                nw.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                // nova versão instalada, recarrega para apanhar assets novos
-                location.reload();
-              }
-            });
+          if (!nw) return;
+          nw.onstatechange = () => {
+            if (nw.state === "installed" && navigator.serviceWorker.controller) {
+              location.reload();
+            }
+          };
         };
       })
       .catch(console.warn);
   });
 }
-
-

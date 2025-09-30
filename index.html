@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
-    <script>window.APP_VERSION = "v8";</script>
+    <script>window.APP_VERSION = "v10";</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#0ea5e9" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>by AppletonFinance</title>
 
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
@@ -13,22 +14,25 @@
       (function () {
         if (!location.search.includes('sw=off')) return;
         const clear = async () => {
-          if ('serviceWorker' in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map(r => r.unregister()));
+          try {
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map(r => r.unregister()));
+            }
+            if (window.caches?.keys) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+          } finally {
+            location.replace(location.pathname);
           }
-          if (window.caches?.keys) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(k => caches.delete(k)));
-          }
-          location.replace(location.pathname);
         };
         clear();
       })();
     </script>
 
     <link rel="stylesheet" href="./styles.css" />
-    <link rel="manifest" href="./manifest.json?v=8" />
+    <link rel="manifest" href="./manifest.json?v=10" />
   </head>
   <body>
     <!-- Sprite de ícones -->
@@ -122,36 +126,6 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-
-    <script>
-  // Mostra erros JS e de Promises como um toast
-  (function () {
-    const show = (msg) => {
-      const el = document.createElement('pre');
-      el.textContent = 'Erro: ' + msg;
-      el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:10px;z-index:99999;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,monospace';
-      document.body.appendChild(el); setTimeout(()=>el.remove(), 10000);
-    };
-    window.addEventListener('error',  e => show(e.message + ' @ ' + (e.filename||'') + ':' + (e.lineno||'')));
-    window.addEventListener('unhandledrejection', e => show((e.reason && (e.reason.stack||e.reason.message)) || String(e.reason)));
-  })();
-</script>
-<script>
-  (async function(){
-    try {
-      const urls = ["./main.js","./src/lib/auth.js","./src/screens/dashboard.js","./src/screens/dashboard.html"];
-      const res = await Promise.allSettled(urls.map(u=>fetch(u, {cache:'no-store'})));
-      const bad = res.map((r,i)=>({url:urls[i], ok: r.status==='fulfilled' && r.value.ok, status: r.status==='fulfilled' ? r.value.status : 'ERR'}))
-                     .filter(x=>!x.ok);
-      if (bad.length) {
-        const msg = 'Health-check falhou:\n' + bad.map(x=>`${x.url} → ${x.status}`).join('\n');
-        console.warn(msg); alert(msg);
-      }
-    } catch (err) {
-      console.error(err); alert('Health-check exception: ' + err.message);
-    }
-  })();
-</script>
 
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
