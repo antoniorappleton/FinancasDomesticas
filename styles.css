@@ -498,3 +498,41 @@ td:nth-child(5){                 /* Descrição */
 .rpt-legend__item { display:flex; align-items:center; gap:8px; }
 .rpt-legend__dot { width:10px; height:10px; border-radius:999px; display:inline-block; }
 .hidden{display:none !important;}
+
+/* layout & util */
+.header-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}
+.muted{color:#64748B}
+.hidden{display:none}
+
+/* checkboxes “antes da label” */
+.toggle{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.toggle input{margin:0}
+
+/* cards de categoria */
+.cat-cards{display:grid;grid-template-columns:1fr;gap:12px}
+.cat-card{border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;background:#fff}
+.cat-card__row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cat-card__title{display:flex;align-items:center;gap:8px}
+.cat-card__subtitle{margin-top:4px;color:#64748B}
+.card-actions{display:flex;gap:8px}
+.icon-btn{border:1px solid #e5e7eb;background:#fff;padding:6px 10px;border-radius:8px;cursor:pointer}
+.icon-btn:hover{background:#f8fafc}
+
+/* badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700;line-height:1}
+.badge-user{background:#16a34a;color:#fff}
+.badge-system{background:#6b7280;color:#fff}
+
+/* “kind” pills */
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.75rem;font-weight:700}
+.pill--expense{background:#f97316;color:#fff}
+.pill--income{background:#10b981;color:#fff}
+.pill--save{background:#2563EB;color:#fff}
+
+/* grids helpers */
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.col-span-3{grid-column:1 / -1}
+
+@media (max-width: 720px){
+  .grid-3{grid-template-columns:1fr}
+}
