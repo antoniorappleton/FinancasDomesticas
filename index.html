@@ -123,6 +123,36 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
+    <script>
+  // Mostra erros JS e de Promises como um toast
+  (function () {
+    const show = (msg) => {
+      const el = document.createElement('pre');
+      el.textContent = 'Erro: ' + msg;
+      el.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:10px;z-index:99999;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,monospace';
+      document.body.appendChild(el); setTimeout(()=>el.remove(), 10000);
+    };
+    window.addEventListener('error',  e => show(e.message + ' @ ' + (e.filename||'') + ':' + (e.lineno||'')));
+    window.addEventListener('unhandledrejection', e => show((e.reason && (e.reason.stack||e.reason.message)) || String(e.reason)));
+  })();
+</script>
+<script>
+  (async function(){
+    try {
+      const urls = ["./main.js","./src/lib/auth.js","./src/screens/dashboard.js","./src/screens/dashboard.html"];
+      const res = await Promise.allSettled(urls.map(u=>fetch(u, {cache:'no-store'})));
+      const bad = res.map((r,i)=>({url:urls[i], ok: r.status==='fulfilled' && r.value.ok, status: r.status==='fulfilled' ? r.value.status : 'ERR'}))
+                     .filter(x=>!x.ok);
+      if (bad.length) {
+        const msg = 'Health-check falhou:\n' + bad.map(x=>`${x.url} → ${x.status}`).join('\n');
+        console.warn(msg); alert(msg);
+      }
+    } catch (err) {
+      console.error(err); alert('Health-check exception: ' + err.message);
+    }
+  })();
+</script>
+
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
   </body>
