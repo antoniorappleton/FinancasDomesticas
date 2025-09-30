@@ -1,7 +1,8 @@
 {
   "name": "PWA Despesas",
   "short_name": "Wisebudget365",
-  "start_url": "index.html",
+  "start_url": "./",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f7f9fb",
   "theme_color": "#0ea5e9",

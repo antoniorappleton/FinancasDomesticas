@@ -18,7 +18,7 @@ export async function fetchCategoryTree(sb) {
     // vês as tuas categorias e as globais (user_id IS NULL)
     const { data, error } = await sb
       .from("categories")
-      .select("id,name,parent_id,kind,nature,user_id")
+      .select("id,name,parent_id,kind,user_id")
       .or(`user_id.eq.${user.id},user_id.is.null`);
 
     if (error) throw error;
@@ -44,7 +44,7 @@ export async function fetchCategoryTree(sb) {
     });
 
     // natureza “default” por id (útil na criação de despesa)
-    const defaultNature = new Map(all.map(c => [c.id, c.nature || null]));
+    const defaultNature = new Map(all.map(c => [c.id, null]));
 
     _cache = { parents, children, idsByKey, defaultNature };
     _pending = null;

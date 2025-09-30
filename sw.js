@@ -1,5 +1,5 @@
 // SW minimalista com versionamento
-const APP_VERSION = "v7"; // <= MUDA isto a cada deploy
+const APP_VERSION = "v8"; // <= MUDA isto a cada deploy
 const STATIC_CACHE = `static-${APP_VERSION}`;
 
 // Lista opcional de ficheiros críticos (podes deixar vazio)

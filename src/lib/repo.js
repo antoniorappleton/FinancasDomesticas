@@ -1,18 +1,20 @@
 // Camada de acesso a dados (Supabase) + regras de negócio
 (function () {
+  const sb = window.sb;
+  if (!sb) { throw new Error("Supabase client (window.sb) não inicializado."); }
   const cache = {
     typeIds: {}, // ex.: { INCOME: 1, EXPENSE: 2, ... }
   };
 
   async function requireUser() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await sb.auth.getUser();
     if (!user) throw new Error("Precisas de iniciar sessão.");
     return user;
   }
 
   async function idByCode(table, code) {
     if (table === "transaction_types" && cache.typeIds[code]) return cache.typeIds[code];
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from(table).select("id, code").eq("code", code).single();
     if (error) throw new Error(`Código inválido em ${table}: ${code}`);
     if (table === "transaction_types") cache.typeIds[code] = data.id;
@@ -20,7 +22,7 @@
   }
 
   async function accountCurrency(account_id) {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from("accounts").select("currency").eq("id", account_id).single();
     if (error) throw error;
     return data?.currency || "EUR";
@@ -29,23 +31,23 @@
   // ========= Referências =========
   const refs = {
     async regularities() {
-      const { data, error } = await supabase.from("regularities").select("*").order("name_pt");
+      const { data, error } = await sb.from("regularities").select("*").order("name_pt");
       if (error) throw error;
       return data;
     },
     async paymentMethods() {
-      const { data, error } = await supabase.from("payment_methods").select("*").order("name_pt");
+      const { data, error } = await sb.from("payment_methods").select("*").order("name_pt");
       if (error) throw error;
       return data;
     },
     async statuses() {
-      const { data, error } = await supabase.from("statuses").select("*").order("name_pt");
+      const { data, error } = await sb.from("statuses").select("*").order("name_pt");
       if (error) throw error;
       return data;
     },
     async categories(kind) {
       const u = await requireUser();
-      let q = supabase.from("categories")
+      let q = sb.from("categories")
         .select("id,name,parent_id,kind,user_id")
         .eq("kind", kind)
         .or(`user_id.is.null,user_id.eq.${u.id}`)
@@ -54,7 +56,7 @@
       const { data, error } = await q;
       if (error) throw error;
 
-      const { data: parents } = await supabase
+      const { data: parents } = await sb
         .from("categories")
         .select("id,name")
         .is("parent_id", null)
@@ -72,14 +74,14 @@
   const accounts = {
     async list() {
       const u = await requireUser();
-      const { data, error } = await supabase
+      const { data, error } = await sb
         .from("accounts").select("*").eq("user_id", u.id).order("name", { ascending: true });
       if (error) throw error;
       return data;
     },
     async create({ name, type = "bank", currency = "EUR" }) {
       const u = await requireUser();
-      const { error } = await supabase.from("accounts").insert([{ user_id: u.id, name, type, currency }]);
+      const { error } = await sb.from("accounts").insert([{ user_id: u.id, name, type, currency }]);
       if (error) throw error;
     }
   };
@@ -92,7 +94,7 @@
       const type_id = await idByCode("transaction_types", "INCOME");
       const currency = await accountCurrency(account_id);
 
-      const { error } = await supabase.from("transactions").insert([{
+      const { error } = await sb.from("transactions").insert([{
         user_id: (await requireUser()).id,
         type_id, regularity_id, account_id, category_id, payment_method_id, status_id,
         date: dateISO, amount, description, location, notes, currency
@@ -106,7 +108,7 @@
       const type_id = await idByCode("transaction_types", "EXPENSE");
       const currency = await accountCurrency(params.account_id);
 
-      const { error } = await supabase.from("transactions").insert([{
+      const { error } = await sb.from("transactions").insert([{
         user_id: (await requireUser()).id,
         type_id,
         regularity_id: params.regularity_id ?? null,
@@ -130,7 +132,7 @@
       validators.assert(from_account_id && to_account_id && from_account_id !== to_account_id, "Seleciona contas distintas.");
 
       const u = await requireUser();
-      const { error } = await supabase.rpc("create_transfer", {
+      const { error } = await sb.rpc("create_transfer", {
         p_user_id: u.id,
         p_from_account: from_account_id,
         p_to_account: to_account_id,
@@ -143,7 +145,7 @@
     },
 
     async ledger({ type_code = "", account_id = "", fromISO = "", toISO = "", limit = 200 } = {}) {
-      let q = supabase.from("v_ledger").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).limit(limit);
+      let q = sb.from("v_ledger").select("*").order("date", { ascending: false }).order("created_at", { ascending: false }).limit(limit);
       if (type_code) q = q.eq("type_code", type_code);
       if (account_id) q = q.eq("account_id", account_id);
       if (fromISO) q = q.gte("date", fromISO);
@@ -154,20 +156,19 @@
     },
 
     async delete(id) {
-      const { error } = await supabase.from("transactions").delete().eq("id", id);
+      const { error } = await sb.from("transactions").delete().eq("id", id);
       if (error) throw error;
     }
   };
 
   const dashboard = {
     async accountBalances() {
-      const { data, error } = await supabase.from("v_account_balances").select("*").order("account_name", { ascending: true });
+      const { data, error } = await sb.from("v_account_balances").select("*").order("account_name", { ascending: true });
       if (error) throw error;
       return data || [];
     },
     async monthlySummary(limit = 12) {
-      const { data, error } = await supabase
-        .from("v_monthly_summary").select("*")
+      const { data, error } = await sb.from("v_monthly_summary").select("*")
         .order("month", { ascending: false }).limit(limit);
       if (error) throw error;
       return data || [];
