@@ -1156,7 +1156,7 @@ export async function init({ sb, outlet } = {}) {
       });
       // rodapé
       doc.setTextColor(120);
-      doc.text("Gerado por WiseBudget", M, H - M + 12);
+      doc.text("Relatório automáticamente por WiseBudget®", M, H - M + 12);
       doc.setTextColor(0);
     }
 
