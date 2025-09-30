@@ -1,6 +1,5 @@
 // main.js
-import { initAuth } from "./src/auth.js";
-
+import { initAuth } from "/src/lib/auth.js";
 const sb = window.sb;
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
