@@ -2,55 +2,54 @@
   <h2 class="section-title">Transações</h2>
 
   <!-- Filtros -->
-  <div class="filters-grid">
-  <label>
-    <span class="sr-only">Pesquisar</span>
-    <input id="flt-search" type="text" placeholder="Pesquisar descrição, categoria, localização…" />
-  </label>
+  <div class="filters-grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+    <label class="toggle">
+      <input id="flt-search" type="text" placeholder="Pesquisar descrição, categoria, localização…" />
+      <span></span>
+    </label>
 
-  <label>
-    <span class="sr-only">Tipo</span>
-    <select id="flt-type">
-      <option value="all">Todos os tipos</option>
-      <option value="INCOME">Receita</option>
-      <option value="EXPENSE">Despesa</option>
-      <option value="SAVINGS">Poupança</option>
-    </select>
-  </label>
+    <label class="toggle">
+      <select id="flt-type">
+        <option value="all">Todos os tipos</option>
+        <option value="INCOME">Receita</option>
+        <option value="EXPENSE">Despesa</option>
+        <option value="SAVINGS">Poupança</option>
+      </select>
+      <span></span>
+    </label>
 
-  <label>
-    <span class="sr-only">Status</span>
-    <select id="flt-status">
-      <option value="all">Todos os status</option>
-    </select>
-  </label>
+    <label class="toggle">
+      <select id="flt-status">
+        <option value="all">Todos os status</option>
+      </select>
+      <span></span>
+    </label>
 
-  <label>
-    <span class="sr-only">Mês</span>
-    <input id="flt-month" type="month" />
-  </label>
-</div>
-
+    <label class="toggle">
+      <input id="flt-month" type="month" />
+      <span></span>
+    </label>
+  </div>
 
   <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap: wrap;">
     <button id="btn-refresh" class="btn">Atualizar</button>
-    <a href="#/new" class="btn btn-primary">+ Nova</a>
+    <a href="#/new" class="btn btn--primary">+ Nova</a>
   </div>
 </section>
 
 <section class="card" style="overflow:auto">
-  <div class="rounded-md" style="border:1px solid var(--border)">
+  <div class="rounded-md" style="border:1px solid var(--border, #e5e7eb)">
     <table style="width:100%; border-collapse:collapse">
       <thead style="background:#f8fafc">
         <tr>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Data</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Tipo</th>
-          <th style="text-align:right; padding:10px; border-bottom:1px solid var(--border)">Valor</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Categoria</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Descrição</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Conta</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Status</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border)">Localização</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Data</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Tipo</th>
+          <th style="text-align:right; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Valor</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Categoria</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Descrição</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Conta</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Status</th>
+          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Localização</th>
         </tr>
       </thead>
       <tbody id="tx-tbody">
@@ -126,9 +125,7 @@
     <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px">
       <button id="ed-delete" class="btn" style="border-color:#ef4444;color:#ef4444">Eliminar</button>
       <button id="ed-cancel" class="btn">Cancelar</button>
-      <button id="ed-save" class="btn btn-primary">Guardar</button>
+      <button id="ed-save" class="btn btn--primary">Guardar</button>
     </div>
   </div>
 </section>
-
-<script type="module" src="/src/main.js?v=v7"></script>

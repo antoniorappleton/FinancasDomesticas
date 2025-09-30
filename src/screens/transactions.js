@@ -2,43 +2,39 @@
 export async function init(ctx = {}) {
   const sb = window.sb;
   const outlet = ctx.outlet || document.getElementById("outlet");
+  const qs = (sel) => outlet?.querySelector(sel) || document.querySelector(sel);
 
-  // --------- Scoped selectors (apenas dentro do ecrã atual) ---------
-  const $  = (sel) => outlet.querySelector(sel);
-
-  // --------- Elementos esperados (IDs do transactions.html fornecido) ---------
   const dom = {
-    tbody:       $("#tx-tbody"),
-    summary:     $("#tx-summary"),
-    fltSearch:   $("#flt-search"),
-    fltType:     $("#flt-type"),
-    fltStatus:   $("#flt-status"),
-    fltMonth:    $("#flt-month"),
-    btnRefresh:  $("#btn-refresh"),
-    btnMore:     $("#btn-load-more"),
-    modal:       $("#tx-edit-modal"),
+    tbody:       qs("#tx-tbody"),
+    summary:     qs("#tx-summary"),
+    fltSearch:   qs("#flt-search"),
+    fltType:     qs("#flt-type"),
+    fltStatus:   qs("#flt-status"),
+    fltMonth:    qs("#flt-month"),
+    btnRefresh:  qs("#btn-refresh"),
+    btnMore:     qs("#btn-load-more"),
+    modal:       qs("#tx-edit-modal"),
     ed: {
-      date:      $("#ed-date"),
-      amount:    $("#ed-amount"),
-      account:   $("#ed-account"),
-      regularity:$("#ed-regularity"),
-      method:    $("#ed-method"),
-      status:    $("#ed-status"),
-      type:      $("#ed-type"),
-      category:  $("#ed-category"),
-      desc:      $("#ed-desc"),
-      loc:       $("#ed-loc"),
-      notes:     $("#ed-notes"),
-      nature:    $("#ed-nature"),
-      save:      $("#ed-save"),
-      del:       $("#ed-delete"),
-      cancel:    $("#ed-cancel"),
-      meta:      $("#tx-edit-meta"),
-      hint:      $("#ed-hint"),
+      date:      qs("#ed-date"),
+      amount:    qs("#ed-amount"),
+      account:   qs("#ed-account"),
+      regularity:qs("#ed-regularity"),
+      method:    qs("#ed-method"),
+      status:    qs("#ed-status"),
+      type:      qs("#ed-type"),
+      category:  qs("#ed-category"),
+      desc:      qs("#ed-desc"),
+      loc:       qs("#ed-loc"),
+      notes:     qs("#ed-notes"),
+      nature:    qs("#ed-nature"),
+      save:      qs("#ed-save"),
+      del:       qs("#ed-delete"),
+      cancel:    qs("#ed-cancel"),
+      meta:      qs("#tx-edit-meta"),
+      hint:      qs("#ed-hint"),
     }
   };
 
-  // --------- Validação de DOM (mostra IDs em falta) ---------
   const required = [
     ["#tx-tbody", dom.tbody],
     ["#tx-summary", dom.summary],
@@ -48,24 +44,21 @@ export async function init(ctx = {}) {
   ];
   const missing = required.filter(([_,el]) => !el).map(([s]) => s);
   if (missing.length) {
-    outlet.innerHTML = `
+    (outlet || document.body).innerHTML = `
       <section class="card">
         <strong>Erro ao carregar o ecrã.</strong><br>
-        Faltam elementos no HTML: <code>${missing.join(", ")}</code>.<br>
-        Garante que estás a usar o <em>transactions.html</em> que te enviei (IDs coincidem).
+        Faltam elementos no HTML: <code>${missing.join(", ")}</code>.
       </section>`;
-    return; // sai cedo para não rebentar em addEventListener
+    return;
   }
 
-  // --------- Estado ---------
   const PAGE_SIZE = 30;
   let page = 0;
   let all = [];
   let filtered = [];
   const categoriesMap = new Map();
 
-  // --------- Helpers ---------
-  const ptDate = iso => new Date(iso).toLocaleDateString("pt-PT");
+  const ptDate  = iso => new Date(iso).toLocaleDateString("pt-PT");
   const moneyFmt = (n) => "€ " + Number(n||0).toLocaleString("pt-PT", {minimumFractionDigits:2, maximumFractionDigits:2});
   const typeBadge = (code) => {
     if (code === "INCOME")  return `<span class="badge" style="background:#ecfdf5;color:#065f46;border:1px solid #d1fae5">Receita</span>`;
@@ -97,7 +90,6 @@ export async function init(ctx = {}) {
   async function fillStatusFilter() {
     const { data, error } = await sb.from("statuses").select("id,name_pt").order("id");
     if (error) { console.error(error); return; }
-    if (!dom.fltStatus) return;
     dom.fltStatus.innerHTML = `<option value="all">Todos os status</option>` +
       (data||[]).map(s => `<option value="${s.name_pt}">${s.name_pt}</option>`).join("");
   }
@@ -107,7 +99,6 @@ export async function init(ctx = {}) {
     const from = page * PAGE_SIZE;
     const to   = from + PAGE_SIZE - 1;
 
-    // filtro mês (server-side)
     let q = sb.from("transactions")
       .select(`
         id, date, amount, signed_amount, description, location, created_at,
@@ -179,21 +170,21 @@ export async function init(ctx = {}) {
       const color = r.type_code === "INCOME" ? "#16a34a" : r.type_code === "EXPENSE" ? "#ef4444" : "#2563eb";
       return `
       <tr class="tx-row" data-id="${r.id}" data-type="${r.type_code||''}" style="cursor:pointer">
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${ptDate(r.date)}</td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${typeBadge(r.type_code)}</td>
-        <td style="padding:10px;border-bottom:1px solid var(--border);text-align:right"><span style="color:${color};font-weight:700">${moneyFmt(val)}</span></td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${r.category_path}</td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${r.description || "-"}</td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)"><span class="badge" style="background:#fff;border:1px solid #e5e7eb">${r.account || "-"}</span></td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${statusBadge(r.status_name)}</td>
-        <td style="padding:10px;border-bottom:1px solid var(--border)">${r.location || "-"}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${ptDate(r.date)}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${typeBadge(r.type_code)}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb);text-align:right"><span style="color:${color};font-weight:700">${moneyFmt(val)}</span></td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${r.category_path}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${r.description || "-"}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)"><span class="badge" style="background:#fff;border:1px solid #e5e7eb">${r.account || "-"}</span></td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${statusBadge(r.status_name)}</td>
+        <td style="padding:10px;border-bottom:1px solid var(--border,#e5e7eb)">${r.location || "-"}</td>
       </tr>`;
     }).join("");
 
     dom.summary.textContent = `Mostrando ${filtered.length} de ${all.length} transações`;
   }
 
-  // --------- Edit modal (idêntico ao anterior, mas com null-safety) ---------
+  // --------- Edit modal ---------
   const REF = { accounts:[], regularities:[], methods:[], statuses:[], types:[] };
   function fillSelect(el, rows, label, value="id") {
     if (!el) return;
@@ -232,7 +223,7 @@ export async function init(ctx = {}) {
     try {
       await loadRefs();
       const { data: tx, error } = await sb.from("transactions")
-        .select("*, transaction_types(code), categories(kind,expense_nature_default)")
+        .select("*, transaction_types(code), categories(kind)")
         .eq("id", id).single();
       if (error) throw error;
 
@@ -283,7 +274,6 @@ export async function init(ctx = {}) {
           if (!(upd.amount > 0)) throw new Error("Valor inválido.");
           const { error } = await sb.from("transactions").update(upd).eq("id", id);
           if (error) throw error;
-          // refresh rápido: volta a carregar página 0
           await fetchPage(true);
           render();
           closeModal();
@@ -313,7 +303,7 @@ export async function init(ctx = {}) {
     }
   }
 
-  // --------- Eventos (com null-safety) ---------
+  // --------- Eventos ---------
   dom.btnRefresh?.addEventListener("click", async ()=> { await fetchPage(true); render(); });
   dom.btnMore?.addEventListener("click", async ()=> { await fetchPage(false); render(); });
   dom.fltSearch?.addEventListener("input", render);
