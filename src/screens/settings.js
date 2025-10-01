@@ -874,7 +874,7 @@ export async function init({ sb, outlet } = {}) {
     const REPORT_CFG = {
       title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
       author: "António R. Appleton",
-      subject: "Relatório Financeiro",
+      subject: "antonioappleton@gmail.com",
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
       showDetailsPage: true,
@@ -920,7 +920,7 @@ export async function init({ sb, outlet } = {}) {
       y += 12;
     };
     const footer = () => {
-      const txt = "Relatório automáticamente por WiseBudget®";
+      const txt = "antonioappleton@gmail.com | WiseBudget®";
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(120);
@@ -1097,7 +1097,7 @@ export async function init({ sb, outlet } = {}) {
       doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
         align: "right",
       });
-      doc.text("Relatório automáticamente por WiseBudget®", M, H - M + 12);
+      doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
       doc.setTextColor(0);
     }
 

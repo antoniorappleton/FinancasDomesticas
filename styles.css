@@ -536,3 +536,84 @@ td:nth-child(5){                 /* Descrição */
 @media (max-width: 720px){
   .grid-3{grid-template-columns:1fr}
 }
+/* ===== Modal: tamanho + scroll seguro em mobile ===== */
+.modal{
+  position: fixed; inset: 0;
+  background: rgba(2,6,23,.65);
+  display: grid; place-items: start center;   /* sobe para topo em ecrãs pequenos */
+  padding: clamp(8px, 2vw, 16px);
+  z-index: 50;
+}
+.modal__card{
+  width: min(920px, 96vw);
+  max-height: calc(100vh - 24px);
+  overflow: auto;                               /* scroll dentro do card */
+  background: linear-gradient(180deg,#0f172a 0%, #0c1426 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+@media (max-width: 640px){
+  .modal__card{ width: 96vw; border-radius: 12px; padding: 14px; }
+}
+.modal__header{
+  position: sticky; top: 0;
+  background: linear-gradient(180deg,#0f172a 0%, #0c1426 100%);
+  padding-bottom: 8px; margin-bottom: 10px;
+  z-index: 1;
+}
+
+/* ===== Grid interna do relatório (adaptável) ===== */
+.rpt-grid{ display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 900px){ .rpt-grid{ grid-template-columns: 1fr 1fr; } }
+
+/* ===== “Wrappers” para gráficos: tamanho controlado ===== */
+.chart-wrap{
+  position: relative;
+  width: 100%;
+  height: 260px;                /* ajusta se quiseres mais alto */
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #0a1220;
+}
+.chart-wrap canvas{
+  position: absolute; inset: 0;
+  width: 100% !important; height: 100% !important;  /* força fit ao wrapper */
+}
+
+/* gráfico de séries pode ser um pouco mais alto */
+.chart-wrap--series{ height: 300px; }
+
+/* ===== Inputs longos no modal: garantem largura + quebra ===== */
+.modal input, .modal select, .modal textarea{
+  width: 100%;
+  min-width: 0;                /* evita overflow em grid flex */
+  max-width: 100%;
+}
+.modal label{ display:flex; flex-direction:column; gap:6px; }
+
+/* ===== Password section: grid que não “salta” fora do ecrã ===== */
+.pw-grid{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 760px){ .pw-grid{ grid-template-columns: 1fr 1fr; } }
+.pw-actions{ display:flex; flex-wrap:wrap; gap:10px; }
+
+/* ===== Auth overlay (login) com scroll em ecrã pequeno ===== */
+.auth-overlay{
+  position: fixed; inset: 0;
+  display: grid; place-items: start center;
+  padding: clamp(8px, 2vw, 16px);
+  overflow: auto;
+}
+.auth-card{
+  width: min(420px, 96vw);
+  margin-top: 6vh;                      /* respira em topo */
+}
+
+/* ===== Footer seguro em iOS com “safe-area” ===== */
+.app-footer{
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* ===== Previne canvases “a crescer” quando a página mexe ===== */
+canvas{ max-width: 100%; height: auto; }
