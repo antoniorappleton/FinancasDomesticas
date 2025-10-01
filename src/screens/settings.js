@@ -546,6 +546,7 @@ export async function init({ sb, outlet } = {}) {
   $("#btn-report-open")?.addEventListener("click", async () => {
     await ensureChartStack();
     openReport();
+    await new Promise((r) => requestAnimationFrame(r));
     await buildReport();
   });
   ["#rpt-month", "#rpt-from", "#rpt-to", "#rpt-year"].forEach((sel) => {
@@ -861,6 +862,15 @@ export async function init({ sb, outlet } = {}) {
     } finally {
       _isBuildingReport = false;
     }
+  
+    setTimeout(() => {
+      try {
+        _rptCat?.resize();
+        _rptFix?.resize();
+        _rptSeries?.resize();
+      } catch {}
+    }, 0);
+
   }
 
   $("#rpt-export")?.addEventListener("click", async () => {

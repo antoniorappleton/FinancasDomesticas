@@ -156,22 +156,21 @@
 </section>
 
 <!-- Alterar palavra-passe -->
-<section class="card" id="card-password" style="margin-top:12px">
-  <h2 class="section-title">Alterar palavra-passe</h2>
-  <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:10px">
-    <label>Palavra-passe atual
-      <input id="pw-current" type="password" autocomplete="current-password" />
-    </label>
+<section id="sec-password" class="card">
+  <h3 class="section-title">Alterar palavra-passe</h3>
+  <div class="grid" style="grid-template-columns:1fr;gap:10px">
     <label>Nova palavra-passe
-      <input id="pw-new" type="password" autocomplete="new-password" />
+      <input id="set-new-pass" type="password" autocomplete="new-password" />
     </label>
-    <label>Confirmar nova
-      <input id="pw-confirm" type="password" autocomplete="new-password" />
+    <label>Confirmar nova palavra-passe
+      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
     </label>
   </div>
-  <div style="margin-top:10px">
-    <button id="btn-change-pw" class="btn btn--primary">Guardar nova palavra-passe</button>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
   </div>
+  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
 </section>
+
 
 <script type="module" src="/src/main.js?v=v7"></script>

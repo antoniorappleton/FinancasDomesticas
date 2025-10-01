@@ -617,3 +617,46 @@ td:nth-child(5){                 /* Descrição */
 
 /* ===== Previne canvases “a crescer” quando a página mexe ===== */
 canvas{ max-width: 100%; height: auto; }
+/* ---- Modal de Relatório: responsivo ---- */
+#report-overlay .modal__card{
+  width: min(980px, 96vw);
+  max-height: 92vh;           /* evita sair do ecrã */
+  overflow: auto;             /* scroll interno */
+  padding: 16px;
+}
+
+/* grid interna do relatório (se usares um wrapper para os blocos) */
+#rpt-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width: 740px){
+  #rpt-grid{ grid-template-columns:1fr; }
+}
+
+/* garante que os canvases têm altura real */
+.rpt-canvas-box{
+  height: 240px;              /* igual ao que usas no lockCanvas() */
+  min-height: 240px;
+}
+#rpt-series-box{ height: 260px; min-height: 260px; }
+
+/* o canvas acompanha a largura */
+#report-overlay canvas{ display:block; width:100% !important; height:100% !important; }
+
+/* legenda com scroll próprio */
+#rpt-cat-legend{
+  max-height: 260px;
+  overflow:auto;
+  padding-right: 8px;
+}
+
+/* título e KPIs com melhor ‘wrap’ no mobile */
+#report-overlay h3, #report-overlay h2{ line-height:1.2 }
+/* altura real do tab-bar */
+.app-footer{ height: 64px; }
+
+/* reserva espaço no conteúdo para não ficar tapado */
+#app-main{
+  padding-bottom: calc(64px + 18px); /* 18px de respiro */
+}
+
+/* ajuda geral de espaçamento entre cartões */
+.card{ margin-bottom: 14px; }
