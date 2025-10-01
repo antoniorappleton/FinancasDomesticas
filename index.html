@@ -96,17 +96,88 @@
     <section id="screen-login" class="auth-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="auth-title">
       <div class="auth-card">
         <h2 id="auth-title">Entrar</h2>
-        <form id="auth-form">
-          <label>Email<input id="auth-email" type="email" autocomplete="username" required /></label>
-          <label>Palavra-passe<input id="auth-password" type="password" autocomplete="current-password" required /></label>
+
+        <!-- FORM LOGIN -->
+        <form id="auth-form" autocomplete="on">
+          <label>Email
+            <input id="auth-email" type="email" autocomplete="username" required />
+          </label>
+          <label>Palavra-passe
+            <input id="auth-password" type="password" autocomplete="current-password" required />
+          </label>
           <button id="auth-submit" type="submit" class="btn btn--primary">Entrar</button>
+
+          <p class="row-note" style="margin-top:10px">
+            <button id="auth-forgot" type="button" class="link">Esqueci-me da palavra-passe</button>
+          </p>
         </form>
+
+        <!-- FORM RESET PASSWORD (invisível por defeito) -->
+        <form id="reset-form" class="hidden" autocomplete="on">
+          <label>Email
+            <input id="reset-email" type="email" inputmode="email" placeholder="o.teu@email.com" required />
+          </label>
+          <button id="reset-submit" type="submit" class="btn btn--primary">Enviar link de recuperação</button>
+          <p class="row-note" style="margin-top:8px">
+            Enviaremos um email com um link para definires uma nova palavra-passe.
+          </p>
+          <p class="row-note" style="margin-top:8px">
+            <button id="reset-back" type="button" class="link">Voltar ao login</button>
+          </p>
+        </form>
+
+        <!-- Troca entre Login / Criar conta -->
         <p class="auth-switch">
           <span id="auth-help">Ainda não tens conta?</span>
           <button id="auth-toggle" class="link" type="button">Criar conta</button>
         </p>
       </div>
     </section>
+
+      <script type="module">
+        // Ligações do modal (usa window.sb já criado acima)
+        const authForm     = document.getElementById("auth-form");
+        const resetForm    = document.getElementById("reset-form");
+        const authTitle    = document.getElementById("auth-title");
+        const authForgot   = document.getElementById("auth-forgot");
+        const resetEmailEl = document.getElementById("reset-email");
+        const resetBack    = document.getElementById("reset-back");
+
+        // abrir formulário de recuperação
+        authForgot?.addEventListener("click", () => {
+          authForm?.classList.add("hidden");
+          resetForm?.classList.remove("hidden");
+          authTitle.textContent = "Recuperar palavra-passe";
+          const loginEmail = (document.getElementById("auth-email")?.value || "").trim();
+          if (loginEmail) resetEmailEl.value = loginEmail;
+          resetEmailEl?.focus();
+        });
+
+        // voltar ao login
+        resetBack?.addEventListener("click", () => {
+          resetForm?.classList.add("hidden");
+          authForm?.classList.remove("hidden");
+          authTitle.textContent = "Entrar";
+        });
+
+        // enviar link de recuperação
+        resetForm?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = (resetEmailEl?.value || "").trim();
+          if (!email) return alert("Indica o teu email.");
+          try {
+            const { error } = await window.sb.auth.resetPasswordForEmail(email, {
+              redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`
+            });
+            if (error) throw error;
+            alert("✅ Enviámos um email com o link de recuperação. Verifica a tua caixa de entrada.");
+            resetBack?.click();
+          } catch (err) {
+            alert(err?.message || "Não foi possível enviar o email de recuperação.");
+          }
+        });
+      </script>
+
 
     <!-- Supabase (global 'supabase') e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

@@ -1,5 +1,4 @@
 // src/screens/settings.js
-
 export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
   outlet ||= document.getElementById("outlet");
@@ -62,17 +61,7 @@ export async function init({ sb, outlet } = {}) {
     return ymd(new Date(n.getFullYear(), n.getMonth() + 1, 1));
   };
 
-  // carrega Chart.js + plugin datalabels (regista só uma vez)
-  async function loadScript(src) {
-    await new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-  // --- substitui ensureChartStack() ---
+  // carrega scripts externos 1x
   async function loadScript(src) {
     await new Promise((res, rej) => {
       const s = document.createElement("script");
@@ -88,7 +77,6 @@ export async function init({ sb, outlet } = {}) {
         "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
       );
     }
-    // Carrega o ficheiro do plugin, mas NÃO regista globalmente
     if (!window.ChartDataLabels && !window.__loadingCDL__) {
       window.__loadingCDL__ = true;
       try {
@@ -103,6 +91,20 @@ export async function init({ sb, outlet } = {}) {
       } finally {
         window.__loadingCDL__ = false;
       }
+    }
+  }
+  async function getJsPDF() {
+    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
+    try {
+      const mod = await import(
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
+      );
+      return mod.jsPDF || window.jspdf?.jsPDF;
+    } catch {
+      await loadScript(
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+      );
+      return window.jspdf?.jsPDF;
     }
   }
 
@@ -479,27 +481,6 @@ export async function init({ sb, outlet } = {}) {
   const closeBtn = $("#rpt-close");
   let _lastFocus = null;
 
-  async function getJsPDF() {
-    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-    try {
-      const mod = await import(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
-      );
-      return mod.jsPDF || window.jspdf?.jsPDF;
-    } catch {
-      await (async () =>
-        new Promise((res, rej) => {
-          const s = document.createElement("script");
-          s.src =
-            "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
-          s.onload = res;
-          s.onerror = rej;
-          document.head.appendChild(s);
-        }))();
-      return window.jspdf?.jsPDF;
-    }
-  }
-
   // util: carrega imagem e devolve dataURL (usa assets no mesmo domínio p/ evitar CORS)
   async function toDataURL(url) {
     const res = await fetch(url);
@@ -512,7 +493,6 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // trava alturas dos canvases para evitar “crescimento infinito”
- 
   function lockCanvas(el, h) {
     if (!el) return;
     const px = String(h) + "px";
@@ -568,7 +548,6 @@ export async function init({ sb, outlet } = {}) {
     openReport();
     await buildReport();
   });
-  // atualizar ao mexer nos inputs do modal
   ["#rpt-month", "#rpt-from", "#rpt-to", "#rpt-year"].forEach((sel) => {
     $(sel)?.addEventListener("change", () => {
       if (!overlay?.classList.contains("hidden")) buildReport();
@@ -594,7 +573,6 @@ export async function init({ sb, outlet } = {}) {
     _catLegendPDF = [];
     _fixLegendPDF = [];
   }
-  // --- substitui makeChart() ---
   function makeChart(canvasEl, config) {
     const el =
       typeof canvasEl === "string"
@@ -602,7 +580,7 @@ export async function init({ sb, outlet } = {}) {
         : canvasEl;
     if (!el) return null;
     const prev = Chart.getChart(el);
-    if (prev) prev.destroy(); // evita "Canvas is already in use"
+    if (prev) prev.destroy();
     return new Chart(el, config);
   }
 
@@ -861,7 +839,7 @@ export async function init({ sb, outlet } = {}) {
           plugins: {
             legend: { position: "top" },
             datalabels: { display: false },
-          }, // desativa Datalabels aqui
+          },
           scales: { y: { beginAtZero: true } },
         },
       });
@@ -885,61 +863,37 @@ export async function init({ sb, outlet } = {}) {
     }
   }
 
-  // -------- Export PDF
-  async function getJsPDF() {
-    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-    // tenta ESM; se falhar, UMD
-    try {
-      const mod = await import(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
-      );
-      return mod.jsPDF || window.jspdf?.jsPDF;
-    } catch {
-      await loadScript(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
-      );
-      return window.jspdf?.jsPDF;
-    }
-  }
-
   $("#rpt-export")?.addEventListener("click", async () => {
-    // garante dados/charts atualizados
     try {
       if (typeof _isBuildingReport !== "undefined" && !_isBuildingReport)
         await buildReport();
     } catch {}
-
     const jsPDF = await getJsPDF();
     if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
 
-    // ======= CONFIGURÁVEL PELO DEV =======
     const REPORT_CFG = {
       title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
       author: "António R. Appleton",
       subject: "Relatório Financeiro",
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
-      showDetailsPage: true, // 2ª página com detalhe por categoria
+      showDetailsPage: true,
       signature: {
         enabled: true,
         name: "Finance Dept.",
         textFallback: "________________________",
-        // Se tiveres um PNG/SVG local (mesmo domínio), mete o caminho:
-        imageUrl: null, // ex: "/assets/signature.png"
-        // medidas da assinatura (em pontos)
+        imageUrl: null,
         width: 140,
         height: 60,
       },
     };
-    // =====================================
 
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const doc = new (await getJsPDF())({ unit: "pt", format: "a4" });
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
     const M = 40;
     let y = M;
 
-    // metadata
     doc.setProperties({
       title: REPORT_CFG.title,
       subject: REPORT_CFG.subject,
@@ -948,7 +902,6 @@ export async function init({ sb, outlet } = {}) {
       keywords: "finance, report, wisebudget",
     });
 
-    // helpers de layout
     const line = (x1, y1, x2, y2) => {
       doc.setDrawColor(230);
       doc.line(x1, y1, x2, y2);
@@ -981,10 +934,9 @@ export async function init({ sb, outlet } = {}) {
       y = M;
       header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
     };
-    // desenha cabeçalho inicial
+
     header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
 
-    // ======= KPIs =======
     const k = [
       ["Receitas", $("#rpt-kpi-income")?.textContent || "—"],
       ["Despesas", $("#rpt-kpi-expense")?.textContent || "—"],
@@ -1003,7 +955,6 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
-    // ======= GRÁFICOS (1ª página) =======
     const canvasToPage = (sel, x, y2, w, h) => {
       const c = document.querySelector(sel);
       if (!c) return y2;
@@ -1036,7 +987,6 @@ export async function init({ sb, outlet } = {}) {
       return y2;
     };
 
-    // títulos dos blocos
     ensureSpace(260 + 12);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -1050,7 +1000,6 @@ export async function init({ sb, outlet } = {}) {
     const y2 = canvasToPage("#rpt-fixed-donut", M + colW + 16, y, colW, pieH);
     y = Math.max(y1, y2) + 8;
 
-    // lendas
     const yLegL = drawLegend(window._catLegendPDF || _catLegendPDF, M, y, colW);
     const yLegR = drawLegend(
       window._fixLegendPDF || _fixLegendPDF,
@@ -1060,7 +1009,6 @@ export async function init({ sb, outlet } = {}) {
     );
     y = Math.max(yLegL, yLegR) + 16;
 
-    // séries
     ensureSpace(260 + 18);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
@@ -1068,14 +1016,12 @@ export async function init({ sb, outlet } = {}) {
     y += 10;
     y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 12;
 
-    // ======= PÁGINA DE DETALHE (opcional) =======
     if (REPORT_CFG.showDetailsPage) {
       footer();
       doc.addPage();
       y = M;
       header("Detalhe — Categorias", new Date().toLocaleDateString("pt-PT"));
 
-      // tabela simples (categoria | € | %)
       const rows = window._catLegendPDF || _catLegendPDF || [];
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
@@ -1104,11 +1050,10 @@ export async function init({ sb, outlet } = {}) {
       });
     }
 
-    // ======= ASSINATURA (opcional) =======
     if (REPORT_CFG.signature?.enabled) {
       ensureSpace(120);
       const sig = REPORT_CFG.signature;
-      const blockTop = Math.max(y, H - M - 110); // empurra para perto do fim
+      const blockTop = Math.max(y, H - M - 110);
       y = blockTop;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
@@ -1118,7 +1063,6 @@ export async function init({ sb, outlet } = {}) {
       line(M, y, M + 200, y);
       y += 8;
 
-      // tenta imagem; se não houver, usa texto fallback
       if (sig.imageUrl) {
         try {
           const dataUrl = await toDataURL(sig.imageUrl);
@@ -1144,24 +1088,19 @@ export async function init({ sb, outlet } = {}) {
       doc.text(sig.name || "", M, y);
     }
 
-    // ======= PAGINAÇÃO + RODAPÉ EM TODAS =======
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      // numeração
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(120);
       doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
         align: "right",
       });
-      // rodapé
-      doc.setTextColor(120);
       doc.text("Relatório automáticamente por WiseBudget®", M, H - M + 12);
       doc.setTextColor(0);
     }
 
-    // guarda
     doc.save(REPORT_CFG.filename);
   });
 
@@ -1299,4 +1238,58 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
+  // =================== SESSÃO / PASSWORD =================
+  // Mostrar email da sessão
+  try {
+    const { data } = await sb.auth.getUser();
+    const email = data?.user?.email || "—";
+    $("#sess-user-email") && ($("#sess-user-email").textContent = email);
+  } catch {
+    /* ignore */
+  }
+
+  // Terminar sessão
+  $("#btn-logout")?.addEventListener("click", async () => {
+    try {
+      await sb.auth.signOut();
+      location.reload(); // limpa estado e abre modal de login
+    } catch (e) {
+      alert(e?.message || "Não foi possível terminar a sessão.");
+    }
+  });
+
+  // Alterar palavra-passe (re-autentica opcionalmente com a atual)
+  $("#btn-change-pw")?.addEventListener("click", async () => {
+    const curr = $("#pw-current")?.value || "";
+    const next = $("#pw-new")?.value || "";
+    const conf = $("#pw-confirm")?.value || "";
+
+    if (!next || next.length < 8)
+      return alert("A nova palavra-passe deve ter pelo menos 8 caracteres.");
+    if (next !== conf) return alert("As novas palavras-passe não coincidem.");
+
+    try {
+      const { data } = await sb.auth.getUser();
+      const email = data?.user?.email;
+      if (!email) throw new Error("Sessão inválida.");
+
+      if (curr) {
+        const { error: reErr } = await sb.auth.signInWithPassword({
+          email,
+          password: curr,
+        });
+        if (reErr) throw new Error("Palavra-passe atual incorreta.");
+      }
+
+      const { error } = await sb.auth.updateUser({ password: next });
+      if (error) throw error;
+
+      $("#pw-current") && ($("#pw-current").value = "");
+      $("#pw-new") && ($("#pw-new").value = "");
+      $("#pw-confirm") && ($("#pw-confirm").value = "");
+      alert("✅ Palavra-passe atualizada com sucesso.");
+    } catch (e) {
+      alert(e?.message || "Não foi possível alterar a palavra-passe.");
+    }
+  });
 }
