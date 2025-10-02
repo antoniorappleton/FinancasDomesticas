@@ -1308,7 +1308,7 @@ export async function init({ sb, outlet } = {}) {
       y += 12;
     };
     const footer = () => {
-      const txt = "WiseBudget";
+      const txt = "antonioappleton@gmail.com | WiseBudget®";
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(120);
