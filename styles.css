@@ -660,3 +660,88 @@ canvas{ max-width: 100%; height: auto; }
 
 /* ajuda geral de espaçamento entre cartões */
 .card{ margin-bottom: 14px; }
+
+  /* ===== Modal: branco & preto, sem tocar nos botões ===== */
+#tx-edit-modal.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0,0,0,.55);         /* overlay escuro */
+  z-index: 1000;
+}
+#tx-edit-modal[hidden] { display: none; }
+
+#tx-edit-modal .modal__card {
+  width: min(1100px, 92vw);
+  max-height: 92vh;
+  overflow: auto;
+  background: #ffffff;                  /* branco */
+  color: #111111;                       /* preto */
+  border: 1px solid #e5e7eb;            /* cinza claro */
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+
+/* header */
+#tx-edit-modal .modal__header {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff; color: #111;
+}
+#tx-edit-modal .modal__title { font-weight: 700; font-size: 16px; color:#111; }
+#tx-edit-modal .badge-muted { color:#6b7280; }
+
+/* botão fechar (x) */
+#tx-edit-modal .modal__close {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 22px; line-height: 1; color: #111;
+}
+#tx-edit-modal .modal__close:hover { opacity: .7; }
+
+/* grelha do formulário */
+#tx-edit-modal .form-grid { padding: 12px 16px; }
+#tx-edit-modal .form-grid label { display: grid; gap: 6px; color:#111; }
+#tx-edit-modal .form-grid input,
+#tx-edit-modal .form-grid select,
+#tx-edit-modal .form-grid textarea {
+  background: #ffffff; color: #111111;       /* campos brancos */
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+#tx-edit-modal .form-grid textarea { min-height: 88px; resize: vertical; }
+#tx-edit-modal .form-grid input:focus,
+#tx-edit-modal .form-grid select:focus,
+#tx-edit-modal .form-grid textarea:focus {
+  border-color: #111; box-shadow: 0 0 0 3px rgba(17,17,17,.09);
+}
+
+/* zona de ações – mantém estilos dos botões atuais */
+#tx-edit-modal .actions {
+  padding: 0 16px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+/* scroll interno do cartão */
+#tx-edit-modal .modal__card::-webkit-scrollbar { width: 10px; }
+#tx-edit-modal .modal__card::-webkit-scrollbar-thumb {
+  background: #d1d5db; border-radius: 10px;
+}
+#tx-edit-modal .modal__card::-webkit-scrollbar-track { background: transparent; }
+
+/* acessibilidade: ao abrir, garantir foco visível */
+#tx-edit-modal :focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+
+/* impressão: o modal aparece como página limpa */
+@media print {
+  #tx-edit-modal.modal { position: static; background: #fff; padding: 0; }
+  #tx-edit-modal .modal__card { width: auto; max-height: none; box-shadow: none; border: none; }
+  #tx-edit-modal .actions, #tx-edit-modal .modal__close { display: none; }
+}
