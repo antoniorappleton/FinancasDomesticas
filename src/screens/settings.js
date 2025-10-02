@@ -1560,7 +1560,7 @@ export async function init({ sb, outlet } = {}) {
       doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
         align: "right",
       });
-      doc.text("WiseBudget", M, H - M + 12);
+      doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
       doc.setTextColor(0);
     }
     doc.save(REPORT_CFG.filename);
