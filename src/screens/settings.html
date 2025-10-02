@@ -1,40 +1,8 @@
-<section class="card">
-  <h2 class="section-title">Importação CSV</h2>
-
-  <div class="form-grid">
-    <label>
-      Ficheiro CSV
-      <input id="imp-file" type="file" accept=".csv,text/csv" />
-    </label>
-    <label>
-      Mês (para registo)
-      <input id="imp-month" type="month" />
-    </label>
-  </div>
-
-  <div class="actions" style="margin-top:8px">
-    <button id="imp-preview" class="btn">Pré-visualizar</button>
-    <button id="imp-import"  class="btn btn--primary">Importar</button>
-    <button id="imp-clear"   class="btn">Limpar pré-visualização</button>
-  </div>
-
-  <p id="imp-info" class="row-note"></p>
-  <pre id="imp-log" class="row-note" style="white-space:pre-wrap"></pre>
-
-  <div id="imp-table-wrap" class="card soft" style="margin-top:12px; display:none">
-    <h3 class="section-title">Pré-visualização</h3>
-    <div style="overflow:auto">
-      <table id="imp-table">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
+<!-- ===== MODAL RELATÓRIO ===== -->
 <section class="card">
   <h2 class="section-title">Relatórios</h2>
 
+  <!-- Filtro original (mantido) -->
   <div class="grid" style="grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px">
     <label>
       Tipo
@@ -71,33 +39,90 @@
   </div>
 </section>
 
-<!-- ===== MODAL RELATÓRIO ===== -->
 <div id="report-overlay" class="hidden rpt-overlay" aria-hidden="true" tabindex="-1">
   <div class="rpt-modal">
     <button id="rpt-close" class="rpt-close" aria-label="Fechar">×</button>
     <h2 id="rpt-title">Relatório Financeiro</h2>
 
-    <div class="rpt-kpis">
-      <div><div>Receitas</div><strong id="rpt-kpi-income">€ 0,00</strong></div>
-      <div><div>Despesas</div><strong id="rpt-kpi-expense">€ 0,00</strong></div>
-      <div><div>Poupanças</div><strong id="rpt-kpi-savings">€ 0,00</strong></div>
-      <div><div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong></div>
+    <!-- Filtro no topo do modal (sincroniza com o filtro exterior) -->
+    <div class="rpt-controls">
+      <div class="rpt-controls__row">
+        <label>
+          Tipo
+          <select id="rpt-type-inside">
+            <option value="monthly" selected>Mensal</option>
+            <option value="range">Intervalo de meses</option>
+            <option value="yearly">Anual</option>
+          </select>
+        </label>
+        <label id="rpt-month-inside-wrap">
+          Mês
+          <input id="rpt-month-inside" type="month" />
+        </label>
+        <label id="rpt-from-inside-wrap" class="hidden">
+          De
+          <input id="rpt-from-inside" type="month" />
+        </label>
+        <label id="rpt-to-inside-wrap" class="hidden">
+          Até
+          <input id="rpt-to-inside" type="month" />
+        </label>
+        <label id="rpt-year-inside-wrap" class="hidden">
+          Ano
+          <input id="rpt-year-inside" type="number" min="2000" max="2100" step="1" />
+        </label>
+      </div>
     </div>
 
+    <!-- KPIs -->
+    <div class="rpt-kpis">
+      <div class="rpt-kpi"><div>Receitas</div><strong id="rpt-kpi-income">€ 0,00</strong></div>
+      <div class="rpt-kpi"><div>Despesas</div><strong id="rpt-kpi-expense">€ 0,00</strong></div>
+      <div class="rpt-kpi"><div>Poupanças</div><strong id="rpt-kpi-savings">€ 0,00</strong></div>
+      <div class="rpt-kpi"><div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong></div>
+    </div>
+
+    <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis -->
     <div class="rpt-grid">
       <div class="rpt-card">
+        <h3 class="rpt-card__title">Despesas por categoria</h3>
         <canvas id="rpt-cat-pie" height="240"></canvas>
         <div id="rpt-cat-legend" class="rpt-legend"></div>
       </div>
       <div class="rpt-card">
+        <h3 class="rpt-card__title">Fixas vs Variáveis</h3>
         <canvas id="rpt-fixed-donut" height="240"></canvas>
+        <div id="rpt-fv-legend" class="rpt-legend small"></div>
       </div>
     </div>
 
+    <!-- Séries temporais -->
     <div class="rpt-card">
+      <h3 class="rpt-card__title">Evolução mensal (receitas, despesas, poupanças, saldo)</h3>
       <canvas id="rpt-series" height="260"></canvas>
     </div>
 
+    <!-- Tabelas -->
+    <div class="rpt-grid rpt-grid--tables">
+      <div class="rpt-card">
+        <h3 class="rpt-card__title">Receitas por categoria</h3>
+        <div class="rpt-table-wrap"><table id="tbl-income-cat"></table></div>
+      </div>
+      <div class="rpt-card">
+        <h3 class="rpt-card__title">Despesas por categoria</h3>
+        <div class="rpt-table-wrap"><table id="tbl-expense-cat"></table></div>
+      </div>
+      <div class="rpt-card">
+        <h3 class="rpt-card__title">Resumo mensal & liquidez</h3>
+        <div class="rpt-table-wrap"><table id="tbl-monthly"></table></div>
+      </div>
+      <div class="rpt-card">
+        <h3 class="rpt-card__title">Despesas recorrentes (regularidade)</h3>
+        <div class="rpt-table-wrap"><table id="tbl-regularity"></table></div>
+      </div>
+    </div>
+
+    <!-- Insights / Alertas -->
     <ul id="rpt-insights" class="rpt-insights"></ul>
 
     <div class="rpt-actions">
@@ -109,17 +134,53 @@
 <style>
   .hidden{display:none}
   .rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px;z-index:1000}
-  .rpt-modal{background:#f2f4f9;color:#e5e7eb;width:min(1100px,92vw);border-radius:12px;padding:16px 20px 28px;position:relative;color:#1d1e1e}
-  .rpt-close{position:absolute;top:8px;right:10px;font-size:22px;line-height:1;color:#1d1e1e}
-  .rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0;color:#1d1e1e}
-  .rpt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;color:#1d1e1e}
-  .rpt-card{background:#f1f3f6;border:1px solid #e2e9f2;border-radius:12px;padding:12px;color:#1d1e1e}
-  .rpt-legend__item{display:flex;align-items:center;gap:8px;padding:4px 0;color:#1d1e1e}
-  .rpt-legend__dot{width:10px;height:10px;border-radius:50%;color:#1d1e1e}
+  .rpt-modal{background:#fff;width:min(1100px,92vw);border-radius:16px;padding:16px 20px 28px;position:relative;color:#111}
+  .rpt-close{position:absolute;top:8px;right:10px;font-size:22px;line-height:1}
+  .rpt-controls{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px 10px;margin:8px 0 12px}
+  .rpt-controls__row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+  .rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
+  .rpt-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px}
+  .rpt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .rpt-grid--tables{grid-template-columns:repeat(2,1fr)}
+  .rpt-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+  .rpt-card__title{margin:0 0 8px 0;font-size:14px}
+  .rpt-legend{margin-top:6px}
+  .rpt-legend.small{font-size:12px}
+  .rpt-legend__item{display:flex;align-items:center;gap:8px;padding:4px 0}
+  .rpt-legend__dot{width:10px;height:10px;border-radius:50%}
+  .rpt-table-wrap{overflow:auto}
+  .rpt-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
+  .rpt-table-wrap th,.rpt-table-wrap td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap}
+  .rpt-table-wrap th:first-child,.rpt-table-wrap td:first-child{text-align:left}
+  .rpt-insights{margin:10px 0 0 0;padding-left:18px}
+  .rpt-insights li{margin:4px 0}
   .btn{padding:8px 12px;border:1px solid #334155;border-radius:10px;background:#111827;color:#e5e7eb;}
+  /* Responsivo */
+  @media (max-width: 900px){
+    .rpt-controls__row{grid-template-columns:1fr 1fr}
+    .rpt-kpis{grid-template-columns:1fr 1fr}
+    .rpt-grid{grid-template-columns:1fr}
+    .rpt-grid--tables{grid-template-columns:1fr}
+  }
+  /* Print A4 vertical */
+  @media print{
+    body{background:#fff}
+    .rpt-overlay{position:static;inset:auto;background:#fff;padding:0}
+    .rpt-modal{width:auto;box-shadow:none;padding:0;border:none}
+    .rpt-close,.rpt-actions{display:none}
+    .rpt-controls{border:none;background:#fff}
+    .rpt-card{page-break-inside:avoid}
+  }
 </style>
 
 
+<!-- ===== secção categorias ===== -->
+
+<section class="card">
+  <h2 class="section-title">Categorias</h2>
+  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
+  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
+</section>
 
 <!-- ===== MANUTENÇÃO DE DADOS ===== -->
 <section class="card">
@@ -135,11 +196,6 @@
   <p class="row-note">Estas ações afetam apenas os seus dados (RLS ativo).</p>
 </section>
 
-<section class="card">
-  <h2 class="section-title">Categorias</h2>
-  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
-  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
-</section>
 
 <!-- Sessão -->
 <section class="card" id="card-session" style="margin-top:12px">
@@ -170,6 +226,41 @@
     <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
   </div>
   <div id="set-msg" class="row-note" style="margin-top:8px"></div>
+</section>
+
+<!-- ===== MODAL CSV ===== -->
+ <section class="card">
+  <h2 class="section-title">Importação CSV</h2>
+
+  <div class="form-grid">
+    <label>
+      Ficheiro CSV
+      <input id="imp-file" type="file" accept=".csv,text/csv" />
+    </label>
+    <label>
+      Mês (para registo)
+      <input id="imp-month" type="month" />
+    </label>
+  </div>
+
+  <div class="actions" style="margin-top:8px">
+    <button id="imp-preview" class="btn">Pré-visualizar</button>
+    <button id="imp-import"  class="btn btn--primary">Importar</button>
+    <button id="imp-clear"   class="btn">Limpar pré-visualização</button>
+  </div>
+
+  <p id="imp-info" class="row-note"></p>
+  <pre id="imp-log" class="row-note" style="white-space:pre-wrap"></pre>
+
+  <div id="imp-table-wrap" class="card soft" style="margin-top:12px; display:none">
+    <h3 class="section-title">Pré-visualização</h3>
+    <div style="overflow:auto">
+      <table id="imp-table">
+        <thead></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
 </section>
 
 

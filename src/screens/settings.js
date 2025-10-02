@@ -496,9 +496,9 @@ export async function init({ sb, outlet } = {}) {
   function lockCanvas(el, h) {
     if (!el) return;
     const px = String(h) + "px";
-    el.setAttribute("height", h); // altura interna
-    el.style.height = px; // altura CSS
-    el.style.maxHeight = px; // trava crescimento
+    el.setAttribute("height", h);
+    el.style.height = px;
+    el.style.maxHeight = px;
     el.style.minHeight = px;
     el.style.display = "block";
   }
@@ -515,6 +515,15 @@ export async function init({ sb, outlet } = {}) {
     overlay.removeAttribute("aria-hidden");
     document.body.style.overflow = "hidden";
     overlay.focus();
+
+    // sincroniza filtros de fora -> dentro
+    const type = $("#rpt-type")?.value || "monthly";
+    $("#rpt-type-inside").value = type;
+    $("#rpt-month-inside").value = $("#rpt-month")?.value || "";
+    $("#rpt-from-inside").value = $("#rpt-from")?.value || "";
+    $("#rpt-to-inside").value = $("#rpt-to")?.value || "";
+    $("#rpt-year-inside").value = $("#rpt-year")?.value || "";
+    toggleReportInputsInside();
   }
   function closeReport() {
     if (!overlay) return;
@@ -533,6 +542,7 @@ export async function init({ sb, outlet } = {}) {
       closeReport();
   });
 
+  // alterna inputs (fora)
   function toggleReportInputs() {
     const t = $("#rpt-type")?.value || "monthly";
     $("#rpt-month-wrap")?.classList.toggle("hidden", t !== "monthly");
@@ -540,26 +550,74 @@ export async function init({ sb, outlet } = {}) {
     $("#rpt-range2-wrap")?.classList.toggle("hidden", t !== "range");
     $("#rpt-year-wrap")?.classList.toggle("hidden", t !== "yearly");
   }
+  // alterna inputs (dentro do modal)
+  function toggleReportInputsInside() {
+    const t = $("#rpt-type-inside")?.value || "monthly";
+    $("#rpt-month-inside-wrap")?.classList.toggle("hidden", t !== "monthly");
+    $("#rpt-from-inside-wrap")?.classList.toggle("hidden", t !== "range");
+    $("#rpt-to-inside-wrap")?.classList.toggle("hidden", t !== "range");
+    $("#rpt-year-inside-wrap")?.classList.toggle("hidden", t !== "yearly");
+  }
   $("#rpt-type")?.addEventListener("change", toggleReportInputs);
   toggleReportInputs();
 
+  // abrir & construir
   $("#btn-report-open")?.addEventListener("click", async () => {
     await ensureChartStack();
     openReport();
     await new Promise((r) => requestAnimationFrame(r));
     await buildReport();
   });
+
+  // reatividade: fora
   ["#rpt-month", "#rpt-from", "#rpt-to", "#rpt-year"].forEach((sel) => {
     $(sel)?.addEventListener("change", () => {
-      if (!overlay?.classList.contains("hidden")) buildReport();
+      if (!overlay?.classList.contains("hidden"))
+        syncInsideFromOutsideAndBuild();
     });
   });
+  // reatividade: dentro
+  $("#rpt-type-inside")?.addEventListener("change", () => {
+    toggleReportInputsInside();
+    syncOutsideFromInsideAndBuild();
+  });
+  [
+    "#rpt-month-inside",
+    "#rpt-from-inside",
+    "#rpt-to-inside",
+    "#rpt-year-inside",
+  ].forEach((sel) => {
+    $(sel)?.addEventListener("change", syncOutsideFromInsideAndBuild);
+  });
+
+  function syncInsideFromOutsideAndBuild() {
+    $("#rpt-type-inside").value = $("#rpt-type").value;
+    $("#rpt-month-inside").value = $("#rpt-month").value;
+    $("#rpt-from-inside").value = $("#rpt-from").value;
+    $("#rpt-to-inside").value = $("#rpt-to").value;
+    $("#rpt-year-inside").value = $("#rpt-year").value;
+    toggleReportInputsInside();
+    buildReport();
+  }
+  function syncOutsideFromInsideAndBuild() {
+    $("#rpt-type").value = $("#rpt-type-inside").value;
+    $("#rpt-month").value = $("#rpt-month-inside").value;
+    $("#rpt-from").value = $("#rpt-from-inside").value;
+    $("#rpt-to").value = $("#rpt-to-inside").value;
+    $("#rpt-year").value = $("#rpt-year-inside").value;
+    toggleReportInputs();
+    buildReport();
+  }
 
   let _rptCat = null,
     _rptFix = null,
     _rptSeries = null;
   let _catLegendPDF = [],
-    _fixLegendPDF = [];
+    _fixLegendPDF = [],
+    _monthlyPDF = [],
+    _incomeCatPDF = [],
+    _expenseCatPDF = [],
+    _regularityPDF = [];
   function destroyCharts() {
     try {
       _rptCat?.destroy();
@@ -573,6 +631,10 @@ export async function init({ sb, outlet } = {}) {
     _rptCat = _rptFix = _rptSeries = null;
     _catLegendPDF = [];
     _fixLegendPDF = [];
+    _monthlyPDF = [];
+    _incomeCatPDF = [];
+    _expenseCatPDF = [];
+    _regularityPDF = [];
   }
   function makeChart(canvasEl, config) {
     const el =
@@ -584,6 +646,34 @@ export async function init({ sb, outlet } = {}) {
     if (prev) prev.destroy();
     return new Chart(el, config);
   }
+  function fmtPct(n) {
+    return (Number(n || 0) * 100).toFixed(1) + "%";
+  }
+  function by(arr, keyFn) {
+    const m = new Map();
+    for (const row of arr) {
+      const k = keyFn(row);
+      m.set(k, (m.get(k) || []).concat([row]));
+    }
+    return m;
+  }
+  function renderTable(el, cols, rows, footer = null) {
+    if (!el) return;
+    const th = `<thead><tr>${cols
+      .map((c) => `<th>${c.header}</th>`)
+      .join("")}</tr></thead>`;
+    const tb = `<tbody>${rows
+      .map(
+        (r) => `<tr>${cols.map((c) => `<td>${c.cell(r)}</td>`).join("")}</tr>`
+      )
+      .join("")}</tbody>`;
+    const tf = footer
+      ? `<tfoot><tr>${cols
+          .map((c, i) => `<td>${footer[i] || ""}</td>`)
+          .join("")}</tr></tfoot>`
+      : "";
+    el.innerHTML = th + tb + tf;
+  }
 
   let _isBuildingReport = false;
   async function buildReport() {
@@ -594,6 +684,7 @@ export async function init({ sb, outlet } = {}) {
       fixCanvasHeights();
       const legendEl = $("#rpt-cat-legend");
       if (legendEl) legendEl.innerHTML = "";
+      $("#rpt-fv-legend") && ($("#rpt-fv-legend").innerHTML = "");
 
       // período
       const selType = $("#rpt-type")?.value || "monthly";
@@ -642,7 +733,7 @@ export async function init({ sb, outlet } = {}) {
             .single(),
         ]);
 
-      // dados (com alias + fallback)
+      // dados
       let rows = [];
       try {
         const sel =
@@ -655,11 +746,7 @@ export async function init({ sb, outlet } = {}) {
           .order("date", { ascending: true });
         if (r.error) throw r.error;
         rows = r.data || [];
-      } catch (e) {
-        console.warn(
-          "Select com natureza falhou; fallback simples:",
-          e?.message || e
-        );
+      } catch {
         const r2 = await sb
           .from("transactions")
           .select("date,amount,type_id")
@@ -690,24 +777,24 @@ export async function init({ sb, outlet } = {}) {
       $("#rpt-kpi-balance") &&
         ($("#rpt-kpi-balance").textContent = money(balance));
 
-      // pizza por categoria (despesas)
+      // ===== 1) Despesas por categoria (pizza) =====
       await ensureChartStack();
-      const byCat = new Map();
+      const byCatExp = new Map();
       expRows.forEach((x) => {
         const name = x.category?.name || "Sem categoria";
-        byCat.set(name, (byCat.get(name) || 0) + Number(x.amount || 0));
+        byCatExp.set(name, (byCatExp.get(name) || 0) + Number(x.amount || 0));
       });
-      const entries = [...byCat.entries()]
+      const catEntries = [...byCatExp.entries()]
         .sort((a, b) => b[1] - a[1])
         .slice(0, 12);
-      const labels = entries.map(([k]) => k);
-      const values = entries.map(([, v]) => v);
-      const total = values.reduce((a, b) => a + b, 0);
+      const catLabels = catEntries.map(([k]) => k);
+      const catValues = catEntries.map(([, v]) => v);
+      const catTotal = catValues.reduce((a, b) => a + b, 0);
 
-      const showDL = !!window.ChartDataLabels && total > 0;
+      const showDL = !!window.ChartDataLabels && catTotal > 0;
       _rptCat = makeChart($("#rpt-cat-pie"), {
         type: "pie",
-        data: { labels, datasets: [{ data: values }] },
+        data: { labels: catLabels, datasets: [{ data: catValues }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -721,41 +808,38 @@ export async function init({ sb, outlet } = {}) {
                   borderRadius: 4,
                   padding: 4,
                   formatter: (v) =>
-                    `${money(v)} (${((v / total) * 100).toFixed(1)}%)`,
+                    `${money(v)} (${((v / catTotal) * 100).toFixed(1)}%)`,
                   display: (ctx) =>
-                    (ctx.dataset.data[ctx.dataIndex] || 0) >= total * 0.05,
+                    (ctx.dataset.data[ctx.dataIndex] || 0) >= catTotal * 0.06,
                 }
               : { display: false },
           },
         },
       });
-
-      const colors = _rptCat?.data?.datasets?.[0]?.backgroundColor || [];
-      _catLegendPDF = labels.map((lab, i) => ({
+      const catColors = _rptCat?.data?.datasets?.[0]?.backgroundColor || [];
+      _catLegendPDF = catLabels.map((lab, i) => ({
         label: lab,
-        value: values[i],
-        pct: total ? values[i] / total : 0,
-        color: colors[i] || "#64748b",
+        value: catValues[i],
+        pct: catTotal ? catValues[i] / catTotal : 0,
+        color: catColors[i] || "#64748b",
       }));
-      const leg = $("#rpt-cat-legend");
-      if (leg) {
-        leg.innerHTML = _catLegendPDF
+      if ($("#rpt-cat-legend")) {
+        $("#rpt-cat-legend").innerHTML = _catLegendPDF
           .map(
             (x) => `
-          <div class="rpt-legend__item">
-            <span class="rpt-legend__dot" style="background:${x.color}"></span>
-            <span style="flex:1">${x.label}</span>
-            <strong>${money(x.value)}</strong>
-            <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(
-              1
-            )}%)</span>
-          </div>
-        `
+        <div class="rpt-legend__item">
+          <span class="rpt-legend__dot" style="background:${x.color}"></span>
+          <span style="flex:1">${x.label}</span>
+          <strong>${money(x.value)}</strong>
+          <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(
+            1
+          )}%)</span>
+        </div>`
           )
           .join("");
       }
 
-      // donut Fixas vs Variáveis
+      // ===== 2) Fixas vs Variáveis (donut) =====
       const isFixed = (x) =>
         x.expense_nature === "fixed" ||
         (!x.expense_nature && x.category?.nature === "fixed");
@@ -796,8 +880,24 @@ export async function init({ sb, outlet } = {}) {
           color: "#ff6384",
         },
       ];
+      if ($("#rpt-fv-legend")) {
+        $("#rpt-fv-legend").innerHTML = _fixLegendPDF
+          .map(
+            (x) => `
+        <div class="rpt-legend__item"><span class="rpt-legend__dot" style="background:${
+          x.color
+        }"></span>
+        <span style="flex:1">${x.label}</span>
+        <strong>${money(x.value)}</strong>
+        <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(
+          1
+        )}%)</span></div>
+      `
+          )
+          .join("");
+      }
 
-      // séries mensais
+      // ===== 3) Séries mensais + liquidez (cashflow acumulado) =====
       const months = {};
       (rows || []).forEach((r) => {
         const m = String(r.date).slice(0, 7);
@@ -816,6 +916,10 @@ export async function init({ sb, outlet } = {}) {
         }
       });
       const mlabels = Object.keys(months).sort();
+      // liquidez acumulada (saldo corrente dentro do período)
+      let running = 0;
+      const liquidity = mlabels.map((k) => (running += months[k].net));
+
       _rptSeries = makeChart($("#rpt-series"), {
         type: "bar",
         data: {
@@ -825,9 +929,9 @@ export async function init({ sb, outlet } = {}) {
             { label: "Despesas", data: mlabels.map((k) => months[k].exp) },
             { label: "Poupanças", data: mlabels.map((k) => months[k].sav) },
             {
-              label: "Saldo",
+              label: "Liquidez (acum.)",
               type: "line",
-              data: mlabels.map((k) => months[k].net),
+              data: liquidity,
               tension: 0.25,
               borderWidth: 2,
             },
@@ -845,24 +949,149 @@ export async function init({ sb, outlet } = {}) {
         },
       });
 
-      // insights
-      const effort = income ? ((fixedAmt + variableAmt) / income) * 100 : 0;
-      const varPct = expense ? (variableAmt / expense) * 100 : 0;
-      const savPct = income ? (savings / income) * 100 : 0;
-      const ins = $("#rpt-insights");
-      if (ins) {
-        ins.innerHTML = [
-          `Taxa de esforço: ${effort.toFixed(1)}%`,
-          `Despesas variáveis: ${varPct.toFixed(1)}% das despesas`,
-          `Taxa de poupança: ${savPct.toFixed(1)}% das receitas`,
-        ]
-          .map((x) => `<li>${x}</li>`)
-          .join("");
+      // ===== 4) Tabelas: por categoria & resumo mensal =====
+      const sumMap = (rows, nameFn) => {
+        const map = new Map();
+        for (const r of rows) {
+          const name = nameFn(r) || "Sem categoria";
+          map.set(name, (map.get(name) || 0) + Number(r.amount || 0));
+        }
+        return [...map.entries()].sort((a, b) => b[1] - a[1]);
+      };
+      const incCat = sumMap(incRows, (r) => r.category?.name);
+      const expCat = sumMap(expRows, (r) => r.category?.name);
+      const incTot = incCat.reduce((a, [, v]) => a + v, 0);
+      const expTot = expCat.reduce((a, [, v]) => a + v, 0);
+
+      _incomeCatPDF = incCat.map(([label, value]) => ({ label, value }));
+      _expenseCatPDF = expCat.map(([label, value]) => ({ label, value }));
+
+      renderTable(
+        $("#tbl-income-cat"),
+        [
+          { header: "Categoria", cell: (r) => r[0] },
+          { header: "Total", cell: (r) => money(r[1]) },
+          { header: "%", cell: (r) => fmtPct(r[1] / (incTot || 1)) },
+        ],
+        incCat,
+        ["Total", money(incTot), "100%"]
+      );
+
+      renderTable(
+        $("#tbl-expense-cat"),
+        [
+          { header: "Categoria", cell: (r) => r[0] },
+          { header: "Total", cell: (r) => money(r[1]) },
+          { header: "%", cell: (r) => fmtPct(r[1] / (expTot || 1)) },
+        ],
+        expCat,
+        ["Total", money(expTot), "100%"]
+      );
+
+      // resumo mensal (receitas, despesas, poupanças, saldo, liquidez)
+      running = 0;
+      const monthlyRows = mlabels.map((m) => {
+        const inc = months[m].inc,
+          exp = months[m].exp,
+          sav = months[m].sav;
+        const net = months[m].net;
+        running += net;
+        return { m, inc, exp, sav, net, liq: running };
+      });
+      _monthlyPDF = monthlyRows;
+      renderTable(
+        $("#tbl-monthly"),
+        [
+          { header: "Mês", cell: (r) => r.m },
+          { header: "Receitas", cell: (r) => money(r.inc) },
+          { header: "Despesas", cell: (r) => money(r.exp) },
+          { header: "Poupanças", cell: (r) => money(r.sav) },
+          { header: "Saldo", cell: (r) => money(r.net) },
+          { header: "Liquidez", cell: (r) => money(r.liq) },
+        ],
+        monthlyRows
+      );
+
+      // ===== 5) Regularidade: despesas recorrentes =====
+      // regra simples: >= 3 meses distintos e coeficiente de variação <= 15%
+      function regularityDetect(rows) {
+        const byCat = by(rows, (r) => r.category?.name || "Sem categoria");
+        const out = [];
+        for (const [cat, list] of byCat.entries()) {
+          const byMonth = by(list, (r) => String(r.date).slice(0, 7));
+          const monthsCount = byMonth.size;
+          if (monthsCount < 3) continue;
+          const vals = [...byMonth.values()].map((v) =>
+            sum(v.map((x) => x.amount))
+          );
+          const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+          const variance =
+            vals.reduce((a, b) => a + Math.pow(b - avg, 2), 0) /
+            (vals.length || 1);
+          const sd = Math.sqrt(variance);
+          const cv = avg ? sd / avg : 1;
+          if (cv <= 0.15) out.push({ cat, meses: monthsCount, media: avg, cv });
+        }
+        return out.sort((a, b) => b.media - a.media);
       }
+      const recurring = regularityDetect(expRows);
+      _regularityPDF = recurring;
+      renderTable(
+        $("#tbl-regularity"),
+        [
+          { header: "Categoria", cell: (r) => r.cat },
+          { header: "Meses", cell: (r) => r.meses },
+          { header: "Média/mês", cell: (r) => money(r.media) },
+          {
+            header: "Estabilidade",
+            cell: (r) =>
+              r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.15 ? "Estável" : "—",
+          },
+        ],
+        recurring
+      );
+
+      // ===== 6) Insights / Alertas =====
+      const effort = income ? (expense / income) * 100 : 0; // taxa de esforço = despesas / receitas
+      const savRate = income ? (savings / income) * 100 : 0;
+      const negMonths = monthlyRows.filter((r) => r.net < 0).length;
+      const lastLiq = monthlyRows.at(-1)?.liq || 0;
+
+      const insights = [];
+      insights.push(
+        `Taxa de esforço: <strong>${effort.toFixed(1)}%</strong>` +
+          (effort > 50
+            ? " <span style='color:#b91c1c'>(elevada)</span>"
+            : effort > 35
+            ? " <span style='color:#f59e0b'>(moderada)</span>"
+            : " <span style='color:#15803d'>(saudável)</span>")
+      );
+      insights.push(
+        `Taxa de poupança: <strong>${savRate.toFixed(
+          1
+        )}%</strong> das receitas.`
+      );
+      if (negMonths > 0)
+        insights.push(
+          `Alerta: <strong>${negMonths}</strong> mes(es) com saldo mensal negativo.`
+        );
+      insights.push(
+        `Liquidez no fim do período: <strong>${money(lastLiq)}</strong>.`
+      );
+      if (recurring.length)
+        insights.push(
+          `Identificadas <strong>${recurring.length}</strong> categorias de despesa recorrente (estáveis).`
+        );
+
+      $("#rpt-insights") &&
+        ($("#rpt-insights").innerHTML = insights
+          .map((x) => `<li>${x}</li>`)
+          .join(""));
     } finally {
       _isBuildingReport = false;
     }
-  
+
+    // resize final
     setTimeout(() => {
       try {
         _rptCat?.resize();
@@ -870,9 +1099,9 @@ export async function init({ sb, outlet } = {}) {
         _rptSeries?.resize();
       } catch {}
     }, 0);
-
   }
 
+  // Exportação PDF
   $("#rpt-export")?.addEventListener("click", async () => {
     try {
       if (typeof _isBuildingReport !== "undefined" && !_isBuildingReport)
@@ -887,7 +1116,6 @@ export async function init({ sb, outlet } = {}) {
       subject: "antonioappleton@gmail.com",
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
-      showDetailsPage: true,
       signature: {
         enabled: true,
         name: "Finance Dept.",
@@ -944,9 +1172,9 @@ export async function init({ sb, outlet } = {}) {
       y = M;
       header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
     };
-
     header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
 
+    // KPIs
     const k = [
       ["Receitas", $("#rpt-kpi-income")?.textContent || "—"],
       ["Despesas", $("#rpt-kpi-expense")?.textContent || "—"],
@@ -965,6 +1193,7 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
+    // helper: desenhar canvas
     const canvasToPage = (sel, x, y2, w, h) => {
       const c = document.querySelector(sel);
       if (!c) return y2;
@@ -997,19 +1226,18 @@ export async function init({ sb, outlet } = {}) {
       return y2;
     };
 
+    // Distribuição + Fixas/Variáveis
     ensureSpace(260 + 12);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Distribuição por categorias", M, y);
     doc.text("Fixas vs Variáveis", W / 2 + 8, y);
     y += 10;
-
     const colW = (W - 2 * M - 16) / 2,
       pieH = 220;
     const y1 = canvasToPage("#rpt-cat-pie", M, y, colW, pieH);
     const y2 = canvasToPage("#rpt-fixed-donut", M + colW + 16, y, colW, pieH);
     y = Math.max(y1, y2) + 8;
-
     const yLegL = drawLegend(window._catLegendPDF || _catLegendPDF, M, y, colW);
     const yLegR = drawLegend(
       window._fixLegendPDF || _fixLegendPDF,
@@ -1019,47 +1247,116 @@ export async function init({ sb, outlet } = {}) {
     );
     y = Math.max(yLegL, yLegR) + 16;
 
+    // Séries
     ensureSpace(260 + 18);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("Séries mensais", M, y);
+    doc.text("Evolução mensal", M, y);
     y += 10;
     y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 12;
 
-    if (REPORT_CFG.showDetailsPage) {
-      footer();
-      doc.addPage();
-      y = M;
-      header("Detalhe — Categorias", new Date().toLocaleDateString("pt-PT"));
+    // Página 2: Tabelas (Categorias + Resumo + Regularidade)
+    footer();
+    doc.addPage();
+    y = M;
+    header(
+      "Detalhe — Categorias & Resumo",
+      new Date().toLocaleDateString("pt-PT")
+    );
 
-      const rows = window._catLegendPDF || _catLegendPDF || [];
+    // tabela util
+    function tablePDF(title, cols, rows, widths) {
+      ensureSpace(20);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text("Categoria", M, y);
-      doc.text("Montante", W - M - 160, y);
-      doc.text("%", W - M - 40, y, { align: "right" });
-      y += 8;
+      doc.setFontSize(12);
+      doc.text(title, M, y);
+      y += 6;
+      line(M, y, W - M, y);
+      y += 10;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      let x = M;
+      cols.forEach((h, i) => {
+        doc.text(h, x, y);
+        x += widths[i];
+      });
+      y += 6;
       line(M, y, W - M, y);
       y += 10;
       doc.setFont("helvetica", "normal");
-
       rows.forEach((r) => {
-        ensureSpace(16);
-        doc.text(String(r.label || "—"), M, y, { maxWidth: W - 2 * M - 220 });
-        const val =
-          "€ " +
-          Number(r.value || 0).toLocaleString("pt-PT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          });
-        doc.text(val, W - M - 160, y);
-        doc.text(((r.pct || 0) * 100).toFixed(1) + "%", W - M - 40, y, {
-          align: "right",
+        ensureSpace(14);
+        let x = M;
+        r.forEach((cell, i) => {
+          const align = i === 0 ? "left" : "right";
+          doc.text(
+            String(cell),
+            x + (align === "right" ? widths[i] - 2 : 0),
+            y,
+            { align }
+          );
+          x += widths[i];
         });
-        y += 14;
+        y += 12;
       });
+      y += 4;
     }
 
+    // categorias receitas
+    tablePDF(
+      "Receitas por categoria",
+      ["Categoria", "Total", "%"],
+      (_incomeCatPDF || []).map((r) => [
+        r.label,
+        money(r.value),
+        fmtPct(r.value / (_incomeCatPDF.reduce((a, x) => a + x.value, 0) || 1)),
+      ]),
+      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
+    );
+
+    // categorias despesas
+    tablePDF(
+      "Despesas por categoria",
+      ["Categoria", "Total", "%"],
+      (_expenseCatPDF || []).map((r) => [
+        r.label,
+        money(r.value),
+        fmtPct(
+          r.value / (_expenseCatPDF.reduce((a, x) => a + x.value, 0) || 1)
+        ),
+      ]),
+      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
+    );
+
+    // resumo mensal
+    tablePDF(
+      "Resumo mensal & liquidez",
+      ["Mês", "Receitas", "Despesas", "Poupanças", "Saldo", "Liquidez"],
+      (_monthlyPDF || []).map((r) => [
+        r.m,
+        money(r.inc),
+        money(r.exp),
+        money(r.sav),
+        money(r.net),
+        money(r.liq),
+      ]),
+      [80, 80, 80, 80, 80, 90]
+    );
+
+    // regularidade
+    tablePDF(
+      "Despesas recorrentes (regularidade)",
+      ["Categoria", "Meses", "Média/mês", "Estabilidade"],
+      (_regularityPDF || []).map((r) => [
+        r.cat,
+        r.meses,
+        money(r.media),
+        r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.15 ? "Estável" : "—",
+      ]),
+      [200, 60, 90, 100]
+    );
+
+    // Assinatura
     if (REPORT_CFG.signature?.enabled) {
       ensureSpace(120);
       const sig = REPORT_CFG.signature;
@@ -1072,7 +1369,6 @@ export async function init({ sb, outlet } = {}) {
       doc.setDrawColor(210);
       line(M, y, M + 200, y);
       y += 8;
-
       if (sig.imageUrl) {
         try {
           const dataUrl = await toDataURL(sig.imageUrl);
@@ -1098,6 +1394,7 @@ export async function init({ sb, outlet } = {}) {
       doc.text(sig.name || "", M, y);
     }
 
+    // numeração & rodapé
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
@@ -1110,143 +1407,9 @@ export async function init({ sb, outlet } = {}) {
       doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
       doc.setTextColor(0);
     }
-
     doc.save(REPORT_CFG.filename);
   });
-
   // ================== /RELATÓRIOS ========================
-
-  // ============ MANUTENÇÃO DE DADOS =====================
-  $("#btn-del-month")?.addEventListener("click", async () => {
-    try {
-      await preflight();
-      const start = currentMonthStartISO(),
-        end = nextMonthStartISO();
-      if (!confirm(`Eliminar todas as transações de ${start.slice(0, 7)}?`))
-        return;
-      await sb.from("transactions").delete().gte("date", start).lt("date", end);
-      alert("Mês eliminado.");
-    } catch (e) {
-      alert(e.message || "Falha de ligação.");
-    }
-  });
-
-  $("#btn-del-range")?.addEventListener("click", async () => {
-    try {
-      await preflight();
-      const startISO = prompt("Início (YYYY-MM-DD):", currentMonthStartISO());
-      const endISO = prompt("Fim EXCLUSIVO (YYYY-MM-DD):", nextMonthStartISO());
-      if (!startISO || !endISO) return;
-      if (
-        !confirm(
-          `Eliminar transações de ${startISO} até ${endISO} (exclusivo)?`
-        )
-      )
-        return;
-      await sb
-        .from("transactions")
-        .delete()
-        .gte("date", startISO)
-        .lt("date", endISO);
-      alert("Período eliminado.");
-    } catch (e) {
-      alert(e.message || "Falha de ligação.");
-    }
-  });
-
-  $("#btn-del-all")?.addEventListener("click", async () => {
-    try {
-      await preflight();
-      if (!confirm("Eliminar TODAS as suas transações?")) return;
-      await sb
-        .from("transactions")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      alert("Tudo eliminado.");
-    } catch (e) {
-      alert(e.message || "Falha de ligação.");
-    }
-  });
-
-  // Regularidade em massa
-  async function pickRegularityId(
-    promptText = "Regularidade (ex: mensal, quinzenal, anual, única)"
-  ) {
-    const s = (prompt(promptText) || "").trim();
-    if (!s) return null;
-    const id = regularityFromLabel(s);
-    if (!id) alert("Regularidade não reconhecida.");
-    return id;
-  }
-  async function bulkSetRegularityForMonth(
-    yyyyMM,
-    regId,
-    categoryPath /* opcional */
-  ) {
-    const [y, m] = yyyyMM.split("-").map(Number);
-    const from = ymd(new Date(y, m - 1, 1));
-    const to = ymd(new Date(y, m, 1));
-    let q = sb
-      .from("transactions")
-      .update({ regularity_id: regId })
-      .gte("date", from)
-      .lt("date", to);
-
-    if (categoryPath) {
-      const [par, chi] = categoryPath.split(">").map((s) => s.trim());
-      let catId = null;
-      if (par && chi) {
-        const { data: parent } = await sb
-          .from("categories")
-          .select("id")
-          .eq("name", par)
-          .is("parent_id", null)
-          .limit(1);
-        if (parent?.[0]) {
-          const { data: child } = await sb
-            .from("categories")
-            .select("id")
-            .eq("name", chi)
-            .eq("parent_id", parent[0].id)
-            .limit(1);
-          catId = child?.[0]?.id || null;
-        }
-      } else if (par) {
-        const { data: only } = await sb
-          .from("categories")
-          .select("id")
-          .eq("name", par)
-          .is("parent_id", null)
-          .limit(1);
-        catId = only?.[0]?.id || null;
-      }
-      if (catId) q = q.eq("category_id", catId);
-    }
-    const { error } = await q;
-    if (error) throw error;
-  }
-  $("#btn-regularity-bulk")?.addEventListener("click", async () => {
-    try {
-      await preflight();
-      const month = prompt(
-        "Mês (YYYY-MM):",
-        new Date().toISOString().slice(0, 7)
-      );
-      if (!month) return;
-      const regId = await pickRegularityId(
-        "Regularidade (mensal, quinzenal, anual, única):"
-      );
-      if (!regId) return;
-      const catPath = prompt(
-        'Categoria opcional (ex: "Casa > Renda"; vazio = todas):',
-        ""
-      );
-      await bulkSetRegularityForMonth(month, regId, catPath || null);
-      alert("Regularidade atualizada.");
-    } catch (e) {
-      alert(e.message || "Falha de ligação.");
-    }
-  });
 
   // =================== SESSÃO / PASSWORD =================
   // Mostrar email da sessão
