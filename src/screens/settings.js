@@ -1515,41 +1515,7 @@ export async function init({ sb, outlet } = {}) {
       [200, 60, 90, 100]
     );
 
-    // Assinatura
-    if (REPORT_CFG.signature?.enabled) {
-      const sig = REPORT_CFG.signature;
-      ensureSpace((sig.height || 60) + 70);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.text("Assinatura", M, y);
-      y += 6;
-      line(M, y, M + 200, y);
-      y += 8;
-      if (sig.imageUrl) {
-        try {
-          const dataUrl = await toDataURL(sig.imageUrl);
-          doc.addImage(
-            dataUrl,
-            "PNG",
-            M,
-            y,
-            sig.width || 140,
-            sig.height || 60
-          );
-        } catch {
-          doc.setFont("helvetica", "italic");
-          doc.text(sig.textFallback || "__________________", M, y + 28);
-        }
-      } else {
-        doc.setFont("helvetica", "italic");
-        doc.text(sig.textFallback || "__________________", M, y + 28);
-      }
-      y += (sig.height || 60) + 6;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(11);
-      doc.text(sig.name || "", M, y);
-    }
-
+    
     // numeração & rodapé
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
