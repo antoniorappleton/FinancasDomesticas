@@ -506,6 +506,9 @@ export async function init({ sb, outlet } = {}) {
     lockCanvas($("#rpt-cat-pie"), 240);
     lockCanvas($("#rpt-fixed-donut"), 240);
     lockCanvas($("#rpt-series"), 260);
+    lockCanvas($("#rpt-top-exp"), 220);
+    lockCanvas($("#rpt-effort"), 200);
+    lockCanvas($("#rpt-savings-rate"), 200);
   }
 
   function openReport() {
@@ -542,6 +545,24 @@ export async function init({ sb, outlet } = {}) {
       closeReport();
   });
 
+  // focus trap dentro do modal (opcional, acessibilidade)
+  overlay?.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const f = overlay.querySelectorAll(
+      "button,[href],input,select,textarea,[tabindex]:not([tabindex='-1'])"
+    );
+    if (!f.length) return;
+    const first = f[0],
+      last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+
   // alterna inputs (fora)
   function toggleReportInputs() {
     const t = $("#rpt-type")?.value || "monthly";
@@ -563,6 +584,11 @@ export async function init({ sb, outlet } = {}) {
 
   // abrir & construir
   $("#btn-report-open")?.addEventListener("click", async () => {
+    try {
+      await preflight();
+    } catch (e) {
+      return alert(e.message || "Sem ligação/sessão.");
+    }
     await ensureChartStack();
     openReport();
     await new Promise((r) => requestAnimationFrame(r));
@@ -612,12 +638,16 @@ export async function init({ sb, outlet } = {}) {
   let _rptCat = null,
     _rptFix = null,
     _rptSeries = null;
+  let _rptTopExp = null,
+    _rptEffort = null,
+    _rptSavings = null;
   let _catLegendPDF = [],
     _fixLegendPDF = [],
     _monthlyPDF = [],
     _incomeCatPDF = [],
     _expenseCatPDF = [],
     _regularityPDF = [];
+
   function destroyCharts() {
     try {
       _rptCat?.destroy();
@@ -628,7 +658,22 @@ export async function init({ sb, outlet } = {}) {
     try {
       _rptSeries?.destroy();
     } catch {}
-    _rptCat = _rptFix = _rptSeries = null;
+    try {
+      _rptTopExp?.destroy();
+    } catch {}
+    try {
+      _rptEffort?.destroy();
+    } catch {}
+    try {
+      _rptSavings?.destroy();
+    } catch {}
+    _rptCat =
+      _rptFix =
+      _rptSeries =
+      _rptTopExp =
+      _rptEffort =
+      _rptSavings =
+        null;
     _catLegendPDF = [];
     _fixLegendPDF = [];
     _monthlyPDF = [];
@@ -684,7 +729,7 @@ export async function init({ sb, outlet } = {}) {
       fixCanvasHeights();
       const legendEl = $("#rpt-cat-legend");
       if (legendEl) legendEl.innerHTML = "";
-      $("#rpt-fv-legend") && ($("#rpt-fv-legend").innerHTML = "");
+      if ($("#rpt-fv-legend")) $("#rpt-fv-legend").innerHTML = "";
 
       // período
       const selType = $("#rpt-type")?.value || "monthly";
@@ -768,14 +813,14 @@ export async function init({ sb, outlet } = {}) {
           ? sum(rows.map((x) => x.signed_amount))
           : income - expense - savings;
 
-      $("#rpt-kpi-income") &&
-        ($("#rpt-kpi-income").textContent = money(income));
-      $("#rpt-kpi-expense") &&
-        ($("#rpt-kpi-expense").textContent = money(expense));
-      $("#rpt-kpi-savings") &&
-        ($("#rpt-kpi-savings").textContent = money(savings));
-      $("#rpt-kpi-balance") &&
-        ($("#rpt-kpi-balance").textContent = money(balance));
+      if ($("#rpt-kpi-income"))
+        $("#rpt-kpi-income").textContent = money(income);
+      if ($("#rpt-kpi-expense"))
+        $("#rpt-kpi-expense").textContent = money(expense);
+      if ($("#rpt-kpi-savings"))
+        $("#rpt-kpi-savings").textContent = money(savings);
+      if ($("#rpt-kpi-balance"))
+        $("#rpt-kpi-balance").textContent = money(balance);
 
       // ===== 1) Despesas por categoria (pizza) =====
       await ensureChartStack();
@@ -891,13 +936,12 @@ export async function init({ sb, outlet } = {}) {
         <strong>${money(x.value)}</strong>
         <span style="color:#64748b">&nbsp;(${(x.pct * 100).toFixed(
           1
-        )}%)</span></div>
-      `
+        )}%)</span></div>`
           )
           .join("");
       }
 
-      // ===== 3) Séries mensais + liquidez (cashflow acumulado) =====
+      // ===== 3) Séries mensais + liquidez =====
       const months = {};
       (rows || []).forEach((r) => {
         const m = String(r.date).slice(0, 7);
@@ -916,7 +960,6 @@ export async function init({ sb, outlet } = {}) {
         }
       });
       const mlabels = Object.keys(months).sort();
-      // liquidez acumulada (saldo corrente dentro do período)
       let running = 0;
       const liquidity = mlabels.map((k) => (running += months[k].net));
 
@@ -949,10 +992,101 @@ export async function init({ sb, outlet } = {}) {
         },
       });
 
+      // ===== 3A) NOVO: Top 6 despesas (barras horizontais) =====
+      const topExp = [...byCatExp.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+      const topLabels = topExp.map(([k]) => k).reverse();
+      const topVals = topExp.map(([, v]) => v).reverse();
+      _rptTopExp = makeChart($("#rpt-top-exp"), {
+        type: "bar",
+        data: {
+          labels: topLabels,
+          datasets: [{ label: "Despesas", data: topVals }],
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+          },
+          scales: { x: { beginAtZero: true } },
+        },
+      });
+
+      // ===== 3B) NOVO: Linha da taxa de esforço mensal =====
+      const effortSeries = mlabels.map((m) => {
+        const inc = months[m].inc || 0;
+        const exp = months[m].exp || 0;
+        return inc ? +((exp / inc) * 100).toFixed(1) : 0;
+      });
+      _rptEffort = makeChart($("#rpt-effort"), {
+        type: "line",
+        data: {
+          labels: mlabels,
+          datasets: [
+            {
+              label: "Taxa de esforço (%)",
+              data: effortSeries,
+              borderWidth: 2,
+              tension: 0.25,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: (v) => v + "%" } },
+          },
+        },
+      });
+
+      // ===== 3C) NOVO: Linha da taxa de poupança mensal =====
+      const savingsSeries = mlabels.map((m) => {
+        const inc = months[m].inc || 0;
+        const sav = months[m].sav || 0;
+        return inc ? +((sav / inc) * 100).toFixed(1) : 0;
+      });
+      _rptSavings = makeChart($("#rpt-savings-rate"), {
+        type: "line",
+        data: {
+          labels: mlabels,
+          datasets: [
+            {
+              label: "Taxa de poupança (%)",
+              data: savingsSeries,
+              borderWidth: 2,
+              tension: 0.25,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: (v) => v + "%" } },
+          },
+        },
+      });
+
       // ===== 4) Tabelas: por categoria & resumo mensal =====
-      const sumMap = (rows, nameFn) => {
+      const sumMap = (rowsArr, nameFn) => {
         const map = new Map();
-        for (const r of rows) {
+        for (const r of rowsArr) {
           const name = nameFn(r) || "Sem categoria";
           map.set(name, (map.get(name) || 0) + Number(r.amount || 0));
         }
@@ -976,7 +1110,6 @@ export async function init({ sb, outlet } = {}) {
         incCat,
         ["Total", money(incTot), "100%"]
       );
-
       renderTable(
         $("#tbl-expense-cat"),
         [
@@ -988,7 +1121,7 @@ export async function init({ sb, outlet } = {}) {
         ["Total", money(expTot), "100%"]
       );
 
-      // resumo mensal (receitas, despesas, poupanças, saldo, liquidez)
+      // resumo mensal
       running = 0;
       const monthlyRows = mlabels.map((m) => {
         const inc = months[m].inc,
@@ -1013,15 +1146,14 @@ export async function init({ sb, outlet } = {}) {
       );
 
       // ===== 5) Regularidade: despesas recorrentes =====
-      // regra simples: >= 3 meses distintos e coeficiente de variação <= 15%
-      function regularityDetect(rows) {
-        const byCat = by(rows, (r) => r.category?.name || "Sem categoria");
+      function regularityDetect(rowsArr) {
+        const byCat2 = by(rowsArr, (r) => r.category?.name || "Sem categoria");
         const out = [];
-        for (const [cat, list] of byCat.entries()) {
-          const byMonth = by(list, (r) => String(r.date).slice(0, 7));
-          const monthsCount = byMonth.size;
+        for (const [cat, list] of byCat2.entries()) {
+          const byMonth2 = by(list, (r) => String(r.date).slice(0, 7));
+          const monthsCount = byMonth2.size;
           if (monthsCount < 3) continue;
-          const vals = [...byMonth.values()].map((v) =>
+          const vals = [...byMonth2.values()].map((v) =>
             sum(v.map((x) => x.amount))
           );
           const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -1030,29 +1162,44 @@ export async function init({ sb, outlet } = {}) {
             (vals.length || 1);
           const sd = Math.sqrt(variance);
           const cv = avg ? sd / avg : 1;
-          if (cv <= 0.15) out.push({ cat, meses: monthsCount, media: avg, cv });
+          // menos agressivo: marca como “Possível padrão” até 25%
+          if (cv <= 0.25) out.push({ cat, meses: monthsCount, media: avg, cv });
         }
         return out.sort((a, b) => b.media - a.media);
       }
       const recurring = regularityDetect(expRows);
       _regularityPDF = recurring;
-      renderTable(
-        $("#tbl-regularity"),
-        [
-          { header: "Categoria", cell: (r) => r.cat },
-          { header: "Meses", cell: (r) => r.meses },
-          { header: "Média/mês", cell: (r) => money(r.media) },
-          {
-            header: "Estabilidade",
-            cell: (r) =>
-              r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.15 ? "Estável" : "—",
-          },
-        ],
-        recurring
-      );
+
+      if (recurring.length) {
+        renderTable(
+          $("#tbl-regularity"),
+          [
+            { header: "Categoria", cell: (r) => r.cat },
+            { header: "Meses", cell: (r) => r.meses },
+            { header: "Média/mês", cell: (r) => money(r.media) },
+            {
+              header: "Estabilidade",
+              cell: (r) =>
+                r.cv <= 0.1
+                  ? "Muito estável"
+                  : r.cv <= 0.25
+                  ? "Possível padrão"
+                  : "—",
+            },
+          ],
+          recurring
+        );
+        $("#tbl-regularity")?.classList.remove("is-empty");
+      } else {
+        const el = $("#tbl-regularity");
+        if (el) {
+          el.innerHTML = `<tbody><tr><td style="padding:10px;color:#64748b" colspan="4">Sem padrões suficientes de recorrência neste período.</td></tr></tbody>`;
+          el.classList.add("is-empty");
+        }
+      }
 
       // ===== 6) Insights / Alertas =====
-      const effort = income ? (expense / income) * 100 : 0; // taxa de esforço = despesas / receitas
+      const effort = income ? (expense / income) * 100 : 0;
       const savRate = income ? (savings / income) * 100 : 0;
       const negMonths = monthlyRows.filter((r) => r.net < 0).length;
       const lastLiq = monthlyRows.at(-1)?.liq || 0;
@@ -1080,13 +1227,13 @@ export async function init({ sb, outlet } = {}) {
       );
       if (recurring.length)
         insights.push(
-          `Identificadas <strong>${recurring.length}</strong> categorias de despesa recorrente (estáveis).`
+          `Identificadas <strong>${recurring.length}</strong> categorias de despesa recorrente.`
         );
 
-      $("#rpt-insights") &&
-        ($("#rpt-insights").innerHTML = insights
+      if ($("#rpt-insights"))
+        $("#rpt-insights").innerHTML = insights
           .map((x) => `<li>${x}</li>`)
-          .join(""));
+          .join("");
     } finally {
       _isBuildingReport = false;
     }
@@ -1097,11 +1244,14 @@ export async function init({ sb, outlet } = {}) {
         _rptCat?.resize();
         _rptFix?.resize();
         _rptSeries?.resize();
+        _rptTopExp?.resize();
+        _rptEffort?.resize();
+        _rptSavings?.resize();
       } catch {}
     }, 0);
   }
 
-  // Exportação PDF
+  // Exportação PDF (inclui novos canvases)
   $("#rpt-export")?.addEventListener("click", async () => {
     try {
       if (typeof _isBuildingReport !== "undefined" && !_isBuildingReport)
@@ -1158,7 +1308,7 @@ export async function init({ sb, outlet } = {}) {
       y += 12;
     };
     const footer = () => {
-      const txt = "antonioappleton@gmail.com | WiseBudget®";
+      const txt = "WiseBudget";
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor(120);
@@ -1193,7 +1343,7 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
-    // helper: desenhar canvas
+    // helpers
     const canvasToPage = (sel, x, y2, w, h) => {
       const c = document.querySelector(sel);
       if (!c) return y2;
@@ -1206,10 +1356,10 @@ export async function init({ sb, outlet } = {}) {
       doc.setFontSize(10);
       const lh = 14;
       for (const it of items || []) {
-        const color = it?.color || "#888";
-        const pct = ((it?.pct || 0) * 100).toFixed(1);
-        const label = it?.label || "—";
-        const val = it?.value ?? 0;
+        const color = it?.color || "#888",
+          pct = ((it?.pct || 0) * 100).toFixed(1),
+          label = it?.label || "—",
+          val = it?.value ?? 0;
         doc.setFillColor(color);
         doc.circle(x + 5, y2 + 5, 3, "F");
         doc.text(
@@ -1238,33 +1388,41 @@ export async function init({ sb, outlet } = {}) {
     const y1 = canvasToPage("#rpt-cat-pie", M, y, colW, pieH);
     const y2 = canvasToPage("#rpt-fixed-donut", M + colW + 16, y, colW, pieH);
     y = Math.max(y1, y2) + 8;
-    const yLegL = drawLegend(window._catLegendPDF || _catLegendPDF, M, y, colW);
-    const yLegR = drawLegend(
-      window._fixLegendPDF || _fixLegendPDF,
-      M + colW + 16,
-      y,
-      colW
-    );
+    const yLegL = drawLegend(_catLegendPDF, M, y, colW);
+    const yLegR = drawLegend(_fixLegendPDF, M + colW + 16, y, colW);
     y = Math.max(yLegL, yLegR) + 16;
 
-    // Séries
-    ensureSpace(260 + 18);
+    // Série + top despesas
+    ensureSpace(260 + 240 + 24);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Evolução mensal", M, y);
     y += 10;
     y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 12;
 
-    // Página 2: Tabelas (Categorias + Resumo + Regularidade)
+    doc.text("Top 6 categorias de despesa", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M, 200) + 16;
+
+    // Esforço & poupança (%)
+    ensureSpace(220 + 220 + 18);
+    doc.text("Taxa de esforço mensal", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-effort", M, y, W - 2 * M, 200) + 8;
+
+    doc.text("Taxa de poupança mensal", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-savings-rate", M, y, W - 2 * M, 200) + 12;
+
+    // Página 2: Tabelas
     footer();
     doc.addPage();
     y = M;
     header(
-      "Detalhe — Categorias & Resumo",
+      "Detalhe — Mensal & Categorias",
       new Date().toLocaleDateString("pt-PT")
     );
 
-    // tabela util
     function tablePDF(title, cols, rows, widths) {
       ensureSpace(20);
       doc.setFont("helvetica", "bold");
@@ -1302,19 +1460,20 @@ export async function init({ sb, outlet } = {}) {
       y += 4;
     }
 
-    // categorias receitas
     tablePDF(
       "Receitas por categoria",
       ["Categoria", "Total", "%"],
       (_incomeCatPDF || []).map((r) => [
         r.label,
         money(r.value),
-        fmtPct(r.value / (_incomeCatPDF.reduce((a, x) => a + x.value, 0) || 1)),
+        fmtPct(
+          r.value /
+            ((_incomeCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
+        ),
       ]),
       [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
     );
 
-    // categorias despesas
     tablePDF(
       "Despesas por categoria",
       ["Categoria", "Total", "%"],
@@ -1322,13 +1481,13 @@ export async function init({ sb, outlet } = {}) {
         r.label,
         money(r.value),
         fmtPct(
-          r.value / (_expenseCatPDF.reduce((a, x) => a + x.value, 0) || 1)
+          r.value /
+            ((_expenseCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
         ),
       ]),
       [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
     );
 
-    // resumo mensal
     tablePDF(
       "Resumo mensal & liquidez",
       ["Mês", "Receitas", "Despesas", "Poupanças", "Saldo", "Liquidez"],
@@ -1343,7 +1502,7 @@ export async function init({ sb, outlet } = {}) {
       [80, 80, 80, 80, 80, 90]
     );
 
-    // regularidade
+    // Regularidade
     tablePDF(
       "Despesas recorrentes (regularidade)",
       ["Categoria", "Meses", "Média/mês", "Estabilidade"],
@@ -1351,22 +1510,19 @@ export async function init({ sb, outlet } = {}) {
         r.cat,
         r.meses,
         money(r.media),
-        r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.15 ? "Estável" : "—",
+        r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.25 ? "Possível padrão" : "—",
       ]),
       [200, 60, 90, 100]
     );
 
     // Assinatura
     if (REPORT_CFG.signature?.enabled) {
-      ensureSpace(120);
       const sig = REPORT_CFG.signature;
-      const blockTop = Math.max(y, H - M - 110);
-      y = blockTop;
+      ensureSpace((sig.height || 60) + 70);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.text("Assinatura", M, y);
       y += 6;
-      doc.setDrawColor(210);
       line(M, y, M + 200, y);
       y += 8;
       if (sig.imageUrl) {
@@ -1404,7 +1560,7 @@ export async function init({ sb, outlet } = {}) {
       doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
         align: "right",
       });
-      doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
+      doc.text("WiseBudget", M, H - M + 12);
       doc.setTextColor(0);
     }
     doc.save(REPORT_CFG.filename);

@@ -93,7 +93,7 @@ a{ color:inherit; text-decoration:none }
 .foot-item:hover{ background:rgba(255,255,255,.14) }
 .foot-item:active{ transform:translateY(1px) }
 .foot-item[aria-current="page"]{ background:rgba(255,255,255,.18); outline:1px solid rgba(255,255,255,.18); color:#fff }
-.foot-item--primary{ background:#0ea5e9 }
+.foot-item--primary{ background:#0274136d }
 .foot-item--primary[aria-current="page"]{ background:#0284c7 }
 
 /* =========================
