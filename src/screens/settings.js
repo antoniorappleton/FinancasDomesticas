@@ -1251,287 +1251,318 @@ export async function init({ sb, outlet } = {}) {
     }, 0);
   }
 
-  // Exportação PDF (inclui novos canvases)
-  $("#rpt-export")?.addEventListener("click", async () => {
-    try {
-      if (typeof _isBuildingReport !== "undefined" && !_isBuildingReport)
-        await buildReport();
-    } catch {}
-    const jsPDF = await getJsPDF();
-    if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
+// Exportação PDF (corrigido: lẽ arrays do escopo correto, logo P&B, mais espaçamento,
+// pizza em coluna, cabeçalhos coloridos nas tabelas, sem páginas em branco)
+$("#rpt-export")?.addEventListener("click", async () => {
+  try {
+    // Garante dados frescos (reconstrói o relatório, mesmo com modal fechado)
+    await buildReport();
+  } catch (e) {
+    console.warn("buildReport falhou antes do PDF:", e);
+  }
 
-    const REPORT_CFG = {
-      title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
-      author: "António R. Appleton",
-      subject: "antonioappleton@gmail.com",
-      creator: "WiseBudget®",
-      filename: "wisebudget-relatorio.pdf",
-      signature: {
-        enabled: true,
-        name: "Finance Dept.",
-        textFallback: "________________________",
-        imageUrl: null,
-        width: 140,
-        height: 60,
-      },
-    };
+  const jsPDF = await getJsPDF();
+  if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
 
-    const doc = new (await getJsPDF())({ unit: "pt", format: "a4" });
-    const W = doc.internal.pageSize.getWidth();
-    const H = doc.internal.pageSize.getHeight();
-    const M = 40;
-    let y = M;
+  const REPORT_CFG = {
+    title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
+    author: "António R. Appleton",
+    subject: "antonioappleton@gmail.com",
+    creator: "WiseBudget®",
+    filename: "wisebudget-relatorio.pdf",
+    logoUrl: "/wisebudget_bk_wt.png",
+    logoW: 28,
+    logoH: 28,
+  };
 
-    doc.setProperties({
-      title: REPORT_CFG.title,
-      subject: REPORT_CFG.subject,
-      author: REPORT_CFG.author,
-      creator: REPORT_CFG.creator,
-      keywords: "finance, report, wisebudget",
-    });
+  const doc = new (await getJsPDF())({ unit: "pt", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 40;    // margem
+  const GAP = 14;  // espaçamento vertical base
+  const SEC = 18;  // espaçamento extra entre seções
+  let y = M;
 
-    const line = (x1, y1, x2, y2) => {
-      doc.setDrawColor(230);
-      doc.line(x1, y1, x2, y2);
-    };
-    const header = (title, subtitle = null) => {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text(title, M, y);
-      if (subtitle) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(subtitle, W - M, y, { align: "right" });
-      }
-      y += 18;
-      line(M, y, W - M, y);
-      y += 12;
-    };
-    const footer = () => {
-      const txt = "antonioappleton@gmail.com | WiseBudget®";
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(120);
-      doc.text(txt, M, H - M + 12);
-      doc.setTextColor(0);
-    };
-    const ensureSpace = (need) => {
-      if (y + need <= H - M) return;
-      footer();
-      doc.addPage();
-      y = M;
-      header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
-    };
-    header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+  doc.setProperties({
+    title: REPORT_CFG.title,
+    subject: REPORT_CFG.subject,
+    author: REPORT_CFG.author,
+    creator: REPORT_CFG.creator,
+    keywords: "finance, report, wisebudget",
+  });
 
-    // KPIs
-    const k = [
-      ["Receitas", $("#rpt-kpi-income")?.textContent || "—"],
-      ["Despesas", $("#rpt-kpi-expense")?.textContent || "—"],
-      ["Poupanças", $("#rpt-kpi-savings")?.textContent || "—"],
-      ["Saldo", $("#rpt-kpi-balance")?.textContent || "—"],
-    ];
-    const cellW = (W - 2 * M) / 4;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    k.forEach((kv, i) => {
-      const x = M + i * cellW;
-      doc.text(kv[0], x, y);
-      doc.setFont("helvetica", "bold");
-      doc.text(String(kv[1]), x, y + 14);
-      doc.setFont("helvetica", "normal");
-    });
-    y += 34;
+  // ============ Helpers ============
+  const line = (x1, y1, x2, y2) => {
+    doc.setDrawColor(230);
+    doc.line(x1, y1, x2, y2);
+  };
 
-    // helpers
-    const canvasToPage = (sel, x, y2, w, h) => {
-      const c = document.querySelector(sel);
-      if (!c) return y2;
-      const img = c.toDataURL("image/png", 1.0);
-      doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
-      return y2 + h;
-    };
-    const drawLegend = (items, x, y2, maxW) => {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      const lh = 14;
-      for (const it of items || []) {
-        const color = it?.color || "#888",
-          pct = ((it?.pct || 0) * 100).toFixed(1),
-          label = it?.label || "—",
-          val = it?.value ?? 0;
-        doc.setFillColor(color);
-        doc.circle(x + 5, y2 + 5, 3, "F");
-        doc.text(
-          `${label} — € ${Number(val || 0).toLocaleString("pt-PT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })} (${pct}%)`,
-          x + 14,
-          y2 + 9,
-          { maxWidth: maxW - 14 }
-        );
-        y2 += lh;
-      }
-      return y2;
-    };
-
-    // Distribuição + Fixas/Variáveis
-    ensureSpace(260 + 12);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Distribuição por categorias", M, y);
-    doc.text("Fixas vs Variáveis", W / 2 + 8, y);
-    y += 10;
-    const colW = (W - 2 * M - 16) / 2,
-      pieH = 220;
-    const y1 = canvasToPage("#rpt-cat-pie", M, y, colW, pieH);
-    const y2 = canvasToPage("#rpt-fixed-donut", M + colW + 16, y, colW, pieH);
-    y = Math.max(y1, y2) + 8;
-    const yLegL = drawLegend(_catLegendPDF, M, y, colW);
-    const yLegR = drawLegend(_fixLegendPDF, M + colW + 16, y, colW);
-    y = Math.max(yLegL, yLegR) + 16;
-
-    // Série + top despesas
-    ensureSpace(260 + 240 + 24);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Evolução mensal", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 12;
-
-    doc.text("Top 6 categorias de despesa", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M, 200) + 16;
-
-    // Esforço & poupança (%)
-    ensureSpace(220 + 220 + 18);
-    doc.text("Taxa de esforço mensal", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-effort", M, y, W - 2 * M, 200) + 8;
-
-    doc.text("Taxa de poupança mensal", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-savings-rate", M, y, W - 2 * M, 200) + 12;
-
-    // Página 2: Tabelas
+  const ensureSpace = (need) => {
+    if (y + need <= H - M) return;
     footer();
     doc.addPage();
     y = M;
-    header(
-      "Detalhe — Mensal & Categorias",
-      new Date().toLocaleDateString("pt-PT")
-    );
+    header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+    // redesenha logo nesta página também
+    return drawHeaderLogo().catch(() => {});
+  };
 
-    function tablePDF(title, cols, rows, widths) {
-      ensureSpace(20);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text(title, M, y);
-      y += 6;
-      line(M, y, W - M, y);
-      y += 10;
-      doc.setFont("helvetica", "bold");
+  const header = (title, subtitle = null) => {
+    _wantHeaderLogo = !!REPORT_CFG.logoUrl;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(title, M, y);
+    if (subtitle) {
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      let x = M;
-      cols.forEach((h, i) => {
-        doc.text(h, x, y);
-        x += widths[i];
-      });
-      y += 6;
-      line(M, y, W - M, y);
-      y += 10;
-      doc.setFont("helvetica", "normal");
-      rows.forEach((r) => {
-        ensureSpace(14);
-        let x = M;
-        r.forEach((cell, i) => {
-          const align = i === 0 ? "left" : "right";
-          doc.text(
-            String(cell),
-            x + (align === "right" ? widths[i] - 2 : 0),
-            y,
-            { align }
-          );
-          x += widths[i];
-        });
-        y += 12;
-      });
-      y += 4;
+      doc.text(subtitle, W - M, y, { align: "right" });
     }
+    y += 20;
+    line(M, y, W - M, y);
+    y += SEC; // mais “ar” depois do cabeçalho
+  };
 
-    tablePDF(
-      "Receitas por categoria",
-      ["Categoria", "Total", "%"],
-      (_incomeCatPDF || []).map((r) => [
-        r.label,
-        money(r.value),
-        fmtPct(
-          r.value /
-            ((_incomeCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
-        ),
-      ]),
-      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
-    );
+  const footer = () => {
+    const txt = "antonioappleton@gmail.com | WiseBudget®";
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(txt, M, H - M + 12);
+    doc.setTextColor(0);
+  };
 
-    tablePDF(
-      "Despesas por categoria",
-      ["Categoria", "Total", "%"],
-      (_expenseCatPDF || []).map((r) => [
-        r.label,
-        money(r.value),
-        fmtPct(
-          r.value /
-            ((_expenseCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
-        ),
-      ]),
-      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
-    );
-
-    tablePDF(
-      "Resumo mensal & liquidez",
-      ["Mês", "Receitas", "Despesas", "Poupanças", "Saldo", "Liquidez"],
-      (_monthlyPDF || []).map((r) => [
-        r.m,
-        money(r.inc),
-        money(r.exp),
-        money(r.sav),
-        money(r.net),
-        money(r.liq),
-      ]),
-      [80, 80, 80, 80, 80, 90]
-    );
-
-    // Regularidade
-    tablePDF(
-      "Despesas recorrentes (regularidade)",
-      ["Categoria", "Meses", "Média/mês", "Estabilidade"],
-      (_regularityPDF || []).map((r) => [
-        r.cat,
-        r.meses,
-        money(r.media),
-        r.cv <= 0.1 ? "Muito estável" : r.cv <= 0.25 ? "Possível padrão" : "—",
-      ]),
-      [200, 60, 90, 100]
-    );
-
-    
-    // numeração & rodapé
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(120);
-      doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, {
-        align: "right",
-      });
-      doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
+  // Logo no cabeçalho (com fallback vetorial)
+  let _wantHeaderLogo = false;
+  async function drawHeaderLogo() {
+    if (!_wantHeaderLogo) return;
+    const x = M - REPORT_CFG.logoW - 8;
+    const yTop = M - 6; // ligeiro ajuste
+    try {
+      const dataUrl = await toDataURL(REPORT_CFG.logoUrl);
+      doc.addImage(dataUrl, "PNG", x, yTop, REPORT_CFG.logoW, REPORT_CFG.logoH, undefined, "FAST");
+    } catch {
+      // fallback: monograma “W”
+      doc.setDrawColor(20);
+      doc.setFillColor(20);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      // pequeno quadrado preto
+      doc.rect(x, yTop, REPORT_CFG.logoW, REPORT_CFG.logoH, "F");
+      // W branco ao centro
+      doc.setTextColor(255);
+      doc.text("W", x + REPORT_CFG.logoW / 2, yTop + REPORT_CFG.logoH / 2 + 4, { align: "center" });
       doc.setTextColor(0);
     }
-    doc.save(REPORT_CFG.filename);
+    _wantHeaderLogo = false;
+  }
+
+  const canvasToPage = (sel, x, y2, w, h) => {
+    const c = document.querySelector(sel);
+    if (!c) return y2;
+    const img = c.toDataURL("image/png", 1.0);
+    doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
+    return y2 + h;
+  };
+
+  const moneyFmt = (n) =>
+    "€ " +
+    Number(n || 0).toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const drawLegend = (items, x, y2, maxW) => {
+    const list = items || [];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lh = 14;
+    for (const it of list) {
+      const color = it?.color || "#888";
+      const pct = ((it?.pct || 0) * 100).toFixed(1);
+      const label = it?.label || "—";
+      const val = it?.value ?? 0;
+      doc.setFillColor(color);
+      doc.circle(x + 5, y2 + 5, 3, "F");
+      doc.text(`${label} — ${moneyFmt(val)} (${pct}%)`, x + 14, y2 + 9, { maxWidth: maxW - 14 });
+      y2 += lh;
+    }
+    return y2;
+  };
+
+  // ====== Cabeçalho + logo ======
+  header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+  await drawHeaderLogo();
+
+  // ====== KPIs ======
+  const k = [
+    ["Receitas", $("#rpt-kpi-income")?.textContent || "—"],
+    ["Despesas", $("#rpt-kpi-expense")?.textContent || "—"],
+    ["Poupanças", $("#rpt-kpi-savings")?.textContent || "—"],
+    ["Saldo", $("#rpt-kpi-balance")?.textContent || "—"],
+  ];
+  const cellW = (W - 2 * M) / 4;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  k.forEach((kv, i) => {
+    const x = M + i * cellW;
+    doc.text(kv[0], x, y);
+    doc.setFont("helvetica", "bold");
+    doc.text(String(kv[1]), x, y + 14);
+    doc.setFont("helvetica", "normal");
   });
-  // ================== /RELATÓRIOS ========================
+  y += 34 + GAP;
+
+  // ====== Dados preparados no buildReport (usa escopo de módulo primeiro) ======
+  const catLegend = (_catLegendPDF && _catLegendPDF.length ? _catLegendPDF : (window._catLegendPDF || []));
+  const fvLegend  = (_fixLegendPDF && _fixLegendPDF.length ? _fixLegendPDF  : (window._fixLegendPDF  || []));
+  const incPDF    = (_incomeCatPDF   && _incomeCatPDF.length   ? _incomeCatPDF   : (window._incomeCatPDF   || []));
+  const expPDF    = (_expenseCatPDF  && _expenseCatPDF.length  ? _expenseCatPDF  : (window._expenseCatPDF  || []));
+  const monthly   = (_monthlyPDF     && _monthlyPDF.length     ? _monthlyPDF     : (window._monthlyPDF     || []));
+
+  // ====== Distribuição por categorias (pizza 1, coluna) ======
+  await ensureSpace(220 + 80);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+  doc.text("Distribuição por categorias", M, y);
+  y += GAP;
+  const fullW = W - 2 * M;
+  y = canvasToPage("#rpt-cat-pie", M, y, fullW, 220) + 6;
+  y = drawLegend(catLegend, M, y, fullW);
+  y += SEC;
+
+  // ====== Fixas vs Variáveis (pizza 2 logo abaixo) ======
+  await ensureSpace(220 + 80);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+  doc.text("Fixas vs Variáveis", M, y);
+  y += GAP;
+  y = canvasToPage("#rpt-fixed-donut", M, y, fullW, 220) + 6;
+  y = drawLegend(fvLegend, M, y, fullW);
+  y += SEC;
+
+  // ====== Evolução mensal (barras + linha) ======
+  await ensureSpace(240 + SEC);
+  doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+  doc.text("Evolução mensal", M, y);
+  y += GAP;
+  y = canvasToPage("#rpt-series", M, y, fullW, 240) + SEC;
+
+  // ====== (opcional) Top 6 / Taxas — só desenha se existirem canvases ======
+  if (document.querySelector("#rpt-top-exp")) {
+    await ensureSpace(220 + SEC);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Top 6 categorias de despesa", M, y);
+    y += GAP;
+    y = canvasToPage("#rpt-top-exp", M, y, fullW, 220) + SEC;
+  }
+  if (document.querySelector("#rpt-effort")) {
+    await ensureSpace(200 + SEC);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Taxa de esforço mensal", M, y);
+    y += GAP;
+    y = canvasToPage("#rpt-effort", M, y, fullW, 200) + SEC;
+  }
+  if (document.querySelector("#rpt-savings-rate")) {
+    await ensureSpace(200 + SEC);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Taxa de poupança mensal", M, y);
+    y += GAP;
+    y = canvasToPage("#rpt-savings-rate", M, y, fullW, 200) + SEC;
+  }
+
+  // ====== Página 2: Tabelas com cabeçalho colorido ======
+  footer();
+  doc.addPage();
+  y = M;
+  header("Detalhe — Mensal & Categorias", new Date().toLocaleDateString("pt-PT"));
+  await drawHeaderLogo();
+
+  function tablePDF(title, cols, rows, widths) {
+    ensureSpace(40);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(title, M, y);
+    y += 6;
+    line(M, y, W - M, y);
+    y += 10;
+
+    // cabeçalho colorido (verde escuro da app #064e3b)
+    const thH = 20;
+    let x = M;
+    doc.setFillColor(6, 78, 59);
+    doc.setTextColor(255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    cols.forEach((h, i) => {
+      doc.rect(x, y, widths[i], thH, "F");
+      doc.text(h, x + 8, y + thH - 6);
+      x += widths[i];
+    });
+    y += thH + 6;
+    doc.setTextColor(0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    // linhas
+    rows.forEach((r) => {
+      ensureSpace(16);
+      let x2 = M;
+      r.forEach((cell, i) => {
+        const align = i === 0 ? "left" : "right";
+        doc.text(String(cell), x2 + (align === "right" ? widths[i] - 4 : 8), y + 12, { align });
+        x2 += widths[i];
+      });
+      y += 18;
+      line(M, y, W - M, y);
+    });
+    y += 8;
+  }
+
+  // prepara linhas (usa escopo de módulo em 1.º lugar)
+  const incRows = incPDF.map(r => [
+    r.label,
+    moneyFmt(r.value),
+    ((r.value / (incPDF.reduce((a,x)=>a+(x.value||0),0) || 1)) * 100).toFixed(1) + "%"
+  ]);
+  const expRows = expPDF.map(r => [
+    r.label,
+    moneyFmt(r.value),
+    ((r.value / (expPDF.reduce((a,x)=>a+(x.value||0),0) || 1)) * 100).toFixed(1) + "%"
+  ]);
+  const monRows = monthly.map(r => [
+    r.m, moneyFmt(r.inc), moneyFmt(r.exp), moneyFmt(r.sav), moneyFmt(r.net), moneyFmt(r.liq)
+  ]);
+
+  // tabelas
+  tablePDF(
+    "Receitas por categoria",
+    ["Categoria", "Total", "%"],
+    incRows,
+    [W * 0.46, W * 0.26, W * 0.14].map(w => w * (1 - (2 * M) / W))
+  );
+  tablePDF(
+    "Despesas por categoria",
+    ["Categoria", "Total", "%"],
+    expRows,
+    [W * 0.46, W * 0.26, W * 0.14].map(w => w * (1 - (2 * M) / W))
+  );
+  tablePDF(
+    "Resumo mensal & liquidez",
+    ["Mês", "Receitas", "Despesas", "Poupanças", "Saldo", "Liquidez"],
+    monRows,
+    [90, 90, 90, 90, 90, 100]
+  );
+
+  // Numeração & rodapé
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Página ${i} de ${pageCount}`, W - M, H - M + 12, { align: "right" });
+    doc.text("antonioappleton@gmail.com | WiseBudget®", M, H - M + 12);
+    doc.setTextColor(0);
+  }
+
+  doc.save(REPORT_CFG.filename);
+});
+
 
   // =================== SESSÃO / PASSWORD =================
   // Mostrar email da sessão
