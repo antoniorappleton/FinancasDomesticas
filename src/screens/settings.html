@@ -41,8 +41,15 @@
 
 <div id="report-overlay" class="hidden rpt-overlay" aria-hidden="true" tabindex="-1">
   <div class="rpt-modal">
-    <button id="rpt-close" class="rpt-close" aria-label="Fechar">×</button>
-    <h2 id="rpt-title">Relatório Financeiro</h2>
+
+    <!-- Header com logo + título + fechar -->
+    <div class="rep-header">
+      <div class="rep-title">
+        <img id="app-logo-img" class="rep-logo" src="/wisebudget_bk_wt.png" alt="Logo" />
+        <h2 id="rpt-title">Relatório Financeiro</h2>
+      </div>
+      <button id="rpt-close" class="rpt-close" aria-label="Fechar">×</button>
+    </div>
 
     <!-- Filtro no topo do modal (sincroniza com o filtro exterior) -->
     <div class="rpt-controls">
@@ -82,16 +89,16 @@
       <div class="rpt-kpi"><div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong></div>
     </div>
 
-    <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis -->
+    <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis (um em cima do outro) -->
     <div class="rpt-grid">
       <div class="rpt-card">
         <h3 class="rpt-card__title">Despesas por categoria</h3>
-        <canvas id="rpt-cat-pie" height="240"></canvas>
+        <div class="chart"><canvas id="rpt-cat-pie"></canvas></div>
         <div id="rpt-cat-legend" class="rpt-legend"></div>
       </div>
       <div class="rpt-card">
         <h3 class="rpt-card__title">Fixas vs Variáveis</h3>
-        <canvas id="rpt-fixed-donut" height="240"></canvas>
+        <div class="chart"><canvas id="rpt-fixed-donut"></canvas></div>
         <div id="rpt-fv-legend" class="rpt-legend small"></div>
       </div>
     </div>
@@ -99,7 +106,7 @@
     <!-- Séries temporais -->
     <div class="rpt-card">
       <h3 class="rpt-card__title">Evolução mensal (receitas, despesas, poupanças, saldo)</h3>
-      <canvas id="rpt-series" height="260"></canvas>
+      <div class="chart chart--tall"><canvas id="rpt-series"></canvas></div>
     </div>
 
     <!-- Tabelas -->
@@ -116,30 +123,31 @@
         <h3 class="rpt-card__title">Resumo mensal & liquidez</h3>
         <div class="rpt-table-wrap"><table id="tbl-monthly"></table></div>
       </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px">Despesas por regularidade</h3>
+      <div class="rpt-card">
+        <h3 class="rpt-card__title">Despesas por regularidade</h3>
         <div class="chart"><canvas id="rpt-regularity"></canvas></div>
       </div>
     </div>
 
     <!-- Top 6 despesas (barras horizontais) -->
-<div class="card">
-  <h3 style="margin:0 0 8px">Top 6 categorias de despesa</h3>
-  <canvas id="rpt-top-exp"></canvas>
-</div>
-
-    <!-- Linhas de percentagens -->
-    <div class="card" style="display:grid;grid-template-columns:1fr;gap:12px">
-      <div>
-        <h3 style="margin:0 0 8px">Taxa de esforço mensal</h3>
-        <canvas id="rpt-effort"></canvas>
-      </div>
-      <div>
-        <h3 style="margin:0 0 8px">Taxa de poupança mensal</h3>
-        <canvas id="rpt-savings-rate"></canvas>
-      </div>
+    <div class="rpt-card">
+      <h3 class="rpt-card__title">Top 6 categorias de despesa</h3>
+      <div class="chart"><canvas id="rpt-top-exp"></canvas></div>
     </div>
 
+    <!-- Linhas de percentagens -->
+    <div class="rpt-card">
+      <div style="display:grid;grid-template-columns:1fr;gap:12px">
+        <div>
+          <h3 class="rpt-card__title">Taxa de esforço mensal</h3>
+          <div class="chart"><canvas id="rpt-effort"></canvas></div>
+        </div>
+        <div>
+          <h3 class="rpt-card__title">Taxa de poupança mensal</h3>
+          <div class="chart"><canvas id="rpt-savings-rate"></canvas></div>
+        </div>
+      </div>
+    </div>
 
     <!-- Insights / Alertas -->
     <ul id="rpt-insights" class="rpt-insights"></ul>
@@ -152,49 +160,91 @@
 
 <style>
   .hidden{display:none}
-  .rpt-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px;z-index:1000}
-  .rpt-modal{background:#fff;width:min(1100px,92vw);border-radius:16px;padding:16px 20px 28px;position:relative;color:#111}
-  .rpt-close{position:absolute;top:8px;right:10px;font-size:22px;line-height:1}
-  .rpt-controls{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:8px 10px;margin:8px 0 12px}
-  .rpt-controls__row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-  .rpt-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
-  .rpt-kpi{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px}
-  .rpt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
-  .rpt-grid--tables{grid-template-columns:repeat(2,1fr)}
-  .rpt-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-  .rpt-card__title{margin:0 0 8px 0;font-size:14px}
-  .rpt-legend{margin-top:6px}
-  .rpt-legend.small{font-size:12px}
-  .rpt-legend__item{display:flex;align-items:center;gap:8px;padding:4px 0}
-  .rpt-legend__dot{width:10px;height:10px;border-radius:50%}
-  .rpt-table-wrap{overflow:auto}
-  .rpt-table-wrap table{width:100%;border-collapse:collapse;font-size:13px}
-  .rpt-table-wrap th,.rpt-table-wrap td{padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap}
-  .rpt-table-wrap th:first-child,.rpt-table-wrap td:first-child{text-align:left}
-  .rpt-insights{margin:10px 0 0 0;padding-left:18px}
-  .rpt-insights li{margin:4px 0}
-  .btn{padding:8px 12px;border:1px solid #334155;border-radius:10px;background:#111827;color:#e5e7eb;}
+
+  /* Overlay + modal */
+  .rpt-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.5);
+    display:flex; align-items:flex-start; justify-content:center;
+    overflow:auto; padding:24px; z-index:1000;
+  }
+  .rpt-modal{
+    background:#fff; width:min(1100px,92vw);
+    border-radius:16px; padding:16px 20px 28px; position:relative; color:#111;
+  }
+
+  /* Header com logo */
+  .rep-header{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; margin:-8px -4px 8px;
+  }
+  .rep-title{ display:flex; align-items:center; gap:10px; min-width:0 }
+  .rep-title h2{ font-size:1.1rem; font-weight:800; margin:0; line-height:1.1 }
+  .rep-logo{ height:40px; width:auto; display:block } /* ← ajusta o tamanho do logo */
+  .rpt-close{ font-size:22px; line-height:1; background:transparent; border:0; cursor:pointer }
+
+  /* Controles + KPIs */
+  .rpt-controls{ background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; margin:8px 0 12px }
+  .rpt-controls__row{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px }
+  .rpt-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:12px 0 }
+  .rpt-kpi{ background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px }
+
+  /* Cartões do relatório */
+  .rpt-grid{ display:grid; grid-template-columns:1fr; gap:16px } /* pizzas empilhadas */
+  .rpt-grid--tables{ grid-template-columns:1fr } /* tabelas empilhadas também; muda para 2fr 2fr se quiseres lado a lado */
+  .rpt-card{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px }
+  .rpt-card__title{ margin:0 0 8px 0; font-size:14px }
+
+  /* Chart wrapper — evita “crescimento infinito” */
+  .chart{
+    position:relative; width:100%;
+    height:260px;
+  }
+  .chart.chart--tall{ height:320px }
+  .chart.chart--short{ height:220px }
+  .chart > canvas{
+    position:absolute; inset:0;
+    width:100% !important; height:100% !important; display:block;
+  }
+
+  /* Legendas */
+  .rpt-legend{ margin-top:6px }
+  .rpt-legend.small{ font-size:12px }
+  .rpt-legend__item{ display:flex; align-items:center; gap:8px; padding:4px 0 }
+  .rpt-legend__dot{ width:10px; height:10px; border-radius:50% }
+
+  /* Tabelas */
+  .rpt-table-wrap{ overflow:auto }
+  .rpt-table-wrap table{ width:100%; border-collapse:collapse; font-size:13px }
+  .rpt-table-wrap th,.rpt-table-wrap td{
+    padding:6px 8px; border-bottom:1px solid #e5e7eb; text-align:right; white-space:nowrap
+  }
+  .rpt-table-wrap th:first-child,.rpt-table-wrap td:first-child{ text-align:left }
+
+  /* Insights */
+  .rpt-insights{ margin:10px 0 0 0; padding-left:18px }
+  .rpt-insights li{ margin:4px 0 }
+
+  .btn{ padding:8px 12px; border:1px solid #334155; border-radius:10px; background:#111827; color:#e5e7eb; }
+
   /* Responsivo */
   @media (max-width: 900px){
-    .rpt-controls__row{grid-template-columns:1fr 1fr}
-    .rpt-kpis{grid-template-columns:1fr 1fr}
-    .rpt-grid{grid-template-columns:1fr}
-    .rpt-grid--tables{grid-template-columns:1fr}
+    .rpt-controls__row{ grid-template-columns:1fr 1fr }
+    .rpt-kpis{ grid-template-columns:1fr 1fr }
   }
+
   /* Print A4 vertical */
   @media print{
-    body{background:#fff}
-    .rpt-overlay{position:static;inset:auto;background:#fff;padding:0}
-    .rpt-modal{width:auto;box-shadow:none;padding:0;border:none}
-    .rpt-close,.rpt-actions{display:none}
-    .rpt-controls{border:none;background:#fff}
-    .rpt-card{page-break-inside:avoid}
+    body{ background:#fff }
+    .rpt-overlay{ position:static; inset:auto; background:#fff; padding:0 }
+    .rpt-modal{ width:auto; box-shadow:none; padding:0; border:none }
+    .rpt-close,.rpt-actions{ display:none }
+    .rpt-controls{ border:none; background:#fff }
+    .rpt-card{ page-break-inside:avoid }
   }
 </style>
 
-
 <!-- ===== secção categorias ===== -->
-
 <section class="card">
   <h2 class="section-title">Categorias</h2>
   <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
@@ -208,13 +258,10 @@
     <button id="btn-del-month" class="btn btn--primary" style="background:#ef4444;border-color:#ef4444">Eliminar Mês Atual</button>
     <button id="btn-del-range" class="btn">Eliminar Período…</button>
     <button id="btn-del-all" class="btn">Eliminar Tudo…</button>
-
-    <!-- NOVO -->
     <button id="btn-regularity-bulk" class="btn">Definir Regularidade (bulk)…</button>
   </div>
   <p class="row-note">Estas ações afetam apenas os seus dados (RLS ativo).</p>
 </section>
-
 
 <!-- Sessão -->
 <section class="card" id="card-session" style="margin-top:12px">
@@ -248,7 +295,7 @@
 </section>
 
 <!-- ===== MODAL CSV ===== -->
- <section class="card">
+<section class="card">
   <h2 class="section-title">Importação CSV</h2>
 
   <div class="form-grid">
@@ -282,5 +329,40 @@
   </div>
 </section>
 
+<script>
+/* Resolve o logo do modal (tenta caminhos comuns e tem fallback SVG) */
+(function resolveModalLogo(){
+  const img = document.getElementById('app-logo-img');
+  if (!img) return;
+
+  const CANDIDATES = [
+    './wisebudget_bk_wt.png',
+    '/wisebudget_bk_wt.png',
+    './assets/wisebudget_bk_wt.png',
+    '/assets/wisebudget_bk_wt.png',
+  ];
+
+  const BUSTER = ''; // podes pôr '?v=2025-10-03' se precisares forçar refresh
+
+  const tryOne = (u) =>
+    fetch(u + BUSTER, { cache: 'no-store' })
+      .then(r => r.ok ? u + BUSTER : null)
+      .catch(() => null);
+
+  (async () => {
+    for (const u of CANDIDATES) {
+      const ok = await tryOne(u);
+      if (ok) { img.src = ok; return; }
+    }
+    // fallback
+  const svg = encodeURIComponent(`
+    <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
+      <rect width='100%' height='100%' fill='black'/>
+      <text x='50%' y='56%' fill='white' font-size='36' font-family='Helvetica, Arial, sans-serif' font-weight='700' text-anchor='middle'>W</text>
+    </svg>`);
+    img.src = 'data:image/svg+xml,' + svg;
+  })();
+})();
+</script>
 
 <script type="module" src="/src/main.js?v=v7"></script>
