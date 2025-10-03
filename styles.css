@@ -226,10 +226,6 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea{
 /* =========================
    Report Modal (único)
    ========================= */
-   /* header do modal: logo maior e alinhado com o título */
-.rep-header { display:flex; align-items:center; justify-content:space-between; }
-.rep-title { display:flex; align-items:center; gap:12px; }
-.rep-logo { height: 40px; width: auto; display:block; }   /* ↑ aumenta aqui */
 
 .rep-overlay{
   position:fixed; inset:0; z-index:9999;

@@ -176,11 +176,17 @@
   /* Header com logo */
   .rep-header{
     display:flex; align-items:center; justify-content:space-between;
-    gap:12px; margin:-8px -4px 8px;
+    gap:120px; margin:-8px -4px 8px;
   }
-  .rep-title{ display:flex; align-items:center; gap:10px; min-width:0 }
-  .rep-title h2{ font-size:1.1rem; font-weight:800; margin:0; line-height:1.1 }
-  .rep-logo{ height:40px; width:auto; display:block } /* ← ajusta o tamanho do logo */
+    .rep-title { display:flex; align-items:center; gap:12px; }
+    .rep-title h2 { font-size: 1.25rem; line-height: 1; margin: 0; }
+    .rep-logo { height: 40px; width: auto; display:block; }
+
+    /* queres maior? sobe para 34–40px: */
+    @media (min-width: 720px){
+      .rep-logo { height: 40px; }
+      .rep-title h2 { font-size: 1.35rem; }
+    }
   .rpt-close{ font-size:22px; line-height:1; background:transparent; border:0; cursor:pointer }
 
   /* Controles + KPIs */
@@ -242,6 +248,17 @@
     .rpt-controls{ border:none; background:#fff }
     .rpt-card{ page-break-inside:avoid }
   }
+
+  /* Gráficos pizza força 1:1 e evita crescer sem controlo */
+  #rpt-cat-pie, #rpt-fixed-donut {
+    aspect-ratio: 1 / 1;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 320px;   /* ajusta à vontade (280–360) */
+    display: block;
+  }
+
+
 </style>
 
 <!-- ===== secção categorias ===== -->

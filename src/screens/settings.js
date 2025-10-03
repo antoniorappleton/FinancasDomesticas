@@ -828,7 +828,8 @@ export async function init({ sb, outlet } = {}) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true, // <- true
+          aspectRatio: 1, // <- 1:1
           animation: false,
           plugins: {
             legend: { display: false },
@@ -882,7 +883,8 @@ export async function init({ sb, outlet } = {}) {
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true, // <- true
+          aspectRatio: 1, // <- 1:1
           animation: false,
           plugins: {
             legend: { display: false },
@@ -1226,9 +1228,11 @@ export async function init({ sb, outlet } = {}) {
       subject: "",
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
-      brandColor: "#065f46", // verde app
-      headerGap: 18, // espaço extra sob cabeçalho
-      logoSize: { w: 50, h: 50 },
+      brandColor: "#065f46",
+      headerGap: 12, // <- um pouco menor (vamos compensar no 'y')
+      logoSize: { w: 54, h: 54 }, // <- tamanho do logo no PDF
+      titleOffsetY: 12, // <- afinação vertical do título
+      logoOffsetY: -30, // <- sobe ligeiramente o logo
     };
 
     const doc = new (await getJsPDF())({ unit: "pt", format: "a4" });
@@ -1263,36 +1267,45 @@ export async function init({ sb, outlet } = {}) {
       doc.line(x1, y1, x2, y2);
     };
     const header = (title, subtitle = null) => {
-      // logo + título em linha
+      // linha base para o bloco do cabeçalho
+      const baseY = y;
+
       if (logoDataUrl) {
-        const lh = REPORT_CFG.logoSize.h;
         doc.addImage(
           logoDataUrl,
           "PNG",
           M,
-          y - 4,
+          baseY + (REPORT_CFG.logoOffsetY || 0),
           REPORT_CFG.logoSize.w,
-          lh,
+          REPORT_CFG.logoSize.h,
           undefined,
           "FAST"
         );
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
-        doc.text(title, M + REPORT_CFG.logoSize.w + 10, y + 10);
+        // título alinhado verticalmente ao centro do logo
+        const titleY = baseY + (REPORT_CFG.titleOffsetY ?? 12);
+        doc.text(title, M + REPORT_CFG.logoSize.w + 5, titleY);
       } else {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
-        doc.text(title, M, y);
+        doc.text(title, M, baseY);
       }
+
       if (subtitle) {
         doc.setFont("helvetica", "normal");
         doc.setFontSize(10);
-        doc.text(subtitle, W - M, y, { align: "right" });
+        doc.text(subtitle, W - M, baseY, { align: "right" });
       }
-      y += REPORT_CFG.headerGap;
-      line(M, y, W - M, y);
-      y += 32;
+
+      // linha separadora + empurra mais o cursor antes dos KPIs
+      const lineY = baseY + REPORT_CFG.headerGap;
+      doc.setDrawColor(230);
+      doc.line(M, lineY, W - M, lineY);
+
+      y = lineY + 28; // <- espaço extra antes das caixas KPI
     };
+
     const footer = () => {
       const txt = "antonioappleton@gmail.com | WiseBudget®";
       doc.setFont("helvetica", "normal");
@@ -1402,44 +1415,48 @@ export async function init({ sb, outlet } = {}) {
     );
 
     // tabela util (c/ cabeçalho colorido)
-    function tablePDF(title, cols, rows, widths) {
-      ensureSpace(24);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text(title, M, y);
-      y += 8;
-      // cabeçalho
-      doc.setFillColor(REPORT_CFG.brandColor);
-      doc.setTextColor("#ffffff");
-      let x = M;
-      const thH = 18;
-      cols.forEach((h, i) => {
-        doc.rect(x, y, widths[i], thH, "F");
-        doc.text(h, x + 6, y + 12);
-        x += widths[i];
-      });
-      y += thH + 6;
-      doc.setTextColor("#000000");
-      doc.setFont("helvetica", "normal");
-      rows.forEach((r) => {
-        ensureSpace(14);
-        let xi = M;
-        r.forEach((cell, i) => {
-          const align = i === 0 ? "left" : "right";
-          doc.text(
-            String(cell),
-            xi + (align === "right" ? widths[i] - 2 : 0),
-            y,
-            {
-              align,
-            }
-          );
-          xi += widths[i];
+  function tablePDF(title, cols, rows, widths) {
+    // cada linha “ocupa” ~14pt + 6 de respiro por bloco
+    const TH = 18,
+      ROWH = 14,
+      GAP = 6;
+
+    // força quebra se faltar espaço para cabeçalho + 4 linhas
+    ensureSpace(TH + 4 * ROWH + 24);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(title, M, y);
+    y += 8;
+
+    // cabeçalho colorido
+    doc.setFillColor(REPORT_CFG.brandColor);
+    doc.setTextColor("#ffffff");
+    let x = M;
+    cols.forEach((h, i) => {
+      doc.rect(x, y, widths[i], TH, "F");
+      doc.text(h, x + 6, y + 12);
+      x += widths[i];
+    });
+    y += TH + 6;
+
+    // corpo (quebra automática por página)
+    doc.setTextColor("#000000");
+    doc.setFont("helvetica", "normal");
+    for (const r of rows) {
+      ensureSpace(ROWH);
+      let xi = M;
+      r.forEach((cell, i) => {
+        const align = i === 0 ? "left" : "right";
+        doc.text(String(cell), xi + (align === "right" ? widths[i] - 2 : 0), y, {
+          align,
         });
-        y += 12;
+        xi += widths[i];
       });
-      y += 6;
+      y += ROWH;
     }
+    y += GAP;
+  }
 
     // categorias receitas
     tablePDF(
