@@ -1,0 +1,83 @@
+<section class="card">
+  <h2 class="section-title">Objetivos</h2>
+  <p class="row-note">Define tetos de gastos, metas de poupança e alertas inteligentes.</p>
+
+  <div class="grid" style="grid-template-columns:1fr 1fr; gap:12px">
+    <div class="card" style="padding:12px">
+      <h3 style="margin:0 0 8px">Novo objetivo</h3>
+      <div class="form-grid">
+        <label>Título
+          <input id="obj-title" type="text" placeholder="Ex.: Teto supermercado / Fundo emergência" />
+        </label>
+        <label>Tipo
+          <select id="obj-type">
+            <option value="budget_cap">Teto mensal (despesas)</option>
+            <option value="savings_goal">Meta de poupança</option>
+            <option value="alert">Alerta</option>
+          </select>
+        </label>
+        <label id="obj-cat-wrap">Categoria (opcional p/ teto)
+          <select id="obj-category"></select>
+        </label>
+        <label id="obj-cap-wrap">Teto mensal (€)
+          <input id="obj-monthly-cap" type="number" min="0" step="0.01" />
+        </label>
+        <label id="obj-target-wrap" class="hidden">Meta (€)
+          <input id="obj-target" type="number" min="0" step="0.01" />
+        </label>
+        <label>Data limite (opcional)
+          <input id="obj-due" type="date" />
+        </label>
+        <label>Notas
+          <textarea id="obj-notes" placeholder="Observações…"></textarea>
+        </label>
+      </div>
+      <div class="actions" style="margin-top:8px">
+        <button id="obj-save" class="btn btn--primary">Guardar objetivo</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px">
+      <h3 style="margin:0 0 8px">Resumo rápido (mês atual)</h3>
+      <div id="obj-summary" class="row-note">—</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h3 class="section-title">Os meus objetivos</h3>
+  <div id="obj-list" class="grid" style="grid-template-columns:1fr 1fr; gap:12px"></div>
+</section>
+
+<!-- Modal: editar objetivo -->
+<section id="obj-edit-modal" class="modal" hidden>
+  <div class="modal__card">
+    <header class="modal__header">
+      <div class="modal__title">Editar objetivo</div>
+      <button class="modal__close" data-close>&times;</button>
+    </header>
+    <div class="form-grid">
+      <input id="ed-id" type="hidden" />
+      <label>Título <input id="ed-title" type="text" /></label>
+      <label>Tipo
+        <select id="ed-type">
+          <option value="budget_cap">Teto mensal</option>
+          <option value="savings_goal">Meta de poupança</option>
+          <option value="alert">Alerta</option>
+        </select>
+      </label>
+      <label>Categoria (teto) <select id="ed-category"></select></label>
+      <label>Teto mensal (€) <input id="ed-monthly-cap" type="number" step="0.01" /></label>
+      <label>Meta (€) <input id="ed-target" type="number" step="0.01" /></label>
+      <label>Progresso atual (€) <input id="ed-current" type="number" step="0.01" /></label>
+      <label>Data limite <input id="ed-due" type="date" /></label>
+      <label>Ativo <select id="ed-active"><option value="true">Sim</option><option value="false">Não</option></select></label>
+      <label class="col-span-3">Notas <textarea id="ed-notes"></textarea></label>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:10px">
+      <button id="ed-delete" class="btn" style="border-color:#ef4444;color:#ef4444">Eliminar</button>
+      <button id="ed-cancel" class="btn">Cancelar</button>
+      <button id="ed-save" class="btn btn--primary">Guardar</button>
+    </div>
+  </div>
+</section>

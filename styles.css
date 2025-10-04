@@ -73,28 +73,70 @@ a{ color:inherit; text-decoration:none }
 /* =========================
    Footer (único consolidado)
    ========================= */
+/* === Footer compacto responsivo (5 tabs) === */
+
+/* base: grelha fluida com auto-fit para caber 5 tabs sem partir */
 .app-footer{
   position:sticky; bottom:0; left:0; right:0;
-  z-index:40; width:100%; height:var(--footer-h);
-  display:grid; grid-template-columns:repeat(4,1fr);
-  gap:6px; padding:6px 10px max(8px, env(safe-area-inset-bottom));
-  background:var(--footer-grad); color:#fff;
+  z-index:40; width:100%;
+  height: var(--footer-h, 56px); /* ligeiramente mais baixo */
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap:6px;
+  padding:6px 8px calc(max(6px, env(safe-area-inset-bottom)));
+  background:var(--footer-grad);
+  color:#fff;
   border-top:1px solid rgba(255,255,255,.08);
   box-shadow:0 -6px 16px rgba(2,6,23,.15);
 }
+
+/* item mais compacto */
 .foot-item{
-  display:grid; grid-auto-flow:row; justify-items:center; align-items:center;
-  justify-self:stretch; width:100%;
-  padding:10px 6px; border-radius:12px;
-  background:rgba(255,255,255,.08); color:#e8fffa;
-  font:600 12px/1.1 system-ui, -apple-system, Segoe UI, Roboto;
-  text-align:center; transition:transform .05s ease, background .15s ease;
+  display:grid;
+  grid-template-rows: 20px auto;
+  align-content:center;
+  justify-items:center;
+  padding:6px 4px;
+  border-radius:10px;
+  background:rgba(255,255,255,.08);
+  color:#e8fffa;
+  font:600 11.5px/1.1 system-ui, -apple-system, Segoe UI, Roboto;
+  gap:4px;
 }
 .foot-item:hover{ background:rgba(255,255,255,.14) }
 .foot-item:active{ transform:translateY(1px) }
-.foot-item[aria-current="page"]{ background:rgba(255,255,255,.18); outline:1px solid rgba(255,255,255,.18); color:#fff }
-.foot-item--primary{ background:#0274136d }
-.foot-item--primary[aria-current="page"]{ background:#0284c7 }
+.foot-item[aria-current="page"]{
+  background:rgba(255,255,255,.18);
+  outline:1px solid rgba(255,255,255,.18);
+  color:#fff;
+}
+
+/* ícone e label mais pequenos em ecrãs apertados */
+.foot-item__icon{ width:20px; height:20px; color:#fff }
+.foot-item__label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* XS: esconde labels para garantir que cabem todos sem quebrar */
+@media (max-width: 380px){
+  .app-footer{ gap:4px; padding-left:6px; padding-right:6px; }
+  .foot-item{ grid-template-rows: 22px; padding:8px 2px; }
+  .foot-item__label{ display:none; }
+}
+
+/* S: labels visíveis mas com tipografia compacta */
+@media (min-width:381px) and (max-width:480px){
+  .foot-item{ padding:8px 4px; }
+  .foot-item__icon{ width:20px; height:20px; }
+  .foot-item__label{ font-size:11px; }
+}
+
+/* M+: pode crescer um bocadinho */
+@media (min-width:481px){
+  .app-footer{ gap:6px; }
+  .foot-item{ padding:8px 6px; }
+  .foot-item__icon{ width:22px; height:22px; }
+  .foot-item__label{ font-size:12px; }
+}
+
 
 /* =========================
    Auth overlay (único)

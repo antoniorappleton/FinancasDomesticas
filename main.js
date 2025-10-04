@@ -29,14 +29,16 @@ const ROUTES = {
     js:   "./src/screens/settings.js",
     showFooter: true,
   },
-
-  "#/categories" : {
-  file: "./src/screens/categories.html",
-  js:   "./src/screens/categories.js",
-  showFooter: true
-},
-
-
+  "#/categories": {
+    file: "./src/screens/categories.html",
+    js:   "./src/screens/categories.js",
+    showFooter: true,
+  },
+  "#/objetivos": {
+    file: "./src/screens/objetivos.html",
+    js:   "./src/screens/objetivos.js",
+    showFooter: true,
+  },
 };
 
 function setActiveTab() {
@@ -74,7 +76,10 @@ async function handleRoute() {
   routing = true;
   try {
     const { data: { session } } = await sb.auth.getSession();
-    const route = location.hash || "#/";
+    // normaliza para ignorar querystring no hash
+    const raw = location.hash || "#/";
+    const route = raw.split("?")[0];
+
     if (!session) {
       outlet.innerHTML = "";
       footer.style.display = "none";
@@ -125,3 +130,12 @@ if ("serviceWorker" in navigator) {
       .catch(console.warn);
   });
 }
+
+/*
+  ⚠️ Footer:
+  Garante que tens um botão para o novo ecrã:
+  <a class="foot-item" href="#/objetivos" aria-label="Objetivos">
+    <span class="foot-item__icon"></span>
+    <span class="foot-item__label">Objetivos</span>
+  </a>
+*/

@@ -1,9 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
-    <script>window.APP_VERSION = "v10";</script>
+    <script>
+      window.APP_VERSION = "v10";
+    </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -12,12 +17,12 @@
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
     <script>
       (function () {
-        if (!location.search.includes('sw=off')) return;
+        if (!location.search.includes("sw=off")) return;
         const clear = async () => {
           try {
-            if ('serviceWorker' in navigator) {
+            if ("serviceWorker" in navigator) {
               const regs = await navigator.serviceWorker.getRegistrations();
-              await Promise.all(regs.map(r => r.unregister()));
+              await Promise.all(regs.map((r) => r.unregister()));
             }
             if (window.caches?.keys) {
               const keys = await caches.keys();
@@ -36,22 +41,37 @@
   </head>
   <body>
     <!-- Sprite de ícones -->
-    <svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;left:-9999px;top:-9999px">
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+      style="position: absolute; left: -9999px; top: -9999px"
+    >
       <symbol id="i-wallet" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v1h1.5A2.5 2.5 0 0 1 23 10.5v7A2.5 2.5 0 0 1 20.5 20h-15A2.5 2.5 0 0 1 3 17.5v-10Zm14-1.5H5.5A1.5 1.5 0 0 0 4 7.5V8h13V6Z"/>
-        <circle cx="18.5" cy="14.5" r="1.5" fill="currentColor"/>
+        <path
+          fill="currentColor"
+          d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v1h1.5A2.5 2.5 0 0 1 23 10.5v7A2.5 2.5 0 0 1 20.5 20h-15A2.5 2.5 0 0 1 3 17.5v-10Zm14-1.5H5.5A1.5 1.5 0 0 0 4 7.5V8h13V6Z"
+        />
+        <circle cx="18.5" cy="14.5" r="1.5" fill="currentColor" />
       </symbol>
       <symbol id="i-home" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/>
+        <path
+          fill="currentColor"
+          d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"
+        />
       </symbol>
       <symbol id="i-list" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/>
+        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
       </symbol>
       <symbol id="i-plus" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/>
+        <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
       </symbol>
       <symbol id="i-cog" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/>
+        <path
+          fill="currentColor"
+          d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"
+        />
       </symbol>
     </svg>
 
@@ -59,10 +79,17 @@
       <div class="app-header__inner">
         <a class="brand" href="#/" aria-label="Ir para o dashboard">
           <!-- ATENÇÃO: nome do ficheiro com maiúsculas -->
-          <img src="./WiSEBUDGET.png" alt="" class="brand__logo" aria-hidden="true" />
+          <img
+            src="./WiSEBUDGET.png"
+            alt=""
+            class="brand__logo"
+            aria-hidden="true"
+          />
           <span class="brand__text">
             <span class="brand__title">Wisebudget®</span>
-            <span class="brand__subtitle">Aplicação de ajuda à gestão doméstica</span>
+            <span class="brand__subtitle"
+              >Aplicação de ajuda à gestão doméstica</span
+            >
           </span>
         </a>
         <nav class="top-nav" aria-label="Navegação principal"></nav>
@@ -73,125 +100,188 @@
       <div id="outlet" class="outlet"></div>
     </main>
 
-    <footer id="app-footer" class="app-footer" role="navigation" aria-label="Separadores">
-      <a href="#/" class="foot-item" data-route="dashboard" aria-current="page">
-        <svg class="foot-item__icon" aria-hidden="true"><use href="#i-home"></use></svg>
+    <footer
+      id="app-footer"
+      class="app-footer"
+      role="navigation"
+      aria-label="Separadores"
+    >
+      <a href="#/" class="foot-item" data-route="dashboard">
+        <svg class="foot-item__icon" aria-hidden="true">
+          <use href="#i-home"></use>
+        </svg>
         <span class="foot-item__label">Dashboard</span>
       </a>
+      <a href="#/objetivos" class="foot-item" data-route="objetivos">
+        <svg class="foot-item__icon" aria-hidden="true">
+          <use href="#i-plus"></use>
+        </svg>
+        <span class="foot-item__label">Objetivos</span>
+      </a>
       <a href="#/transactions" class="foot-item" data-route="transactions">
-        <svg class="foot-item__icon" aria-hidden="true"><use href="#i-list"></use></svg>
+        <svg class="foot-item__icon" aria-hidden="true">
+          <use href="#i-list"></use>
+        </svg>
         <span class="foot-item__label">Transações</span>
       </a>
       <a href="#/new" class="foot-item" data-route="new">
-        <svg class="foot-item__icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+        <svg class="foot-item__icon" aria-hidden="true">
+          <use href="#i-plus"></use>
+        </svg>
         <span class="foot-item__label">Nova</span>
       </a>
       <a href="#/settings" class="foot-item" data-route="settings">
-        <svg class="foot-item__icon" aria-hidden="true"><use href="#i-cog"></use></svg>
+        <svg class="foot-item__icon" aria-hidden="true">
+          <use href="#i-cog"></use>
+        </svg>
         <span class="foot-item__label">Definições</span>
       </a>
     </footer>
 
     <!-- Login Overlay -->
-    <section id="screen-login" class="auth-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="auth-title">
+    <section
+      id="screen-login"
+      class="auth-overlay hidden"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="auth-title"
+    >
       <div class="auth-card">
         <h2 id="auth-title">Entrar</h2>
 
         <!-- FORM LOGIN -->
         <form id="auth-form" autocomplete="on">
-          <label>Email
-            <input id="auth-email" type="email" autocomplete="username" required />
+          <label
+            >Email
+            <input
+              id="auth-email"
+              type="email"
+              autocomplete="username"
+              required
+            />
           </label>
-          <label>Palavra-passe
-            <input id="auth-password" type="password" autocomplete="current-password" required />
+          <label
+            >Palavra-passe
+            <input
+              id="auth-password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
           </label>
-          <button id="auth-submit" type="submit" class="btn btn--primary">Entrar</button>
+          <button id="auth-submit" type="submit" class="btn btn--primary">
+            Entrar
+          </button>
 
-          <p class="row-note" style="margin-top:10px">
-            <button id="auth-forgot" type="button" class="link">Esqueci-me da palavra-passe</button>
+          <p class="row-note" style="margin-top: 10px">
+            <button id="auth-forgot" type="button" class="link">
+              Esqueci-me da palavra-passe
+            </button>
           </p>
         </form>
 
         <!-- FORM RESET PASSWORD (invisível por defeito) -->
         <form id="reset-form" class="hidden" autocomplete="on">
-          <label>Email
-            <input id="reset-email" type="email" inputmode="email" placeholder="o.teu@email.com" required />
+          <label
+            >Email
+            <input
+              id="reset-email"
+              type="email"
+              inputmode="email"
+              placeholder="o.teu@email.com"
+              required
+            />
           </label>
-          <button id="reset-submit" type="submit" class="btn btn--primary">Enviar link de recuperação</button>
-          <p class="row-note" style="margin-top:8px">
-            Enviaremos um email com um link para definires uma nova palavra-passe.
+          <button id="reset-submit" type="submit" class="btn btn--primary">
+            Enviar link de recuperação
+          </button>
+          <p class="row-note" style="margin-top: 8px">
+            Enviaremos um email com um link para definires uma nova
+            palavra-passe.
           </p>
-          <p class="row-note" style="margin-top:8px">
-            <button id="reset-back" type="button" class="link">Voltar ao login</button>
+          <p class="row-note" style="margin-top: 8px">
+            <button id="reset-back" type="button" class="link">
+              Voltar ao login
+            </button>
           </p>
         </form>
 
         <!-- Troca entre Login / Criar conta -->
         <p class="auth-switch">
           <span id="auth-help">Ainda não tens conta?</span>
-          <button id="auth-toggle" class="link" type="button">Criar conta</button>
+          <button id="auth-toggle" class="link" type="button">
+            Criar conta
+          </button>
         </p>
       </div>
     </section>
 
-      <script type="module">
-        // Ligações do modal (usa window.sb já criado acima)
-        const authForm     = document.getElementById("auth-form");
-        const resetForm    = document.getElementById("reset-form");
-        const authTitle    = document.getElementById("auth-title");
-        const authForgot   = document.getElementById("auth-forgot");
-        const resetEmailEl = document.getElementById("reset-email");
-        const resetBack    = document.getElementById("reset-back");
+    <script type="module">
+      // Ligações do modal (usa window.sb já criado acima)
+      const authForm = document.getElementById("auth-form");
+      const resetForm = document.getElementById("reset-form");
+      const authTitle = document.getElementById("auth-title");
+      const authForgot = document.getElementById("auth-forgot");
+      const resetEmailEl = document.getElementById("reset-email");
+      const resetBack = document.getElementById("reset-back");
 
-        // abrir formulário de recuperação
-        authForgot?.addEventListener("click", () => {
-          authForm?.classList.add("hidden");
-          resetForm?.classList.remove("hidden");
-          authTitle.textContent = "Recuperar palavra-passe";
-          const loginEmail = (document.getElementById("auth-email")?.value || "").trim();
-          if (loginEmail) resetEmailEl.value = loginEmail;
-          resetEmailEl?.focus();
-        });
+      // abrir formulário de recuperação
+      authForgot?.addEventListener("click", () => {
+        authForm?.classList.add("hidden");
+        resetForm?.classList.remove("hidden");
+        authTitle.textContent = "Recuperar palavra-passe";
+        const loginEmail = (
+          document.getElementById("auth-email")?.value || ""
+        ).trim();
+        if (loginEmail) resetEmailEl.value = loginEmail;
+        resetEmailEl?.focus();
+      });
 
-        // voltar ao login
-        resetBack?.addEventListener("click", () => {
-          resetForm?.classList.add("hidden");
-          authForm?.classList.remove("hidden");
-          authTitle.textContent = "Entrar";
-        });
+      // voltar ao login
+      resetBack?.addEventListener("click", () => {
+        resetForm?.classList.add("hidden");
+        authForm?.classList.remove("hidden");
+        authTitle.textContent = "Entrar";
+      });
 
-        // enviar link de recuperação
-        resetForm?.addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const email = (resetEmailEl?.value || "").trim();
-          if (!email) return alert("Indica o teu email.");
-          try {
-            const { error } = await window.sb.auth.resetPasswordForEmail(email, {
-              redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`
-            });
-            if (error) throw error;
-            alert("✅ Enviámos um email com o link de recuperação. Verifica a tua caixa de entrada.");
-            resetBack?.click();
-          } catch (err) {
-            alert(err?.message || "Não foi possível enviar o email de recuperação.");
-          }
-        });
-      </script>
-
+      // enviar link de recuperação
+      resetForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = (resetEmailEl?.value || "").trim();
+        if (!email) return alert("Indica o teu email.");
+        try {
+          const { error } = await window.sb.auth.resetPasswordForEmail(email, {
+            redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`,
+          });
+          if (error) throw error;
+          alert(
+            "✅ Enviámos um email com o link de recuperação. Verifica a tua caixa de entrada."
+          );
+          resetBack?.click();
+        } catch (err) {
+          alert(
+            err?.message || "Não foi possível enviar o email de recuperação."
+          );
+        }
+      });
+    </script>
 
     <!-- Supabase (global 'supabase') e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       window.sb = supabase.createClient(
-        window.SUPABASE_URL      || "https://brakxcumzdleufrpyipm.supabase.co",
-        window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
+        window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
+        window.SUPABASE_ANON_KEY ||
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
       );
     </script>
 
     <!-- Service Worker -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(console.error);
+        navigator.serviceWorker
+          .register("./sw.js", { scope: "./" })
+          .catch(console.error);
       }
     </script>
 
