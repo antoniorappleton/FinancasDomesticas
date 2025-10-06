@@ -158,58 +158,56 @@ export async function init({ sb, outlet } = {}) {
 
     const monthAgg = await computeMonthExpenseTotals();
 
-    const cards = (objs || [])
-      .map((o) => {
-        let secondary = "";
-        let progress = 0,
-          current = 0,
-          goal = 0,
-          ratio = 0;
+const cards = (objs || [])
+  .map((o) => {
+    let secondary = "";
+    let progress = 0,
+      current = 0,
+      goal = 0,
+      ratio = 0;
 
-        if (o.type === "budget_cap") {
-          const current = computeSpentForGoal(o, monthAgg);
-          const goal = Number(o.monthly_cap || 0);
-          const ratio = goal ? current / goal : 0;
-          progress = Math.min(100, ratio * 100);
-          secondary = `Teto: ${money(goal)} · Gasto: ${money(current)}`;
-        } else if (o.type === "savings_goal") {
-          current = Number(o.current_amount || 0);
-          goal = Number(o.target_amount || 0);
-          ratio = goal ? current / goal : 0;
-          progress = Math.min(100, ratio * 100);
-          secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
-        } else {
-          secondary = o.notes || "Alerta personalizado";
-        }
+    if (o.type === "budget_cap") {
+      current = computeSpentForGoal(o, monthAgg);
+      goal = Number(o.monthly_cap || 0);
+      ratio = goal ? current / goal : 0;
+      progress = Math.min(100, ratio * 100);
+      secondary = `Teto: ${money(goal)} · Gasto: ${money(current)}`;
+    } else if (o.type === "savings_goal") {
+      current = Number(o.current_amount || 0);
+      goal = Number(o.target_amount || 0);
+      ratio = goal ? current / goal : 0;
+      progress = Math.min(100, ratio * 100);
+      secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
+    } else {
+      secondary = o.notes || "Alerta personalizado";
+    }
 
-        const color =
-          ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
-        const warn =
-          o.type === "budget_cap" && goal && current > goal
-            ? "color:#b91c1c"
-            : "";
-        const due = o.due_date
-          ? `<span class="row-note">Limite: ${o.due_date}</span>`
-          : "";
+    const color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+    const warn =
+      o.type === "budget_cap" && goal && current > goal ? "color:#b91c1c" : "";
+    const due = o.due_date
+      ? `<span class="row-note">Limite: ${o.due_date}</span>`
+      : "";
 
-        return `
-        <div class="card" data-id="${o.id}">
-          <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <div class="cat-card__title"><strong>${o.title}</strong></div>
-            <button class="icon-btn" data-edit="${
-              o.id
-            }" title="Editar">✏️</button>
-          </div>
-          <div class="cat-card__subtitle" style="${warn}">${secondary}</div>
-          <div style="margin-top:8px;background:#f1f5f9;border-radius:999px;height:8px;overflow:hidden">
-            <div style="height:8px;width:${progress.toFixed(
-              0
-            )}%;background:${color}"></div>
-          </div>
-          ${due}
-        </div>`;
-      })
-      .join("");
+    return `
+      <div class="card" data-id="${o.id}">
+        <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div class="cat-card__title"><strong>${o.title}</strong></div>
+          <button class="icon-btn" data-edit="${
+            o.id
+          }" title="Editar">✏️</button>
+        </div>
+        <div class="cat-card__subtitle" style="${warn}">${secondary}</div>
+        <div style="margin-top:8px;background:#f1f5f9;border-radius:999px;height:8px;overflow:hidden">
+          <div style="height:8px;width:${progress.toFixed(
+            0
+          )}%;background:${color}"></div>
+        </div>
+        ${due}
+      </div>`;
+  })
+  .join("");
+
 
     $("#obj-list").innerHTML =
       cards || '<div class="row-note">Sem objetivos ainda.</div>';
@@ -278,7 +276,7 @@ export async function init({ sb, outlet } = {}) {
 
   // render só a partir da cache (sem nova query)
   function renderSuggestionsFromCache() {
-    const wrap = document.querySelector("#obj-suggestions");
+    const wrap = $("#obj-suggestions");
     if (!wrap || !suggsCache.length) {
       if (wrap)
         wrap.innerHTML = `<div class="row-note">Sem sugestões no momento.</div>`;
@@ -428,27 +426,6 @@ export async function init({ sb, outlet } = {}) {
     // ⬇️ ... E SUBSTITUI por isto:
     suggsCache = suggs;
     renderSuggestionsFromCache();
-
-    // 1-clique preencher formulário
-    wrap.querySelectorAll("[data-make]").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        const val = btn.getAttribute("data-make");
-        const cap = Number(btn.getAttribute("data-cap") || 0);
-        const name = btn.getAttribute("data-name") || "";
-
-        $("#obj-type").value = "budget_cap";
-        $("#obj-category").value = val === "uncat" ? "" : val;
-        $("#obj-monthly-cap").value = cap ? String(cap) : "";
-        if ($("#obj-title") && !$("#obj-title").value.trim())
-          $("#obj-title").value = `Teto ${name}`;
-        refreshCreateForm();
-        $("#obj-title")?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-        $("#obj-title")?.focus();
-      })
-    );
   }
 
   // ========= MODAL EDITAR =========
