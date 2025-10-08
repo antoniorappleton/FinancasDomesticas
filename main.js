@@ -70,6 +70,8 @@ async function loadScreen(route) {
   }
 }
 
+window.dispatchEvent(new Event("app:ready"));
+
 let routing = false;
 async function handleRoute() {
   if (routing) return;

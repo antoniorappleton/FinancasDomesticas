@@ -40,6 +40,14 @@
     <link rel="manifest" href="./manifest.json?v=10" />
   </head>
   <body>
+        <!-- Splash mínimo 3s -->
+    <div id="wb-splash" class="wb-splash" aria-hidden="true">
+      <div class="wb-splash__box">
+        <img src="./WiSEBUDGET.png" alt="" class="wb-splash__logo" />
+        <div class="wb-splash__brand">Wisebudget</div>
+      </div>
+    </div>
+
     <!-- Sprite de ícones -->
     <svg
       aria-hidden="true"
@@ -297,6 +305,40 @@
 
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+
+    <!--Aguardar 3s pelo logo no arranque da app-->
+    <script>
+      // Splash mínimo 3s (com fallback de segurança)
+      (function(){
+        const MIN = 3000;   // mínimo 3s
+        const MAX = 7000;   // nunca mais do que 7s
+        const start = performance.now();
+        const splash = document.getElementById('wb-splash');
+
+        // Função segura para esconder
+        const hideSplash = () => {
+          if (!splash || splash.dataset.done === '1') return;
+          const elapsed = performance.now() - start;
+          const wait = Math.max(0, MIN - elapsed);
+          setTimeout(() => {
+            splash.classList.add('is-hiding');
+            // remove do fluxo após o fade
+            setTimeout(() => { splash.style.display = 'none'; splash.dataset.done = '1'; }, 500);
+          }, wait);
+        };
+
+        // 1) Assim que a página e assets terminarem de carregar
+        window.addEventListener('load', hideSplash, { once: true });
+
+        // 2) Se o teu app disparar um evento custom "app:ready", respeitamos isso
+        //    (podes emitir quando o router renderizar a primeira screen)
+        window.addEventListener('app:ready', hideSplash, { once: true });
+
+        // 3) Fallback hard: mesmo que nada dispare, garante desaparecer até MAX
+        setTimeout(hideSplash, MAX);
+      })();
+    </script>
 
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
