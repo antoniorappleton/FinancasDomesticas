@@ -1415,48 +1415,53 @@ export async function init({ sb, outlet } = {}) {
     );
 
     // tabela util (c/ cabeçalho colorido)
-  function tablePDF(title, cols, rows, widths) {
-    // cada linha “ocupa” ~14pt + 6 de respiro por bloco
-    const TH = 18,
-      ROWH = 14,
-      GAP = 6;
+    function tablePDF(title, cols, rows, widths) {
+      // cada linha “ocupa” ~14pt + 6 de respiro por bloco
+      const TH = 18,
+        ROWH = 14,
+        GAP = 6;
 
-    // força quebra se faltar espaço para cabeçalho + 4 linhas
-    ensureSpace(TH + 4 * ROWH + 24);
+      // força quebra se faltar espaço para cabeçalho + 4 linhas
+      ensureSpace(TH + 4 * ROWH + 24);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text(title, M, y);
-    y += 8;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(title, M, y);
+      y += 8;
 
-    // cabeçalho colorido
-    doc.setFillColor(REPORT_CFG.brandColor);
-    doc.setTextColor("#ffffff");
-    let x = M;
-    cols.forEach((h, i) => {
-      doc.rect(x, y, widths[i], TH, "F");
-      doc.text(h, x + 6, y + 12);
-      x += widths[i];
-    });
-    y += TH + 6;
-
-    // corpo (quebra automática por página)
-    doc.setTextColor("#000000");
-    doc.setFont("helvetica", "normal");
-    for (const r of rows) {
-      ensureSpace(ROWH);
-      let xi = M;
-      r.forEach((cell, i) => {
-        const align = i === 0 ? "left" : "right";
-        doc.text(String(cell), xi + (align === "right" ? widths[i] - 2 : 0), y, {
-          align,
-        });
-        xi += widths[i];
+      // cabeçalho colorido
+      doc.setFillColor(REPORT_CFG.brandColor);
+      doc.setTextColor("#ffffff");
+      let x = M;
+      cols.forEach((h, i) => {
+        doc.rect(x, y, widths[i], TH, "F");
+        doc.text(h, x + 6, y + 12);
+        x += widths[i];
       });
-      y += ROWH;
+      y += TH + 6;
+
+      // corpo (quebra automática por página)
+      doc.setTextColor("#000000");
+      doc.setFont("helvetica", "normal");
+      for (const r of rows) {
+        ensureSpace(ROWH);
+        let xi = M;
+        r.forEach((cell, i) => {
+          const align = i === 0 ? "left" : "right";
+          doc.text(
+            String(cell),
+            xi + (align === "right" ? widths[i] - 2 : 0),
+            y,
+            {
+              align,
+            }
+          );
+          xi += widths[i];
+        });
+        y += ROWH;
+      }
+      y += GAP;
     }
-    y += GAP;
-  }
 
     // categorias receitas
     tablePDF(
@@ -1581,6 +1586,43 @@ export async function init({ sb, outlet } = {}) {
       alert(e?.message || "Não foi possível alterar a palavra-passe.");
     }
   });
+
+  // --- Ajuda do ecrã (Definições) ---
+  (function mountHelpForSettings() {
+    let btn = document.getElementById("help-fab");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "help-fab";
+      btn.className = "help-fab";
+      btn.title = "Ajuda deste ecrã";
+      btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
+      document.body.appendChild(btn);
+    }
+
+    let pop = document.getElementById("help-pop");
+    if (!pop) {
+      pop = document.createElement("div");
+      pop.id = "help-pop";
+      pop.className = "help-pop hidden";
+      document.body.appendChild(pop);
+    }
+
+    // conteúdo específico das Definições/Relatórios/Import CSV
+    pop.innerHTML = `
+    <h3>O que podes fazer aqui?</h3>
+    <p>Gerar relatórios (Mensal, Intervalo, Anual) com KPIs, pizza por categorias (valores e %), donut Fixas vs Variáveis, séries mensais e insights. Podes também exportar PDF.</p>
+    <p>Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
+    <button class="close" type="button">Fechar</button>
+  `;
+
+    btn.onclick = () => pop.classList.toggle("hidden");
+    pop
+      .querySelector(".close")
+      ?.addEventListener("click", () => pop.classList.add("hidden"));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") pop.classList.add("hidden");
+    });
+  })();
 
   // ===== LOGO no modal: tamanho via CSS ou JS opcional =====
   // (mantemos simples; se precisares de ajustar dinamicamente, usa CSS .rep-logo)

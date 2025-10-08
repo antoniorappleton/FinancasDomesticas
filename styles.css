@@ -420,3 +420,26 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 .sugg-meta{ font-size:12px; color:#475569; display:flex; gap:12px; flex-wrap:wrap; }
 .sugg-btn{ border:1px solid #cbd5e1; padding:6px 10px; border-radius:10px; background:#fff; cursor:pointer; }
 .sugg-btn:hover{ background:#f8fafc; }
+/* === Help FAB + Popover === */
+.help-fab{
+  position: fixed; top: 76px; right: 12px; z-index: 60;
+  width: 38px; height: 38px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: #fff; color: var(--text); border:1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+.help-fab svg{ width: 20px; height: 20px }
+
+.help-pop{
+  position: fixed; top: 124px; right: 12px; z-index: 60;
+  width: min(92vw, 420px); max-height: 60vh; overflow: auto;
+  background: #fff; color: var(--text);
+  border:1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-card); padding: 12px;
+}
+.help-pop h3{ margin:0 0 6px 0; font-size: 14px; font-weight: 800 }
+.help-pop p{ margin:6px 0; color: var(--muted); font-size: 14px; line-height: 1.35 }
+.help-pop .close{
+  margin-top:10px; display:inline-block; font-size:13px;
+  background:#111827; color:#e5e7eb; border:1px solid #111827; border-radius:10px; padding:6px 10px;
+}
