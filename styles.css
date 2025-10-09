@@ -485,3 +485,57 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 /* fade-out suave */
 .wb-splash.is-hiding{ animation: wb-fade .45s ease-out both }
 @keyframes wb-fade{ to{ opacity: 0; visibility: hidden } }
+/* === Footer: tabs “limpos” + bolha exterior no item ativo (sem caixas nem limites) === */
+
+/* 1) Itens sem fundos/limites, nem outline */
+.foot-item{
+  background:transparent !important;
+  border:none !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+.foot-item:hover{ background:transparent !important; }
+.foot-item:active{ transform:none; }
+.foot-item:focus, .foot-item:focus-visible{ outline:none !important; }
+
+/* ícones/labels sempre brancos (um pouco menos intensos quando inativos) */
+.foot-item__icon{ color:rgba(255,255,255,.85); transition:transform .2s ease, color .2s ease; }
+.foot-item__label{ color:#fff; }
+
+/* 2) Remover o realce antigo do ativo (era um fundo/outline) */
+.foot-item[aria-current="page"]{
+  background:transparent !important;
+  outline:none !important;
+  position:relative;
+  color:#fff;
+}
+
+/* 3) “Curve Outside”: bolha branca que sai para FORA do footer */
+.foot-item[aria-current="page"]::before{
+  content:"";
+  position:absolute;
+  left:50%; top:-22px; transform:translateX(-50%);
+  width:56px; height:56px;
+  background:#fff; border-radius:999px;
+  box-shadow:0 10px 24px rgba(2,6,23,.20);
+  z-index:0; /* atrás do ícone/label, acima do fundo do footer */
+}
+/* ponte curva que liga a bolha ao pill do footer */
+.foot-item[aria-current="page"]::after{
+  content:"";
+  position:absolute; left:50%; top:0; transform:translateX(-50%);
+  width:50px; height:22px;
+  background:#fff;
+  border-bottom-left-radius:999px; border-bottom-right-radius:999px;
+  z-index:0;
+}
+
+/* 4) ícone do ativo sobe um pouco e ganha azul (sem caixas) */
+.foot-item[aria-current="page"] .foot-item__icon{
+  color:var(--blue-500);
+  transform:translateY(-10px);
+  position:relative; z-index:1;
+}
+.foot-item[aria-current="page"] .foot-item__label{
+  position:relative; z-index:1;
+}
