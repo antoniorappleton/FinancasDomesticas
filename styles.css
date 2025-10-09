@@ -618,3 +618,145 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 @media (min-width: 768px){
   :root{ --fab-size: 62px; --fab-item: 54px; --fab-gap: 100px; }
 }
+
+/* =========================
+   FAB – tamanho dedo no mobile
+   ========================= */
+
+/* Valores base (desktop/tablet) */
+:root{
+  --fab-size: 56px;      /* diâmetro do botão principal */
+  --fab-icon: 22px;      /* tamanho do ícone */
+  --fab-gap: 12px;       /* distância entre itens quando aberto */
+}
+
+/* Contêiner centrado no rodapé, com safe-area iOS/Android */
+.fab-nav{
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 12px); /* sobe 12px da borda + safe area */
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none; /* só os filhos clicam */
+}
+
+/* Botão principal */
+.fab-main{
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 999px;
+  display: grid; place-items: center;
+  background: var(--footer-grad);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(2,6,23,.22);
+  pointer-events: auto; /* clicável */
+}
+
+.fab-main svg{ width: var(--fab-icon); height: var(--fab-icon); }
+
+/* Itens do menu (se os tiveres) */
+.fab-items .fab-item{
+  width: var(--fab-size);
+  height: var(--fab-size);
+  border-radius: 999px;
+  display: grid; place-items: center;
+  background: #fff;
+  color: var(--green-900);
+  box-shadow: 0 8px 18px rgba(2,6,23,.18);
+  pointer-events: auto;
+}
+
+/* Espaçamento entre itens quando o menu abre */
+.fab-nav.is-open .fab-items .fab-item{ margin: 0 var(--fab-gap); }
+
+/* —— MOBILE: dedo grande ————————————————————————————— */
+@media (hover: none), (pointer: coarse){
+  :root{
+    --fab-size: 72px;    /* 64–80px é ótimo para polegar */
+    --fab-icon: 30px;
+    --fab-gap: 14px;
+  }
+  .fab-nav{
+    bottom: calc(env(safe-area-inset-bottom) + 16px); /* um bocadinho mais acima */
+  }
+}
+
+/* —— DESKTOP largo: um pouco menor ———————————————— */
+@media (min-width: 768px){
+  :root{
+    --fab-size: 56px;
+    --fab-icon: 22px;
+    --fab-gap: 10px;
+  }
+}
+/* ===== FAB base (browser + mobile) ===== */
+:root{ --fab-size: 64px; --fab-icon: 26px; --fab-gap: 14px; --fab-spread: 90px; }
+
+.fab-nav{
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  transform: translateX(-50%);
+  z-index: 2147483000;        /* acima de tudo */
+  pointer-events: none;       /* apenas filhos clicáveis */
+}
+
+/* botão principal */
+.fab-main{
+  width: var(--fab-size); height: var(--fab-size);
+  border-radius: 999px; display:grid; place-items:center;
+  background: var(--footer-grad); color:#fff;
+  box-shadow: 0 12px 28px rgba(2,6,23,.25);
+  pointer-events: auto; cursor: pointer; border:0;
+}
+.fab-main .i{ width: var(--fab-icon); height: var(--fab-icon); transition: transform .28s ease, opacity .18s ease; }
+.fab-main .i-close{ position:absolute; opacity:0; transform: rotate(-90deg) scale(.8); }
+.fab-nav.is-open .i-burger{ opacity:0; transform: rotate(90deg) scale(.8); }
+.fab-nav.is-open .i-close{ opacity:1; transform: rotate(0deg) scale(1); }
+
+/* trilho dos itens */
+.fab-items{
+  position: absolute; left: 50%; bottom: calc(var(--fab-size) + 10px);
+  transform: translateX(-50%);
+  display: grid; grid-auto-flow: column; align-items: center; gap: var(--fab-gap);
+  opacity: 0; pointer-events: none; transition: opacity .22s ease;
+}
+
+/* cada item */
+.fab-item{
+  width: var(--fab-size); height: var(--fab-size);
+  border-radius: 999px; display:grid; place-items:center;
+  background:#fff; color: var(--green-900);
+  box-shadow: 0 10px 22px rgba(2,6,23,.2);
+  border:0; cursor: pointer; pointer-events: auto;
+  transform: translateX(0); transition: transform .38s cubic-bezier(.22,.8,.24,1), opacity .2s ease;
+}
+.fab-item svg{ width: calc(var(--fab-icon) - 2px); height: calc(var(--fab-icon) - 2px); }
+
+/* etiquetas (fundo branco, texto verde) */
+.fab-item::after{
+  content: attr(data-label);
+  position:absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%);
+  background:#fff; color:#065f46; font-weight:700;
+  font-size: 12px; line-height: 1;
+  padding: 6px 10px; border-radius: 999px;
+  box-shadow: 0 6px 16px rgba(2,6,23,.15);
+  white-space: nowrap; opacity: 0; transition: opacity .2s ease, transform .2s ease;
+}
+.fab-item:hover::after, .fab-item:focus-visible::after{ opacity:1; transform: translateX(-50%) translateY(-2px); }
+
+/* abrir: itens aparecem e “espalham” */
+.fab-nav.is-open .fab-items{ opacity: 1; pointer-events: auto; }
+.fab-nav.is-open .fab-item{ opacity:1; }
+.fab-nav.is-open .fab-item:nth-child(1){ transform: translateX(calc(-2 * var(--fab-spread))); }
+.fab-nav.is-open .fab-item:nth-child(2){ transform: translateX(calc(-1 * var(--fab-spread))); }
+.fab-nav.is-open .fab-item:nth-child(3){ transform: translateX(0); }
+.fab-nav.is-open .fab-item:nth-child(4){ transform: translateX(calc(1 * var(--fab-spread))); }
+.fab-nav.is-open .fab-item:nth-child(5){ transform: translateX(calc(2 * var(--fab-spread))); }
+
+/* mobile: maior para o polegar */
+@media (hover:none), (pointer:coarse){
+  :root{ --fab-size: 76px; --fab-icon: 32px; --fab-gap: 16px; --fab-spread: 100px; }
+  .fab-nav{ bottom: calc(env(safe-area-inset-bottom) + 18px); }
+}

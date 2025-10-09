@@ -141,12 +141,13 @@ function onSignedOut() {
 })();
 
 /* ===================== FAB Menu ===================== */
+
 (function(){
-  const fab = document.querySelector('.fab-nav');
+  const fab = document.getElementById('fabNav');
   if (!fab) return;
 
-  const toggle = fab.querySelector('#fabToggle');
-  const itemsWrap = fab.querySelector('#fabItems');
+  const toggle = document.getElementById('fabToggle');
+  const itemsWrap = document.getElementById('fabItems');
   const items = [...fab.querySelectorAll('.fab-item')];
 
   const open = () => {
@@ -154,8 +155,6 @@ function onSignedOut() {
     toggle.setAttribute('aria-expanded','true');
     itemsWrap.hidden = false;
     itemsWrap.setAttribute('aria-hidden','false');
-    // define índices para o stagger
-    items.forEach((btn, i) => btn.style.setProperty('--i', (i % 3) + 1));
   };
   const close = () => {
     fab.classList.remove('is-open');
@@ -166,20 +165,14 @@ function onSignedOut() {
   const toggleMenu = () => fab.classList.contains('is-open') ? close() : open();
 
   toggle.addEventListener('click', toggleMenu);
-
-  // fecha ao clicar fora
-  document.addEventListener('pointerdown', (e) => {
-    if (!fab.contains(e.target)) close();
-  });
-
-  // ESC
+  document.addEventListener('pointerdown', (e) => { if (!fab.contains(e.target)) close(); });
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
 
-  // clique num item → navega e fecha
+  // clicar num item: navega e fecha
   items.forEach(btn => {
     btn.addEventListener('click', () => {
-      const route = btn.getAttribute('data-route');
-      if (route) location.hash = route;
+      const href = btn.getAttribute('data-href');
+      if (href) location.hash = href;
       close();
     });
   });
