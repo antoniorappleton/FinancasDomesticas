@@ -118,44 +118,6 @@
       <div id="outlet" class="outlet"></div>
     </main>
 
-    <footer
-      id="app-footer"
-      class="app-footer"
-      role="navigation"
-      aria-label="Separadores"
-    >
-      <a href="#/" class="foot-item" data-route="dashboard">
-        <svg class="foot-item__icon" aria-hidden="true">
-          <use href="#i-home"></use>
-        </svg>
-        <span class="foot-item__label">Dashboard</span>
-      </a>
-      <a href="#/objetivos" class="foot-item" data-route="objetivos">
-        <svg class="foot-item__icon" aria-hidden="true">
-          <use href="#i-target"></use>
-        </svg>
-        <span class="foot-item__label">Objetivos</span>
-      </a>
-      <a href="#/transactions" class="foot-item" data-route="transactions">
-        <svg class="foot-item__icon" aria-hidden="true">
-          <use href="#i-list"></use>
-        </svg>
-        <span class="foot-item__label">Transações</span>
-      </a>
-      <a href="#/new" class="foot-item" data-route="new">
-        <svg class="foot-item__icon" aria-hidden="true">
-          <use href="#i-plus"></use>
-        </svg>
-        <span class="foot-item__label">Nova</span>
-      </a>
-      <a href="#/settings" class="foot-item" data-route="settings">
-        <svg class="foot-item__icon" aria-hidden="true">
-          <use href="#i-cog"></use>
-        </svg>
-        <span class="foot-item__label">Definições</span>
-      </a>
-    </footer>
-
     <!-- Login Overlay -->
     <section
       id="screen-login"
@@ -340,6 +302,34 @@
       })();
     </script>
 
+
+        <!-- FAB MENU (coexiste com o footer) -->
+    <nav class="fab-nav" role="navigation" aria-label="Menu rápido">
+      <button class="fab-toggle" id="fabToggle"
+              aria-label="Abrir menu" aria-expanded="false" aria-controls="fabItems">
+        <span class="fab-icon" aria-hidden="true"></span>
+      </button>
+
+      <div id="fabItems" class="fab-items" hidden>
+        <!-- esquerda -->
+         <button class="fab-item" style="--i:2" data-dir="left"  data-route="#/objetivos"   aria-label="Objetivos">
+          <svg class="ico" aria-hidden="true"><use href="#i-target"></use></svg>
+        </button>
+        <button class="fab-item" style="--i:1" data-dir="left"  data-route="#/"            aria-label="Dashboard">
+          <svg class="ico" aria-hidden="true"><use href="#i-home"></use></svg>
+        </button>
+        <!-- direita -->
+         <button class="fab-item" style="--i:3" data-dir="right" data-route="#/settings"    aria-label="Definições">
+          <svg class="ico" aria-hidden="true"><use href="#i-cog"></use></svg>
+        </button>
+        <button class="fab-item" style="--i:2" data-dir="right" data-route="#/new"         aria-label="Nova">
+          <svg class="ico" aria-hidden="true"><use href="#i-plus"></use></svg>
+        </button>
+        <button class="fab-item" style="--i:1" data-dir="right" data-route="#/transactions" aria-label="Transações">
+          <svg class="ico" aria-hidden="true"><use href="#i-list"></use></svg>
+        </button>
+      </div>
+    </nav>
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
   </body>

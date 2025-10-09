@@ -539,3 +539,82 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 .foot-item[aria-current="page"] .foot-item__label{
   position:relative; z-index:1;
 }
+
+/*============*/
+/* ==FOOTER==*/
+/*============*/
+
+/* ===== FAB MENU (hambúrguer → X; itens deslizam l/r) ===== */
+:root{ --fab-offset: 6px; } /* afina aqui: 0–12px */
+
+/* FAB centrado por cima do footer */
+.fab-nav{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--fab-offset));
+  z-index: 2147483000;
+}
+
+/* mantém resto do estilo do FAB como já tinhas */
+
+
+/* Botão principal */
+.fab-toggle{
+  width: var(--fab-size); height: var(--fab-size);
+  border-radius: 999px; border:0; cursor: pointer;
+  background: var(--footer-grad);
+  color:#fff; display:grid; place-items:center;
+  box-shadow: 0 8px 22px rgba(2,6,23,.28);
+}
+.fab-toggle:focus-visible{
+  outline: none; box-shadow: 0 8px 22px rgba(2,6,23,.28), 0 0 0 3px rgba(255,255,255,.28);
+}
+
+/* Ícone hambúrguer */
+.fab-icon{
+  position: relative; width: 24px; height: 2px; background: currentColor;
+  transition: transform .35s ease, background-color .2s ease;
+}
+.fab-icon::before,.fab-icon::after{
+  content:""; position:absolute; left:0; width:24px; height:2px; background: currentColor;
+  transition: transform .35s ease, top .35s ease, bottom .35s ease, opacity .2s ease;
+}
+.fab-icon::before{ top:-7px } .fab-icon::after{ bottom:-7px }
+
+/* hambúrguer → X */
+.fab-nav.is-open .fab-icon{ background: transparent }
+.fab-nav.is-open .fab-icon::before{ top:0; transform: rotate(45deg) }
+.fab-nav.is-open .fab-icon::after { bottom:0; transform: rotate(-45deg) }
+
+/* Contentor dos itens */
+.fab-items{
+  position:absolute; inset:0;
+  display:grid; place-items:center;
+  pointer-events: none;
+}
+
+/* Itens que disparam */
+.fab-item{
+  position:absolute;
+  width: var(--fab-item); height: var(--fab-item);
+  border-radius: 999px; border:0; cursor: pointer;
+  background: #fff; color:#0b7a5d;
+  display:grid; place-items:center;
+  box-shadow: 0 8px 22px rgba(2,6,23,.24);
+  transform: translateX(0) scale(.9);
+  opacity: 0; pointer-events: none;
+  transition: transform .42s cubic-bezier(.22,.8,.24,1), opacity .25s ease;
+  transition-delay: calc(var(--i) * 28ms);
+}
+.fab-item .ico{ width:22px; height:22px; color: currentColor }
+
+/* aberto → aparecem e ficam clicáveis */
+.fab-nav.is-open .fab-item{ opacity:1; pointer-events:auto; transform: scale(1) }
+.fab-nav.is-open .fab-item[data-dir="left"]{  transform: translateX(calc(-1 * var(--i) * var(--fab-gap))) }
+.fab-nav.is-open .fab-item[data-dir="right"]{ transform: translateX(calc(     var(--i) * var(--fab-gap))) }
+
+/* Desktop: ligeiro aumento */
+@media (min-width: 768px){
+  :root{ --fab-size: 62px; --fab-item: 54px; --fab-gap: 100px; }
+}
