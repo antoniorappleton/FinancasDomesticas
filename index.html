@@ -302,38 +302,39 @@
       })();
     </script>
 
+      <!-- FAB: botão central + itens -->
+<div class="fab-nav" aria-live="polite">
+  <button id="fabToggle" class="fab-nav__toggle" aria-label="Abrir menu" aria-expanded="false">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4"/>
+    </svg>
+  </button>
 
-      <!-- FAB central (hambúrguer -> X + itens que saem para os lados) -->
-      <div class="fab-nav" id="fabNav">
-        <button class="fab-main" id="fabToggle" aria-expanded="false" aria-controls="fabItems" aria-label="Abrir menu">
-          <!-- ícone hamburguer -->
-          <svg class="i i-burger" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/>
-          </svg>
-          <!-- ícone X -->
-          <svg class="i i-close" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3z"/>
-          </svg>
-        </button>
+  <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
+    <button class="fab-item" data-to="#/" aria-label="Dashboard">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/></svg>
+      <span class="fab-label">Dashboard</span>
+    </button>
+    <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg>
+      <span class="fab-label">Objetivos</span>
+    </button>
+    <button class="fab-item" data-to="#/transactions" aria-label="Transações">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></svg>
+      <span class="fab-label">Transações</span>
+    </button>
+    <button class="fab-item" data-to="#/new" aria-label="Nova">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></svg>
+      <span class="fab-label">Nova</span>
+    </button>
+    <button class="fab-item" data-to="#/settings" aria-label="Definições">
+      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg>
+      <span class="fab-label">Definições</span>
+    </button>
+  </div>
+</div>
 
-        <div class="fab-items" id="fabItems" aria-hidden="true" hidden>
-          <button class="fab-item" data-href="#/" aria-label="Dashboard" data-label="Dashboard">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/></svg>
-          </button>
-          <button class="fab-item" data-href="#/objetivos" aria-label="Objetivos" data-label="Objetivos">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg>
-          </button>
-          <button class="fab-item" data-href="#/transactions" aria-label="Transações" data-label="Transações">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></svg>
-          </button>
-          <button class="fab-item" data-href="#/new" aria-label="Nova" data-label="Nova">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6z"/></svg>
-          </button>
-          <button class="fab-item" data-href="#/settings" aria-label="Definições" data-label="Definições">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg>
-          </button>
-        </div>
-      </div>
+
 
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>

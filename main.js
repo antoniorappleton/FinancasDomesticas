@@ -140,40 +140,91 @@ function onSignedOut() {
   }
 })();
 
-/* ===================== FAB Menu ===================== */
+// === FAB menu: abre, fecha e distribui itens sem sair da largura ===
+// FAB – fan-out para a esquerda e direita (todos os itens)
+(() => {
+  const root = document.querySelector('.fab-nav');
+  if (!root) return;
 
-(function(){
-  const fab = document.getElementById('fabNav');
-  if (!fab) return;
+  const toggle = root.querySelector('#fabToggle');
+  const wrap   = root.querySelector('#fabItems');
+  const items  = [...root.querySelectorAll('.fab-item')];
 
-  const toggle = document.getElementById('fabToggle');
-  const itemsWrap = document.getElementById('fabItems');
-  const items = [...fab.querySelectorAll('.fab-item')];
+  // segurança mínima
+  if (!toggle || !wrap || items.length === 0) return;
 
-  const open = () => {
-    fab.classList.add('is-open');
-    toggle.setAttribute('aria-expanded','true');
-    itemsWrap.hidden = false;
-    itemsWrap.setAttribute('aria-hidden','false');
-  };
-  const close = () => {
-    fab.classList.remove('is-open');
-    toggle.setAttribute('aria-expanded','false');
-    itemsWrap.setAttribute('aria-hidden','true');
-    setTimeout(() => { if (!fab.classList.contains('is-open')) itemsWrap.hidden = true; }, 350);
-  };
-  const toggleMenu = () => fab.classList.contains('is-open') ? close() : open();
+  // parâmetros responsivos
+  const css = getComputedStyle(document.documentElement);
+  const num = s => parseFloat(s) || 0;
 
-  toggle.addEventListener('click', toggleMenu);
-  document.addEventListener('pointerdown', (e) => { if (!fab.contains(e.target)) close(); });
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  // defaults caso não definas variáveis na :root
+  function params() {
+    return {
+      d:    num(css.getPropertyValue('--fab-item-d')) || Math.max(54, Math.min(66, window.innerWidth * 0.08)),
+      gap:  num(css.getPropertyValue('--fab-gap'))    || Math.max(14, Math.min(22, window.innerWidth * 0.045)),
+      safe: num(css.getPropertyValue('--fab-safe'))   || 16
+    };
+  }
 
-  // clicar num item: navega e fecha
+  // distribui alternando L/R a partir do centro: L1, R1, L2, R2...
+  function layout() {
+    const { d, gap, safe } = params();
+
+    // calcula deslocações máximas possíveis (não sair do ecrã)
+    const rect = root.getBoundingClientRect();
+    const cx   = rect.left + rect.width / 2;
+    const vw   = window.innerWidth;
+
+    const leftAvail  = Math.max(0, cx - safe) - d/2;
+    const rightAvail = Math.max(0, (vw - cx) - safe) - d/2;
+
+    // ordem alternada
+    items.forEach((btn, i) => {
+      const n = Math.floor(i / 2) + 1;      // 1,1,2,2,3,3...
+      const side = (i % 2 === 0) ? -1 : 1;  // esquerda, direita, esquerda, direita...
+
+      // passo ideal e corrigido para não sair do ecrã
+      const ideal = d + gap;                             // distância base entre círculos
+      const dist  = Math.min(ideal * n,
+                             (side < 0 ? leftAvail : rightAvail)); // clamp dentro da largura útil
+
+      // aplica translate a partir do CENTRO do toggle
+      const tx = side * dist;
+      btn.style.transform = `translate(calc(-50% + ${tx}px), -50%)`;
+    });
+  }
+
+  function open() {
+    root.classList.add('is-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    wrap.hidden = false;
+    wrap.setAttribute('aria-hidden', 'false');
+    requestAnimationFrame(layout);
+  }
+  function close() {
+    root.classList.remove('is-open');
+    toggle.setAttribute('aria-expanded', 'false');
+    wrap.setAttribute('aria-hidden', 'true');
+    // regressam ao centro
+    items.forEach(btn => btn.style.transform = 'translate(-50%,-50%)');
+    setTimeout(() => { if (!root.classList.contains('is-open')) wrap.hidden = true; }, 320);
+  }
+
+  toggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    (root.classList.contains('is-open') ? close : open)();
+  });
+
+  // recalc em resize/orientation
+  window.addEventListener('resize', () => { if (root.classList.contains('is-open')) layout(); });
+
+  // clicar numa ação: navega e fecha
   items.forEach(btn => {
     btn.addEventListener('click', () => {
-      const href = btn.getAttribute('data-href');
-      if (href) location.hash = href;
+      const to = btn.getAttribute('data-to');
+      if (to) location.hash = to;
       close();
     });
   });
 })();
+
