@@ -56,6 +56,20 @@
       height="0"
       style="position: absolute; left: -9999px; top: -9999px"
     >
+      <!-- Documento (file-text, traço branco como os restantes) -->
+      <symbol id="i-doc" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- Alternativa: Recibo (receipt) -->
+      <symbol id="i-receipt" viewBox="0 0 24 24">
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <line x1="8" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </symbol>
       <symbol id="i-wallet" viewBox="0 0 24 24">
         <path
           fill="currentColor"
@@ -320,7 +334,7 @@
       <span class="fab-label">Objetivos</span>
     </button>
     <button class="fab-item" data-to="#/transactions" aria-label="Transações">
-      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></svg>
+      <svg viewBox="0 0 24 24"><path fill="currentColor"d="M6 2h12a1 1 0 0 1 1 1v18l-2.5-1.8L14 21l-2.5-1.8L9 21l-2.5-1.8L4 21V3a1 1 0 0 1 1-1h1zM8 8h8v2H8V8zM8 12h8v2H8v-2z" /></svg>
       <span class="fab-label">Transações</span>
     </button>
     <button class="fab-item" data-to="#/new" aria-label="Nova">
@@ -333,8 +347,6 @@
     </button>
   </div>
 </div>
-
-
 
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
