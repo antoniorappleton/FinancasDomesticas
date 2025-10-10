@@ -2,111 +2,119 @@
 <html lang="pt-PT">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Conta confirmada • Wisebudget</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <title>Confirmação | Wisebudget</title>
   <style>
-    :root{
-      --green:#0b7a5d; --greenDark:#064e3b; --text:#0f172a;
-      --ok:#16a34a; --err:#ef4444;
-    }
-    html,body{height:100%}
-    body{
-      margin:0; display:grid; place-items:center; min-height:100%;
-      background: linear-gradient(180deg, var(--greenDark), var(--green));
-      font:16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      color:#fff;
+    :root{ --g:#0b7a5d; --g2:#064e3b; --ok:#16a34a; --err:#ef4444; }
+    html,body{height:100%} body{
+      margin:0; display:grid; place-items:center;
+      background:linear-gradient(180deg,var(--g2),var(--g));
+      font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto;
+      color:#0f172a;
     }
     .card{
-      background:#fff; color:var(--text);
-      border-radius:14px; padding:18px 20px; width:min(92vw, 560px);
-      box-shadow:0 20px 50px rgba(0,0,0,.25);
-      display:grid; gap:10px; text-align:center;
+      width:min(680px,94vw);
+      background:#fff; border-radius:16px; padding:22px 20px;
+      box-shadow:0 24px 60px rgba(0,0,0,.25);
     }
-    .title{font-weight:800; font-size:1.15rem}
-    .ok{color:var(--ok); font-weight:700}
-    .err{color:var(--err); font-weight:700}
-    .hint{color:#475569; font-size:.9rem}
-    .btn{
-      display:inline-block; padding:10px 14px; border-radius:10px;
-      background:var(--green); color:#fff; text-decoration:none; font-weight:700;
-      border:1px solid rgba(255,255,255,.12);
+    h1{margin:0 0 6px; font-size:24px}
+    .muted{color:#6b7280; margin:8px 0 16px}
+    .msg{font-weight:800}
+    .msg.ok{color:var(--ok)}
+    .msg.err{color:var(--err)}
+    .btn{display:block; width:100%; padding:12px 14px; margin-top:14px;
+      border:0; border-radius:12px; font-weight:800; cursor:pointer;
+      background:#0b7a5d; color:#fff;
     }
   </style>
+  <script>
+    // Garantir que não há SW a servir versão antiga desta página
+    (async () => {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        regs.forEach(r => {
+          // não desregista o SW da app inteira; só evita controlar esta página
+          // ao carregar sem escopo (GitHub Pages normalmente não controla esta rota)
+        });
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="card" id="box">
-    <div class="title">A confirmar a tua conta…</div>
-    <div class="hint">Aguarda um instante.</div>
+    <h1 id="t">A confirmar…</h1>
+    <p class="msg" id="m">Aguente só um segundo.</p>
+    <p class="muted" id="hint"></p>
+    <button class="btn" id="go">Voltar à app</button>
   </div>
 
-  <!-- Supabase v2 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  // ⚙️ Usa as MESMAS credenciais do index.html
-  const SUPABASE_URL  = window.SUPABASE_URL  || "https://brakxcumzdleufrpyipm.supabase.co";
-  const SUPABASE_ANON = window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
-  const sb  = window.sb || supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Ajusta estes se quiseres instanciar aqui também:
+    const SUPABASE_URL  = window.SUPABASE_URL  || "https://brakxcumzdleufrpyipm.supabase.co";
+    const SUPABASE_ANON = window.SUPABASE_ANON_KEY ||
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
 
-  const box = document.getElementById("box");
-  const okUI = (msg="Conta confirmada ✔") => {
-    box.innerHTML = `
-      <div class="title">${msg}</div>
-      <div class="ok">A redirecionar para o dashboard…</div>
-      <a class="btn" href="./index.html#/">Ir agora</a>
-    `;
-    setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
-  };
-  const errUI = (err) => {
-    box.innerHTML = `
-      <div class="title">Ups, algo correu mal</div>
-      <div class="err">${err?.message || err}</div>
-      <div class="hint">Se o link já tiver sido usado, basta entrares na app.</div>
-      <a class="btn" href="./index.html#/">Voltar à app</a>
-    `;
-  };
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-  // ✅ TESTE rápido manual: /confirm.html?ok=1
-  const url  = new URL(location.href);
-  if (url.searchParams.get("ok") === "1") { okUI("Simulação de sucesso"); }
+    const $ = (id)=>document.getElementById(id);
+    const t = $('t'), m = $('m'), hint = $('hint'), go = $('go');
 
-  (async () => {
-    try {
-      // 1) OAuth (tem ?code=…)
-      const code = url.searchParams.get("code");
-      if (code) {
-        const { error } = await sb.auth.exchangeCodeForSession(location.href);
-        if (error) throw error;
-        return okUI();
+    // Construir URL base para voltar à app (funciona em GitHub Pages e localhost)
+    const BASE = new URL(".", location.href).href;         // …/FinancasDomesticas/
+    const APP  = new URL("index.html", BASE).href;        // …/FinancasDomesticas/index.html
+
+    go.addEventListener('click', ()=> location.href = APP);
+
+    async function run(){
+      const params = new URLSearchParams(location.search);
+
+      // 1) Teste manual: ?ok=1 => mostra sucesso
+      if (params.get('ok') === '1') {
+        t.textContent = "Conta confirmada 🎉";
+        m.textContent = "Obrigado! A sua conta foi confirmada com sucesso.";
+        m.className = "msg ok";
+        hint.textContent = "Pode entrar já na aplicação.";
+        go.textContent = "Entrar";
+        return;
       }
 
-      // 2) Tokens no fragmento #access_token=…&refresh_token=…
-      // (alguns templates antigos/magic link podem vir assim)
-      const hashParams = new URLSearchParams(location.hash.slice(1));
-      const at = hashParams.get("access_token");
-      const rt = hashParams.get("refresh_token");
-      if (at && rt) {
-        const { error } = await sb.auth.setSession({ access_token: at, refresh_token: rt });
-        if (error) throw error;
-        return okUI();
+      // 2) Fluxo real: Supabase envia code + code_verifier
+      const code = params.get('code');
+      const verifier = params.get('code_verifier');
+
+      if (!code || !verifier) {
+        t.textContent = "Ups, algo correu mal";
+        m.textContent = "Link inválido ou expirado.";
+        m.className = "msg err";
+        hint.textContent = "Se o link já tiver sido usado, basta entrar na app.";
+        go.textContent = "Voltar à app";
+        return;
       }
 
-      // 3) Links de email (confirm signup/recovery/invite/email_change)
-      const token_hash = url.searchParams.get("token_hash");
-      const type = url.searchParams.get("type"); // signup | recovery | invite | email_change
-      if (token_hash && type) {
-        const { error } = await sb.auth.verifyOtp({ type, token_hash });
+      try {
+        const { data, error } = await sb.auth.exchangeCodeForSession(window.location.href);
         if (error) throw error;
-        return okUI(type === "signup" ? "Email confirmado ✔" : "Ligação validada ✔");
-      }
 
-      // Se não detetámos nenhum dos formatos…
-      throw new Error("Link inválido ou expirado.");
-    } catch (err) {
-      console.error(err);
-      errUI(err);
+        t.textContent = "Conta confirmada 🎉";
+        m.textContent = "Obrigado! A sua conta foi confirmada com sucesso.";
+        m.className = "msg ok";
+        hint.textContent = "Vamos abrir a aplicação.";
+        go.textContent = "Entrar";
+        // pequeno atraso para UX e depois ir para a app
+        setTimeout(()=> location.href = APP + "#/", 900);
+      } catch (err) {
+        t.textContent = "Ups, algo correu mal";
+        m.textContent = "Não foi possível confirmar: " + (err?.message || err);
+        m.className = "msg err";
+        hint.textContent = "Pode tentar entrar na app; se estiver confirmado, já consegue.";
+        go.textContent = "Voltar à app";
+      }
     }
-  })();
-</script>
-
+    run();
+  </script>
 </body>
 </html>
