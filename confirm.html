@@ -40,50 +40,73 @@
   </div>
 
   <!-- Supabase v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // ⚙️ ATENÇÃO: usa as MESMAS credenciais que tens no index.html
-    const SUPABASE_URL  = window.SUPABASE_URL  || "https://brakxcumzdleufrpyipm.supabase.co";
-    const SUPABASE_ANON = window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
-    const sb = window.sb || supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ⚙️ Usa as MESMAS credenciais do index.html
+  const SUPABASE_URL  = window.SUPABASE_URL  || "https://brakxcumzdleufrpyipm.supabase.co";
+  const SUPABASE_ANON = window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
+  const sb  = window.sb || supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    const box = document.getElementById("box");
+  const box = document.getElementById("box");
+  const okUI = (msg="Conta confirmada ✔") => {
+    box.innerHTML = `
+      <div class="title">${msg}</div>
+      <div class="ok">A redirecionar para o dashboard…</div>
+      <a class="btn" href="./index.html#/">Ir agora</a>
+    `;
+    setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
+  };
+  const errUI = (err) => {
+    box.innerHTML = `
+      <div class="title">Ups, algo correu mal</div>
+      <div class="err">${err?.message || err}</div>
+      <div class="hint">Se o link já tiver sido usado, basta entrares na app.</div>
+      <a class="btn" href="./index.html#/">Voltar à app</a>
+    `;
+  };
 
-    // ✅ TESTE RÁPIDO: abrir /confirm.html?ok=1 mostra sucesso e redireciona
-    const url = new URL(location.href);
-    if (url.searchParams.get("ok") === "1") {
-      box.innerHTML = `
-        <div class="title">Conta confirmada ✔</div>
-        <div class="ok">Simulação de sucesso</div>
-        <div class="hint">A redirecionar para o dashboard…</div>
-        <a class="btn" href="./index.html#/">Ir agora</a>
-      `;
-      setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
-    } else {
-      (async () => {
-        try {
-          // 🔄 Supabase v2: troca o código do link por sessão
-          const { data, error } = await sb.auth.exchangeCodeForSession(location.href);
-          if (error) throw error;
+  // ✅ TESTE rápido manual: /confirm.html?ok=1
+  const url  = new URL(location.href);
+  if (url.searchParams.get("ok") === "1") { okUI("Simulação de sucesso"); }
 
-          box.innerHTML = `
-            <div class="title">Conta confirmada ✔</div>
-            <div class="ok">O teu email foi verificado com sucesso.</div>
-            <div class="hint">Estamos a levar-te para o dashboard…</div>
-            <a class="btn" href="./index.html#/">Ir agora</a>
-          `;
-          setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
-        } catch (err) {
-          console.error(err);
-          box.innerHTML = `
-            <div class="title">Ups, algo correu mal</div>
-            <div class="err">Não foi possível confirmar: ${err?.message || err}</div>
-            <div class="hint">Se o link já tiver sido usado, basta entrares na app.</div>
-            <a class="btn" href="./index.html#/">Voltar à app</a>
-          `;
-        }
-      })();
+  (async () => {
+    try {
+      // 1) OAuth (tem ?code=…)
+      const code = url.searchParams.get("code");
+      if (code) {
+        const { error } = await sb.auth.exchangeCodeForSession(location.href);
+        if (error) throw error;
+        return okUI();
+      }
+
+      // 2) Tokens no fragmento #access_token=…&refresh_token=…
+      // (alguns templates antigos/magic link podem vir assim)
+      const hashParams = new URLSearchParams(location.hash.slice(1));
+      const at = hashParams.get("access_token");
+      const rt = hashParams.get("refresh_token");
+      if (at && rt) {
+        const { error } = await sb.auth.setSession({ access_token: at, refresh_token: rt });
+        if (error) throw error;
+        return okUI();
+      }
+
+      // 3) Links de email (confirm signup/recovery/invite/email_change)
+      const token_hash = url.searchParams.get("token_hash");
+      const type = url.searchParams.get("type"); // signup | recovery | invite | email_change
+      if (token_hash && type) {
+        const { error } = await sb.auth.verifyOtp({ type, token_hash });
+        if (error) throw error;
+        return okUI(type === "signup" ? "Email confirmado ✔" : "Ligação validada ✔");
+      }
+
+      // Se não detetámos nenhum dos formatos…
+      throw new Error("Link inválido ou expirado.");
+    } catch (err) {
+      console.error(err);
+      errUI(err);
     }
-  </script>
+  })();
+</script>
+
 </body>
 </html>
