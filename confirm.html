@@ -1,18 +1,89 @@
-<!doctype html><meta charset="utf-8">
-<title>Conta confirmada</title>
-<style>body{font:16px/1.4 system-ui;margin:24px} .ok{padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;background:#fff}</style>
-<div class="ok">
-  <h1>✔️ Email confirmado</h1>
-  <p>A redirecionar para a aplicação…</p>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const sb = supabase.createClient(
-    window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
-    window.SUPABASE_ANON_KEY || "…a tua anon key…"
-  );
-  (async () => {
-    try { await sb.auth.getSessionFromUrl({ storeSession: true }); } catch {}
-    location.href = location.origin + location.pathname + "#/"; // volta para a app
-  })();
-</script>
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Conta confirmada • Wisebudget</title>
+  <style>
+    :root{
+      --green:#0b7a5d; --greenDark:#064e3b; --text:#0f172a;
+      --ok:#16a34a; --err:#ef4444;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; display:grid; place-items:center; min-height:100%;
+      background: linear-gradient(180deg, var(--greenDark), var(--green));
+      font:16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:#fff;
+    }
+    .card{
+      background:#fff; color:var(--text);
+      border-radius:14px; padding:18px 20px; width:min(92vw, 560px);
+      box-shadow:0 20px 50px rgba(0,0,0,.25);
+      display:grid; gap:10px; text-align:center;
+    }
+    .title{font-weight:800; font-size:1.15rem}
+    .ok{color:var(--ok); font-weight:700}
+    .err{color:var(--err); font-weight:700}
+    .hint{color:#475569; font-size:.9rem}
+    .btn{
+      display:inline-block; padding:10px 14px; border-radius:10px;
+      background:var(--green); color:#fff; text-decoration:none; font-weight:700;
+      border:1px solid rgba(255,255,255,.12);
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="box">
+    <div class="title">A confirmar a tua conta…</div>
+    <div class="hint">Aguarda um instante.</div>
+  </div>
+
+  <!-- Supabase v2 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ⚙️ ATENÇÃO: usa as MESMAS credenciais que tens no index.html
+    const SUPABASE_URL  = window.SUPABASE_URL  || "https://brakxcumzdleufrpyipm.supabase.co";
+    const SUPABASE_ANON = window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
+    const sb = window.sb || supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    const box = document.getElementById("box");
+
+    // ✅ TESTE RÁPIDO: abrir /confirm.html?ok=1 mostra sucesso e redireciona
+    const url = new URL(location.href);
+    if (url.searchParams.get("ok") === "1") {
+      box.innerHTML = `
+        <div class="title">Conta confirmada ✔</div>
+        <div class="ok">Simulação de sucesso</div>
+        <div class="hint">A redirecionar para o dashboard…</div>
+        <a class="btn" href="./index.html#/">Ir agora</a>
+      `;
+      setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
+    } else {
+      (async () => {
+        try {
+          // 🔄 Supabase v2: troca o código do link por sessão
+          const { data, error } = await sb.auth.exchangeCodeForSession(location.href);
+          if (error) throw error;
+
+          box.innerHTML = `
+            <div class="title">Conta confirmada ✔</div>
+            <div class="ok">O teu email foi verificado com sucesso.</div>
+            <div class="hint">Estamos a levar-te para o dashboard…</div>
+            <a class="btn" href="./index.html#/">Ir agora</a>
+          `;
+          setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
+        } catch (err) {
+          console.error(err);
+          box.innerHTML = `
+            <div class="title">Ups, algo correu mal</div>
+            <div class="err">Não foi possível confirmar: ${err?.message || err}</div>
+            <div class="hint">Se o link já tiver sido usado, basta entrares na app.</div>
+            <a class="btn" href="./index.html#/">Voltar à app</a>
+          `;
+        }
+      })();
+    }
+  </script>
+</body>
+</html>
