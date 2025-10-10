@@ -143,85 +143,114 @@ function onSignedOut() {
 // === FAB menu: abre, fecha e distribui itens sem sair da largura ===
 // FAB – fan-out para a esquerda e direita (todos os itens)
 (() => {
-  const root = document.querySelector('.fab-nav');
+  const root = document.querySelector(".fab-nav");
   if (!root) return;
 
-  const toggle = root.querySelector('#fabToggle');
-  const wrap   = root.querySelector('#fabItems');
-  const items  = [...root.querySelectorAll('.fab-item')];
+  const toggle = root.querySelector("#fabToggle");
+  const wrap = root.querySelector("#fabItems");
+  const items = [...root.querySelectorAll(".fab-item")];
 
   // segurança mínima
   if (!toggle || !wrap || items.length === 0) return;
 
   // parâmetros responsivos
   const css = getComputedStyle(document.documentElement);
-  const num = s => parseFloat(s) || 0;
+  const num = (s) => parseFloat(s) || 0;
 
   // defaults caso não definas variáveis na :root
   function params() {
     return {
-      d:    num(css.getPropertyValue('--fab-item-d')) || Math.max(54, Math.min(66, window.innerWidth * 0.08)),
-      gap:  num(css.getPropertyValue('--fab-gap'))    || Math.max(14, Math.min(22, window.innerWidth * 0.045)),
-      safe: num(css.getPropertyValue('--fab-safe'))   || 16
+      d:
+        num(css.getPropertyValue("--fab-item-d")) ||
+        Math.max(54, Math.min(66, window.innerWidth * 0.08)),
+      gap:
+        num(css.getPropertyValue("--fab-gap")) ||
+        Math.max(14, Math.min(22, window.innerWidth * 0.045)),
+      safe: num(css.getPropertyValue("--fab-safe")) || 16,
     };
   }
 
   // distribui alternando L/R a partir do centro: L1, R1, L2, R2...
+  // ===== ARCO acima do botão (leque) =====
   function layout() {
-    const { d, gap, safe } = params();
+    const ds = getComputedStyle(document.documentElement);
 
-    // calcula deslocações máximas possíveis (não sair do ecrã)
-    const rect = root.getBoundingClientRect();
-    const cx   = rect.left + rect.width / 2;
-    const vw   = window.innerWidth;
+    // lê variáveis (com fallback)
+    const itemD =
+      parseFloat(ds.getPropertyValue("--fab-item-d")) ||
+      Math.max(54, Math.min(66, window.innerWidth * 0.08));
+    const radius =
+      parseFloat(ds.getPropertyValue("--fab-arc-radius")) ||
+      Math.max(110, Math.min(180, window.innerWidth * 0.24));
+    const spreadD = parseFloat(ds.getPropertyValue("--fab-arc-spread")) || 160; // graus
+    const spread = (Math.max(40, Math.min(180, spreadD)) * Math.PI) / 180; // radianos
 
-    const leftAvail  = Math.max(0, cx - safe) - d/2;
-    const rightAvail = Math.max(0, (vw - cx) - safe) - d/2;
+    const n = items.length;
+    if (!n) return;
 
-    // ordem alternada
+    // centro do arco apontado para cima (-90°)
+    const center = (-90 * Math.PI) / 180;
+    const start = center - spread / 2;
+    const end = center + spread / 2;
+
+    // distribuir ângulos uniformemente no intervalo [start, end]
+    const ang = (i) =>
+      n === 1 ? center : start + (i * (end - start)) / (n - 1);
+
+    // posicionar cada item
     items.forEach((btn, i) => {
-      const n = Math.floor(i / 2) + 1;      // 1,1,2,2,3,3...
-      const side = (i % 2 === 0) ? -1 : 1;  // esquerda, direita, esquerda, direita...
+      const a = ang(i);
+      const x = radius * Math.cos(a); // +direita / -esquerda
+      const y = radius * Math.sin(a); // negativo = para cima (é o que queremos)
 
-      // passo ideal e corrigido para não sair do ecrã
-      const ideal = d + gap;                             // distância base entre círculos
-      const dist  = Math.min(ideal * n,
-                             (side < 0 ? leftAvail : rightAvail)); // clamp dentro da largura útil
+      btn.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
 
-      // aplica translate a partir do CENTRO do toggle
-      const tx = side * dist;
-      btn.style.transform = `translate(calc(-50% + ${tx}px), -50%)`;
+      // (opcional) rodar etiqueta sempre “para fora” do arco:
+      const label = btn.querySelector(".fab-label");
+      if (label) {
+        const isAbove = y < -itemD * 0.5;
+        label.classList.toggle("below", !isAbove); // acima por defeito; abaixo se estiver muito “baixo”
+      }
     });
   }
 
   function open() {
-    root.classList.add('is-open');
-    toggle.setAttribute('aria-expanded', 'true');
+    root.classList.add("is-open");
+    toggle.setAttribute("aria-expanded", "true");
     wrap.hidden = false;
-    wrap.setAttribute('aria-hidden', 'false');
+    wrap.setAttribute("aria-hidden", "false");
     requestAnimationFrame(layout);
+    window.addEventListener("resize", () => {
+      if (root.classList.contains("is-open")) layout();
+    });
+    
   }
+  
   function close() {
-    root.classList.remove('is-open');
-    toggle.setAttribute('aria-expanded', 'false');
-    wrap.setAttribute('aria-hidden', 'true');
+    root.classList.remove("is-open");
+    toggle.setAttribute("aria-expanded", "false");
+    wrap.setAttribute("aria-hidden", "true");
     // regressam ao centro
-    items.forEach(btn => btn.style.transform = 'translate(-50%,-50%)');
-    setTimeout(() => { if (!root.classList.contains('is-open')) wrap.hidden = true; }, 320);
+    items.forEach((btn) => (btn.style.transform = "translate(-50%,-50%)"));
+    setTimeout(() => {
+      if (!root.classList.contains("is-open")) wrap.hidden = true;
+    }, 320);
   }
 
-  toggle.addEventListener('click', (e) => {
+  toggle.addEventListener("click", (e) => {
     e.preventDefault();
-    (root.classList.contains('is-open') ? close : open)();
+    (root.classList.contains("is-open") ? close : open)();
   });
 
   // recalc em resize/orientation
-  window.addEventListener('resize', () => { if (root.classList.contains('is-open')) layout(); });
+  window.addEventListener("resize", () => {
+    if (root.classList.contains("is-open")) layout();
+  });
 
   // clicar numa ação: navega e fecha
-  items.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const to = btn.getAttribute('data-to');
+  items.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const to = btn.getAttribute("data-to");
       if (to) location.hash = to;
       close();
     });
