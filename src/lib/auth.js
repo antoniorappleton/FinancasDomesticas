@@ -1,7 +1,4 @@
 // auth.js
-// Login/Registo com Supabase usando o overlay do teu index.html
-// Requer window.sb criado no index.html
-
 export function initAuth({ onSignedIn, onSignedOut } = {}) {
   const supabase = window.sb;
   if (!supabase) {
@@ -9,35 +6,39 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     return;
   }
 
-  // --- elementos do overlay (já existem no teu index.html) ---
+  // --- elementos do overlay ---
   const overlay = document.getElementById("screen-login");
-  const formPw   = document.getElementById("auth-form");
-  const emailEl  = document.getElementById("auth-email");
-  const passEl   = document.getElementById("auth-password");
-  const toggle   = document.getElementById("auth-toggle");
-  const title    = document.getElementById("auth-title");
-  const submit   = document.getElementById("auth-submit");
-  const helpTxt  = document.getElementById("auth-help");
+  const formPw = document.getElementById("auth-form");
+  const emailEl = document.getElementById("auth-email");
+  const passEl = document.getElementById("auth-password");
+  const toggle = document.getElementById("auth-toggle");
+  const title = document.getElementById("auth-title");
+  const submit = document.getElementById("auth-submit");
+  const helpTxt = document.getElementById("auth-help");
 
-  // helpers UI
+  // URL de confirmação (corrigido!)
+  const BASE = new URL(".", location.href).href; // p.ex.: http://127.0.0.1:5501/
+  const CONFIRM_URL = new URL("confirm.html", BASE).href; // http://127.0.0.1:5501/confirm.html
+
   const setOverlay = (visible) => {
     if (!overlay) return;
     overlay.classList.toggle("hidden", !visible);
-    document.body.classList.toggle("has-login", visible); // aplica blur ao resto
+    document.body.classList.toggle("has-login", visible);
   };
-  const busy = (on) => { if (submit) submit.disabled = !!on; };
+  const busy = (on) => {
+    if (submit) submit.disabled = !!on;
+  };
 
-  // alternar modos
-  let mode = "signin"; // 'signin' | 'signup'
+  let mode = "signin";
   const updateModeText = () => {
     if (!title || !submit || !helpTxt || !toggle) return;
     if (mode === "signin") {
-      title.textContent  = "Entrar";
+      title.textContent = "Entrar";
       submit.textContent = "Entrar";
       helpTxt.textContent = "Ainda não tens conta?";
       toggle.textContent = "Criar conta";
     } else {
-      title.textContent  = "Criar conta";
+      title.textContent = "Criar conta";
       submit.textContent = "Registar";
       helpTxt.textContent = "Já tens conta?";
       toggle.textContent = "Entrar";
@@ -49,42 +50,42 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
   });
   updateModeText();
 
-  // validações mínimas
-  const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||"").trim());
+  const isEmail = (s) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
 
-  // submit do overlay
   formPw?.addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
       const email = emailEl?.value.trim();
-      const pass  = passEl?.value || "";
-
+      const pass = passEl?.value || "";
       if (!isEmail(email)) throw new Error("Email inválido.");
-      if (pass.length < 6) throw new Error("A palavra-passe deve ter pelo menos 6 caracteres.");
-
+      if (pass.length < 6)
+        throw new Error("A palavra-passe deve ter pelo menos 6 caracteres.");
       busy(true);
 
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password: pass,
+        });
         if (error) throw error;
-        // onAuthStateChange trata do resto
       } else {
-        // Registo
-        const displayName = (email.split("@")[0] || "Utilizador");
+        const displayName = email.split("@")[0] || "Utilizador";
         const { error } = await supabase.auth.signUp({
           email,
           password: pass,
           options: {
             data: { name: displayName },
-            // se tiveres "Email Confirmations" ativado, define a redirect URL:
-            emailRedirectTo: `${location.origin}/#/`
-          }
+            emailRedirectTo: CONFIRM_URL, // ✅ nunca cola a "index.html"
+          },
         });
         if (error) throw error;
 
-        // Tenta iniciar sessão de imediato (se o projeto não exigir confirmação de email)
-        try { await supabase.auth.signInWithPassword({ email, password: pass }); } catch {}
-        alert("✅ Conta criada. Verifica o e-mail se a confirmação estiver ativa.");
+        // opcional: tentar login imediato (se a confirmação não for obrigatória)
+        try {
+          await supabase.auth.signInWithPassword({ email, password: pass });
+        } catch {}
+        alert("✅ Conta criada. Verifica o e-mail para confirmar.");
       }
     } catch (err) {
       alert("Erro de autenticação: " + (err?.message || err));
@@ -93,27 +94,35 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     }
   });
 
-  // recuperar palavra-passe (se adicionares um botão com id="auth-forgot")
-  document.getElementById("auth-forgot")?.addEventListener("click", async () => {
-    const email = emailEl?.value.trim();
-    if (!isEmail(email)) return alert("Introduz um e-mail válido primeiro.");
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/#/settings`
+  // Esqueci-me da palavra-passe → também podes reusar a confirm.html se preferires
+  document
+    .getElementById("auth-forgot")
+    ?.addEventListener("click", async () => {
+      const email = emailEl?.value.trim();
+      if (!isEmail(email)) return alert("Introduz um e-mail válido primeiro.");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: CONFIRM_URL, // ou, se preferires, '#/settings': new URL('#/settings', BASE).href
+      });
+      alert(
+        error
+          ? "❌ " + error.message
+          : "📧 Enviámos um link para repor a palavra-passe."
+      );
     });
-    alert(error ? "❌ " + error.message : "📧 Enviámos um link para repor a palavra-passe.");
-  });
 
-  // reações a alterações de sessão
   supabase.auth.onAuthStateChange((_evt, session) => {
     const logged = !!session;
     setOverlay(!logged);
-    if (logged) onSignedIn?.(); else onSignedOut?.();
+    if (logged) onSignedIn?.();
+    else onSignedOut?.();
   });
 
-  // estado inicial
   (async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     setOverlay(!session);
-    if (session) onSignedIn?.(); else onSignedOut?.();
+    if (session) onSignedIn?.();
+    else onSignedOut?.();
   })();
 }

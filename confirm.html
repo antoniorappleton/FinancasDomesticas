@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8">
+<title>Conta confirmada</title>
+<style>body{font:16px/1.4 system-ui;margin:24px} .ok{padding:12px 14px;border:1px solid #d1d5db;border-radius:10px;background:#fff}</style>
+<div class="ok">
+  <h1>✔️ Email confirmado</h1>
+  <p>A redirecionar para a aplicação…</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const sb = supabase.createClient(
+    window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
+    window.SUPABASE_ANON_KEY || "…a tua anon key…"
+  );
+  (async () => {
+    try { await sb.auth.getSessionFromUrl({ storeSession: true }); } catch {}
+    location.href = location.origin + location.pathname + "#/"; // volta para a app
+  })();
+</script>
