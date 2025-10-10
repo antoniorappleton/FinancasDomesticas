@@ -1610,7 +1610,7 @@ export async function init({ sb, outlet } = {}) {
     // conteúdo específico das Definições/Relatórios/Import CSV
     pop.innerHTML = `
     <h3>O que podes fazer aqui?</h3>
-    <p>Gerar relatórios (Mensal, Intervalo, Anual) com KPIs, pizza por categorias (valores e %), donut Fixas vs Variáveis, séries mensais e insights. Podes também exportar PDF.</p>
+    <p>Gerar relatórios (Mensal, Intervalo, Anual) com KPIs, pizza por categorias (valores e %), donut Fixas vs Variáveis, séries mensais e insights. Pode também exportar PDF.</p>
     <p>Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
     <button class="close" type="button">Fechar</button>
   `;

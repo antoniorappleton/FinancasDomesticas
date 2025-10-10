@@ -849,7 +849,7 @@ export async function init({ sb, outlet } = {}) {
     // conteúdo específico do Dashboard
     pop.innerHTML = `
     <h3>O que mostra este ecrã?</h3>
-    <p>KPIs do mês (Receitas, Despesas, Poupanças, Saldo) e análises: série 12 meses com saldo, pizza de despesas por categoria, donut Fixas vs Variáveis e barras por Regularidade.</p>
+    <p>KPIs do mês (Receitas, Despesas, Poupanças, Saldo) e análises: série 12 meses com saldo, gráficos pizza das despesas por categoria, donut Despesas Fixas vs Variáveis e barras para as Despesas por Regularidade.</p>
     <button class="close" type="button">Fechar</button>
   `;
 
