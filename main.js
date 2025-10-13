@@ -9,8 +9,10 @@ const setStyle = (el, styles = {}) => el && Object.assign(el.style, styles);
 async function waitForSupabase(maxMs = 3000) {
   const start = performance.now();
   while (!window.sb) {
-    await new Promise(r => setTimeout(r, 30));
-    if (performance.now() - start > maxMs) throw new Error("Supabase não inicializou (window.sb).");
+    await new Promise((r) => setTimeout(r, 30));
+    if (performance.now() - start > maxMs) {
+      throw new Error("Supabase não inicializou (window.sb).");
+    }
   }
   return window.sb;
 }
@@ -18,7 +20,7 @@ async function waitForSupabase(maxMs = 3000) {
 /* ===================== Router config ===================== */
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
-const APPV = (window.APP_VERSION || "v11") + "-" + Date.now();
+const APPV = (window.APP_VERSION || "v12") + "-" + Date.now();
 
 const ROUTES = {
   "#/": {
@@ -53,7 +55,6 @@ const ROUTES = {
   },
 };
 
-
 function normalizeRoute(hash) {
   if (!hash || hash === "#" || hash === "#/") return "#/";
   const clean = hash.split("?")[0];
@@ -71,26 +72,28 @@ function setActiveTab() {
 async function loadScreen(route) {
   const r = ROUTES[route] || ROUTES["#/"];
   setStyle(outlet, { opacity: "0", transition: "opacity .15s ease" });
-  await new Promise((r) => setTimeout(r, 90));
+  await new Promise((res) => setTimeout(res, 90));
 
   try {
-    // carrega HTML
+    // carrega HTML (sem cache)
     const res = await fetch(`${r.file}?v=${APPV}`, { cache: "no-store" });
-    if (!res.ok) throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
+    if (!res.ok)
+      throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
     outlet.innerHTML = await res.text();
 
-    // mostra/oculta footer
+    // footer visível/oculto conforme rota
     if (footer) footer.style.display = r.showFooter ? "grid" : "none";
 
-    // ativa tab
+    // ativa tab corrente
     setActiveTab();
 
-    // carrega controlador JS
+    // carrega controlador JS do ecrã
     if (r.js) {
       try {
         const mod = await import(`${r.js}?v=${APPV}`);
         const fn = mod.init || mod.default;
-        if (typeof fn === "function") await fn({ sb: window.sb, outlet, route });
+        if (typeof fn === "function")
+          await fn({ sb: window.sb, outlet, route });
       } catch (e) {
         console.warn("Controller JS falhou:", r.js, e);
       }
@@ -111,8 +114,10 @@ async function handleRoute() {
   if (routing) return;
   routing = true;
   try {
-    const sb = await waitForSupabase(); // ⬅️ garante sb
-    const { data: { session } } = await sb.auth.getSession();
+    const sb = await waitForSupabase();
+    const {
+      data: { session },
+    } = await sb.auth.getSession();
     const route = normalizeRoute(location.hash);
     if (!session) {
       outlet.innerHTML = "";
@@ -150,9 +155,9 @@ function onSignedOut() {
 }
 
 /* ===================== Arranque ===================== */
-(async function boot(){
+(async function boot() {
   try {
-    await waitForSupabase(); // ⬅️ só arranca quando sb existir
+    await waitForSupabase();
     initAuth({ onSignedIn, onSignedOut });
     window.addEventListener("hashchange", handleRoute);
     window.addEventListener("DOMContentLoaded", () => {
@@ -165,8 +170,7 @@ function onSignedOut() {
   }
 })();
 
-// === FAB menu: abre, fecha e distribui itens sem sair da largura ===
-// FAB – fan-out para a esquerda e direita (todos os itens)
+/* ===================== FAB (menu flutuante) ===================== */
 (() => {
   const root = document.querySelector(".fab-nav");
   if (!root) return;
@@ -174,33 +178,10 @@ function onSignedOut() {
   const toggle = root.querySelector("#fabToggle");
   const wrap = root.querySelector("#fabItems");
   const items = [...root.querySelectorAll(".fab-item")];
-
-  // segurança mínima
   if (!toggle || !wrap || items.length === 0) return;
 
-  // parâmetros responsivos
-  const css = getComputedStyle(document.documentElement);
-  const num = (s) => parseFloat(s) || 0;
-
-  // defaults caso não definas variáveis na :root
-  function params() {
-    return {
-      d:
-        num(css.getPropertyValue("--fab-item-d")) ||
-        Math.max(54, Math.min(66, window.innerWidth * 0.08)),
-      gap:
-        num(css.getPropertyValue("--fab-gap")) ||
-        Math.max(14, Math.min(22, window.innerWidth * 0.045)),
-      safe: num(css.getPropertyValue("--fab-safe")) || 16,
-    };
-  }
-
-  // distribui alternando L/R a partir do centro: L1, R1, L2, R2...
-  // ===== ARCO acima do botão (leque) =====
   function layout() {
     const ds = getComputedStyle(document.documentElement);
-
-    // lê variáveis (com fallback)
     const itemD =
       parseFloat(ds.getPropertyValue("--fab-item-d")) ||
       Math.max(54, Math.min(66, window.innerWidth * 0.08));
@@ -208,34 +189,23 @@ function onSignedOut() {
       parseFloat(ds.getPropertyValue("--fab-arc-radius")) ||
       Math.max(110, Math.min(180, window.innerWidth * 0.24));
     const spreadD = parseFloat(ds.getPropertyValue("--fab-arc-spread")) || 160; // graus
-    const spread = (Math.max(40, Math.min(180, spreadD)) * Math.PI) / 180; // radianos
-
+    const spread = (Math.max(40, Math.min(180, spreadD)) * Math.PI) / 180;
     const n = items.length;
     if (!n) return;
 
-    // centro do arco apontado para cima (-90°)
     const center = (-90 * Math.PI) / 180;
     const start = center - spread / 2;
     const end = center + spread / 2;
-
-    // distribuir ângulos uniformemente no intervalo [start, end]
     const ang = (i) =>
       n === 1 ? center : start + (i * (end - start)) / (n - 1);
 
-    // posicionar cada item
     items.forEach((btn, i) => {
       const a = ang(i);
-      const x = radius * Math.cos(a); // +direita / -esquerda
-      const y = radius * Math.sin(a); // negativo = para cima (é o que queremos)
-
+      const x = radius * Math.cos(a);
+      const y = radius * Math.sin(a);
       btn.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
-
-      // (opcional) rodar etiqueta sempre “para fora” do arco:
       const label = btn.querySelector(".fab-label");
-      if (label) {
-        const isAbove = y < -itemD * 0.5;
-        label.classList.toggle("below", !isAbove); // acima por defeito; abaixo se estiver muito “baixo”
-      }
+      if (label) label.classList.toggle("below", !(y < -itemD * 0.5));
     });
   }
 
@@ -245,17 +215,11 @@ function onSignedOut() {
     wrap.hidden = false;
     wrap.setAttribute("aria-hidden", "false");
     requestAnimationFrame(layout);
-    window.addEventListener("resize", () => {
-      if (root.classList.contains("is-open")) layout();
-    });
-    
   }
-  
   function close() {
     root.classList.remove("is-open");
     toggle.setAttribute("aria-expanded", "false");
     wrap.setAttribute("aria-hidden", "true");
-    // regressam ao centro
     items.forEach((btn) => (btn.style.transform = "translate(-50%,-50%)"));
     setTimeout(() => {
       if (!root.classList.contains("is-open")) wrap.hidden = true;
@@ -267,12 +231,10 @@ function onSignedOut() {
     (root.classList.contains("is-open") ? close : open)();
   });
 
-  // recalc em resize/orientation
   window.addEventListener("resize", () => {
     if (root.classList.contains("is-open")) layout();
   });
 
-  // clicar numa ação: navega e fecha
   items.forEach((btn) => {
     btn.addEventListener("click", () => {
       const to = btn.getAttribute("data-to");
@@ -281,4 +243,3 @@ function onSignedOut() {
     });
   });
 })();
-

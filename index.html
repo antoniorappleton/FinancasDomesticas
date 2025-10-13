@@ -1,24 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
-    <script>
-      window.APP_VERSION = "v11";
-    </script>
+    <script>window.APP_VERSION = "v12";</script>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <title>by Wisebudget® - Gestão Doméstica</title>
+    <title>Wisebudget® — Gestão Doméstica</title>
 
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
     <script>
       (function () {
         if (!location.search.includes("sw=off")) return;
-        const clear = async () => {
+        (async () => {
           try {
             if ("serviceWorker" in navigator) {
               const regs = await navigator.serviceWorker.getRegistrations();
@@ -31,16 +26,15 @@
           } finally {
             location.replace(location.pathname);
           }
-        };
-        clear();
+        })();
       })();
     </script>
 
     <link rel="stylesheet" href="./styles.css" />
-    <link rel="manifest" href="./manifest.json?v=10" />
+    <link rel="manifest" href="./manifest.json?v=12" />
   </head>
   <body>
-        <!-- Splash mínimo 3s -->
+    <!-- Splash mínimo 3s -->
     <div id="wb-splash" class="wb-splash" aria-hidden="true">
       <div class="wb-splash__box">
         <img src="./WiSEBUDGET.png" alt="" class="wb-splash__logo" />
@@ -48,80 +42,26 @@
       </div>
     </div>
 
-    <!-- Sprite de ícones -->
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      width="0"
-      height="0"
-      style="position: absolute; left: -9999px; top: -9999px"
-    >
-      <!-- Documento (file-text, traço branco como os restantes) -->
-      <symbol id="i-doc" viewBox="0 0 24 24">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <line x1="8" y1="17" x2="16" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </symbol>
-
-      <!-- Alternativa: Recibo (receipt) -->
-      <symbol id="i-receipt" viewBox="0 0 24 24">
-        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-        <line x1="8" y1="9" x2="16" y2="9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <line x1="8" y1="13" x2="16" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </symbol>
-      <symbol id="i-wallet" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a2 2 0 0 1 2 2v1h1.5A2.5 2.5 0 0 1 23 10.5v7A2.5 2.5 0 0 1 20.5 20h-15A2.5 2.5 0 0 1 3 17.5v-10Zm14-1.5H5.5A1.5 1.5 0 0 0 4 7.5V8h13V6Z"
-        />
-        <circle cx="18.5" cy="14.5" r="1.5" fill="currentColor" />
-      </symbol>
-      <symbol id="i-home" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"
-        />
-      </symbol>
-      <symbol id="i-list" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
-      </symbol>
-      <symbol id="i-plus" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
-      </symbol>
-      <symbol id="i-cog" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"
-        />
-      </symbol>
+    <!-- Sprite de ícones essenciais -->
+    <svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;left:-9999px;top:-9999px">
+      <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></symbol>
+      <symbol id="i-cog" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></symbol>
       <symbol id="i-target" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
         <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/>
         <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
-      </symbol>
-      <symbol id="i-info" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
-        <circle cx="12" cy="8" r="1.5" fill="currentColor"/>
-        <rect x="11" y="11" width="2" height="7" rx="1" fill="currentColor"/>
       </symbol>
     </svg>
 
     <header class="app-header">
       <div class="app-header__inner">
         <a class="brand" href="#/" aria-label="Ir para o dashboard">
-          <!-- ATENÇÃO: nome do ficheiro com maiúsculas -->
-          <img
-            src="./WiSEBUDGET.png"
-            alt=""
-            class="brand__logo"
-            aria-hidden="true"
-          />
+          <img src="./WiSEBUDGET.png" alt="" class="brand__logo" aria-hidden="true" />
           <span class="brand__text">
             <span class="brand__title">Wisebudget®</span>
-            <span class="brand__subtitle"
-              >Aplicação de ajuda à gestão doméstica</span
-            >
+            <span class="brand__subtitle">Aplicação de ajuda à gestão doméstica</span>
           </span>
         </a>
         <nav class="top-nav" aria-label="Navegação principal"></nav>
@@ -132,86 +72,46 @@
       <div id="outlet" class="outlet"></div>
     </main>
 
-    <!-- Login Overlay -->
-    <section
-      id="screen-login"
-      class="auth-overlay hidden"
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby="auth-title"
-    >
+    <!-- Footer (tabs) -->
+
+    <!-- Overlay de Autenticação -->
+    <section id="screen-login" class="auth-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="auth-title">
       <div class="auth-card">
         <h2 id="auth-title">Entrar</h2>
 
-        <!-- FORM LOGIN -->
         <form id="auth-form" autocomplete="on">
-          <label
-            >Email
-            <input
-              id="auth-email"
-              type="email"
-              autocomplete="username"
-              required
-            />
+          <label>Email
+            <input id="auth-email" type="email" autocomplete="username" required />
           </label>
-          <label
-            >Palavra-passe
-            <input
-              id="auth-password"
-              type="password"
-              autocomplete="current-password"
-              required
-            />
+          <label>Palavra-passe
+            <input id="auth-password" type="password" autocomplete="current-password" required />
           </label>
-          <button id="auth-submit" type="submit" class="btn btn--primary">
-            Entrar
-          </button>
-
-          <p class="row-note" style="margin-top: 10px">
-            <button id="auth-forgot" type="button" class="link">
-              Esqueci-me da palavra-passe
-            </button>
+          <button id="auth-submit" type="submit" class="btn btn--primary">Entrar</button>
+          <p class="row-note" style="margin-top:10px">
+            <button id="auth-forgot" type="button" class="link">Esqueci-me da palavra-passe</button>
           </p>
         </form>
 
-        <!-- FORM RESET PASSWORD (invisível por defeito) -->
         <form id="reset-form" class="hidden" autocomplete="on">
-          <label
-            >Email
-            <input
-              id="reset-email"
-              type="email"
-              inputmode="email"
-              placeholder="o.teu@email.com"
-              required
-            />
+          <label>Email
+            <input id="reset-email" type="email" inputmode="email" placeholder="o.teu@email.com" required />
           </label>
-          <button id="reset-submit" type="submit" class="btn btn--primary">
-            Enviar link de recuperação
-          </button>
-          <p class="row-note" style="margin-top: 8px">
-            Enviaremos um email com um link para definires uma nova
-            palavra-passe.
-          </p>
-          <p class="row-note" style="margin-top: 8px">
-            <button id="reset-back" type="button" class="link">
-              Voltar ao login
-            </button>
+          <button id="reset-submit" type="submit" class="btn btn--primary">Enviar link de recuperação</button>
+          <p class="row-note" style="margin-top:8px">Enviaremos um email com um link para definires uma nova palavra-passe.</p>
+          <p class="row-note" style="margin-top:8px">
+            <button id="reset-back" type="button" class="link">Voltar ao login</button>
           </p>
         </form>
 
-        <!-- Troca entre Login / Criar conta -->
         <p class="auth-switch">
           <span id="auth-help">Ainda não tens conta?</span>
-          <button id="auth-toggle" class="link" type="button">
-            Criar conta
-          </button>
+          <button id="auth-toggle" class="link" type="button">Criar conta</button>
         </p>
       </div>
     </section>
 
+    <!-- Script do modal de reset -->
     <script type="module">
-      // Ligações do modal (usa window.sb já criado acima)
       const authForm = document.getElementById("auth-form");
       const resetForm = document.getElementById("reset-form");
       const authTitle = document.getElementById("auth-title");
@@ -219,26 +119,21 @@
       const resetEmailEl = document.getElementById("reset-email");
       const resetBack = document.getElementById("reset-back");
 
-      // abrir formulário de recuperação
       authForgot?.addEventListener("click", () => {
         authForm?.classList.add("hidden");
         resetForm?.classList.remove("hidden");
         authTitle.textContent = "Recuperar palavra-passe";
-        const loginEmail = (
-          document.getElementById("auth-email")?.value || ""
-        ).trim();
+        const loginEmail = (document.getElementById("auth-email")?.value || "").trim();
         if (loginEmail) resetEmailEl.value = loginEmail;
         resetEmailEl?.focus();
       });
 
-      // voltar ao login
       resetBack?.addEventListener("click", () => {
         resetForm?.classList.add("hidden");
         authForm?.classList.remove("hidden");
         authTitle.textContent = "Entrar";
       });
 
-      // enviar link de recuperação
       resetForm?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = (resetEmailEl?.value || "").trim();
@@ -248,105 +143,69 @@
             redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`,
           });
           if (error) throw error;
-          alert(
-            "✅ Enviámos um email com o link de recuperação. Verifica a tua caixa de entrada."
-          );
+          alert("✅ Enviámos um email com o link de recuperação.");
           resetBack?.click();
         } catch (err) {
-          alert(
-            err?.message || "Não foi possível enviar o email de recuperação."
-          );
+          alert(err?.message || "Não foi possível enviar o email de recuperação.");
         }
       });
     </script>
 
-    <!-- Supabase (global 'supabase') e singleton window.sb -->
+    <!-- Supabase e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
       window.sb = supabase.createClient(
         window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
-        window.SUPABASE_ANON_KEY ||
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
+        window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
       );
     </script>
 
     <!-- Service Worker -->
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("./sw.js", { scope: "./" })
-          .catch(console.error);
+        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(console.error);
       }
     </script>
 
-    <!-- Chart.js -->
+    <!-- Chart.js (global para ecrãs) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
-
-    <!--Aguardar 3s pelo logo no arranque da app-->
+    <!-- Splash: esconder após app pronta ou timeout -->
     <script>
-      // Splash mínimo 3s (com fallback de segurança)
-      (function(){
-        const MIN = 3000;   // mínimo 3s
-        const MAX = 7000;   // nunca mais do que 7s
+      (function () {
+        const MIN = 3000, MAX = 7000;
         const start = performance.now();
-        const splash = document.getElementById('wb-splash');
-
-        // Função segura para esconder
-        const hideSplash = () => {
-          if (!splash || splash.dataset.done === '1') return;
+        const splash = document.getElementById("wb-splash");
+        const hide = () => {
+          if (!splash || splash.dataset.done === "1") return;
           const elapsed = performance.now() - start;
           const wait = Math.max(0, MIN - elapsed);
           setTimeout(() => {
-            splash.classList.add('is-hiding');
-            // remove do fluxo após o fade
-            setTimeout(() => { splash.style.display = 'none'; splash.dataset.done = '1'; }, 500);
+            splash.classList.add("is-hiding");
+            setTimeout(() => { splash.style.display = "none"; splash.dataset.done = "1"; }, 500);
           }, wait);
         };
-
-        // 1) Assim que a página e assets terminarem de carregar
-        window.addEventListener('load', hideSplash, { once: true });
-
-        // 2) Se o teu app disparar um evento custom "app:ready", respeitamos isso
-        //    (podes emitir quando o router renderizar a primeira screen)
-        window.addEventListener('app:ready', hideSplash, { once: true });
-
-        // 3) Fallback hard: mesmo que nada dispare, garante desaparecer até MAX
-        setTimeout(hideSplash, MAX);
+        window.addEventListener("load", hide, { once: true });
+        window.addEventListener("app:ready", hide, { once: true });
+        setTimeout(hide, MAX);
       })();
     </script>
 
-      <!-- FAB: botão central + itens -->
-<div class="fab-nav" aria-live="polite">
-  <button id="fabToggle" class="fab-nav__toggle" aria-label="Abrir menu" aria-expanded="false">
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4"/>
-    </svg>
-  </button>
-
-  <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
-    <button class="fab-item" data-to="#/" aria-label="Dashboard">
-      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/></svg>
-      <span class="fab-label">Dashboard</span>
-    </button>
-    <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/></svg>
-      <span class="fab-label">Objetivos</span>
-    </button>
-    <button class="fab-item" data-to="#/transactions" aria-label="Transações">
-      <svg viewBox="0 0 24 24"><path fill="currentColor"d="M6 2h12a1 1 0 0 1 1 1v18l-2.5-1.8L14 21l-2.5-1.8L9 21l-2.5-1.8L4 21V3a1 1 0 0 1 1-1h1zM8 8h8v2H8V8zM8 12h8v2H8v-2z" /></svg>
-      <span class="fab-label">Transações</span>
-    </button>
-    <button class="fab-item" data-to="#/new" aria-label="Nova">
-      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></svg>
-      <span class="fab-label">Nova</span>
-    </button>
-    <button class="fab-item" data-to="#/settings" aria-label="Definições">
-      <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></svg>
-      <span class="fab-label">Definições</span>
-    </button>
-  </div>
-</div>
+    <!-- FAB (opcional; podes remover se usares só o footer) -->
+    <div class="fab-nav" aria-live="polite">
+      <button id="fabToggle" class="fab-nav__toggle" aria-label="Abrir menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4"/>
+        </svg>
+      </button>
+      <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
+        <button class="fab-item" data-to="#/" aria-label="Dashboard"><svg><use href="#i-home"/></svg><span class="fab-label">Dashboard</span></button>
+        <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos"><svg><use href="#i-target"/></svg><span class="fab-label">Objetivos</span></button>
+        <button class="fab-item" data-to="#/transactions" aria-label="Transações"><svg><use href="#i-list"/></svg><span class="fab-label">Transações</span></button>
+        <button class="fab-item" data-to="#/new" aria-label="Nova"><svg><use href="#i-plus"/></svg><span class="fab-label">Nova</span></button>
+        <button class="fab-item" data-to="#/settings" aria-label="Definições"><svg><use href="#i-cog"/></svg><span class="fab-label">Definições</span></button>
+      </div>
+    </div>
 
     <!-- Router/App -->
     <script type="module" src="./main.js"></script>
