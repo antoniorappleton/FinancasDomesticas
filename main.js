@@ -1,5 +1,25 @@
-// main.js — Router SPA com imports dinâmicos e FAB menu
+// main.js — Router SPA com base path dinâmico (localhost + GitHub Pages)
 import { initAuth } from "./src/lib/auth.js";
+
+/* ===================== Base path ===================== */
+// Ex.: / -> "" ; /REPO -> "/REPO" ; /REPO/index.html -> "/REPO"
+const BASE_PATH = (() => {
+  const p = location.pathname;
+  const noIndex = p.replace(/\/index\.html$/i, "");
+  // remove trailing slash excepto quando é só "/"
+  return noIndex === "/" ? "" : noIndex.replace(/\/$/, "");
+})();
+
+const resolveUrl = (path) => {
+  // absolute http(s) or protocol-relative
+  if (/^https?:\/\//i.test(path)) return path;
+  // remove any leading "./"
+  const clean = path.replace(/^\.\//, "");
+  // Se o path começa por "/", prefixamos com BASE_PATH
+  if (clean.startsWith("/")) return `${BASE_PATH}${clean}`;
+  // senão, relativo a BASE_PATH
+  return `${BASE_PATH}/${clean}`;
+};
 
 /* ===================== Helpers ===================== */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -75,8 +95,9 @@ async function loadScreen(route) {
   await new Promise((res) => setTimeout(res, 90));
 
   try {
-    // carrega HTML (sem cache)
-    const res = await fetch(`${r.file}?v=${APPV}`, { cache: "no-store" });
+    // carrega HTML (sem cache) usando base path
+    const htmlURL = `${resolveUrl(r.file)}?v=${APPV}`;
+    const res = await fetch(htmlURL, { cache: "no-store" });
     if (!res.ok)
       throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
     outlet.innerHTML = await res.text();
@@ -90,7 +111,8 @@ async function loadScreen(route) {
     // carrega controlador JS do ecrã
     if (r.js) {
       try {
-        const mod = await import(`${r.js}?v=${APPV}`);
+        const jsURL = `${resolveUrl(r.js)}?v=${APPV}`;
+        const mod = await import(jsURL);
         const fn = mod.init || mod.default;
         if (typeof fn === "function")
           await fn({ sb: window.sb, outlet, route });

@@ -1,37 +1,42 @@
-// sw.js — Wisebudget PWA (fortalecido)
-const VERSION = (self.APP_VERSION || "v12") + "-" + Date.now(); // força update em dev
+// sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
+const VERSION = (self.APP_VERSION || "v12") + "-" + Date.now();
+
+// Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const withBase = (p) => `${BASE_PATH}${p}`;
+
 const CACHE_STATIC = `wisebudget-static-${VERSION}`;
 const CACHE_DYNAMIC = `wisebudget-dynamic-${VERSION}`;
 
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/styles.css",
-  "/main.js",
-  "/manifest.json",
-  "/wisebudget_bk_wt.png",
-  "/icon-192.png",
-  "/icon-512.png",
+  withBase("/"),
+  withBase("/index.html"),
+  withBase("/styles.css"),
+  withBase("/main.js"),
+  withBase("/manifest.json"),
+  withBase("/wisebudget_bk_wt.png"),
+  withBase("/icon-192.png"),
+  withBase("/icon-512.png"),
 
   // screens (HTML)
-  "/src/screens/dashboard.html",
-  "/src/screens/transactions.html",
-  "/src/screens/nova.html",
-  "/src/screens/settings.html",
-  "/src/screens/categories.html",
-  "/src/screens/objetivos.html",
+  withBase("/src/screens/dashboard.html"),
+  withBase("/src/screens/transactions.html"),
+  withBase("/src/screens/nova.html"),
+  withBase("/src/screens/settings.html"),
+  withBase("/src/screens/categories.html"),
+  withBase("/src/screens/objetivos.html"),
 
   // screens (JS)
-  "/src/screens/dashboard.js",
-  "/src/screens/transactions.js",
-  "/src/screens/nova.js",
-  "/src/screens/settings.js",
-  "/src/screens/categories.js",
-  "/src/screens/objetivos.js",
+  withBase("/src/screens/dashboard.js"),
+  withBase("/src/screens/transactions.js"),
+  withBase("/src/screens/nova.js"),
+  withBase("/src/screens/settings.js"),
+  withBase("/src/screens/categories.js"),
+  withBase("/src/screens/objetivos.js"),
 
   // módulos locais
-  "/src/screens/export-template.js",
-  "/src/lib/auth.js",
+  withBase("/src/screens/export-template.js"),
+  withBase("/src/lib/auth.js"),
 ];
 
 // Helpers
@@ -70,15 +75,15 @@ self.addEventListener("fetch", (event) => {
   let req = event.request;
   const url = new URL(req.url);
 
-  // apenas HTTP(s)
   if (!isHttp(req.url)) return;
-
-  // ignora Supabase realtime/websockets e Range requests
   if (isRealtime(req.url) || req.headers.has("range")) return;
 
-  // corrige typo /scr/ → /src/ (defesa extra)
-  if (url.pathname.startsWith("/scr/")) {
-    url.pathname = url.pathname.replace(/^\/scr\//, "/src/");
+  // corrige typo /scr/ → /src/
+  if (url.pathname.startsWith(`${BASE_PATH}/scr/`)) {
+    url.pathname = url.pathname.replace(
+      `${BASE_PATH}/scr/`,
+      `${BASE_PATH}/src/`
+    );
     req = new Request(url.toString(), {
       method: req.method,
       headers: req.headers,
@@ -88,7 +93,7 @@ self.addEventListener("fetch", (event) => {
     });
   }
 
-  // Navegação SPA: network-first + fallback offline (index.html)
+  // Navegação SPA: network-first + fallback offline
   if (req.mode === "navigate") {
     event.respondWith(
       (async () => {
@@ -97,7 +102,7 @@ self.addEventListener("fetch", (event) => {
           return fresh;
         } catch {
           const cache = await caches.open(CACHE_STATIC);
-          const cached = await cache.match("/index.html");
+          const cached = await cache.match(withBase("/index.html"));
           return (
             cached ||
             new Response("<h1>Offline</h1>", {
@@ -110,7 +115,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // só cacheamos GET de mesma origem
   if (req.method !== "GET" || !sameOrigin(req.url)) return;
 
   const isShell = APP_SHELL.includes(url.pathname);
@@ -120,7 +124,7 @@ self.addEventListener("fetch", (event) => {
       const cacheName = isShell ? CACHE_STATIC : CACHE_DYNAMIC;
       const cache = await caches.open(cacheName);
 
-      // tenta sem query string para ficheiros do APP_SHELL
+      // tenta sem query para APP_SHELL
       if (isShell) {
         const noQueryReq = new Request(url.origin + url.pathname, {
           method: "GET",
@@ -128,7 +132,6 @@ self.addEventListener("fetch", (event) => {
         });
         const cachedNoQuery = await cache.match(noQueryReq);
         if (cachedNoQuery) {
-          // atualiza em background
           fetch(req)
             .then((res) => {
               if (res && res.ok) cache.put(req, res.clone());
@@ -138,7 +141,6 @@ self.addEventListener("fetch", (event) => {
         }
       }
 
-      // cache-first com SWR
       const cached = await cache.match(req);
       if (cached) {
         fetch(req)
