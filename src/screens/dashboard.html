@@ -1,5 +1,19 @@
 <section class="card">
-  <h2 class="section-title">Resumo do mês</h2>
+  <h2 class="section-title">
+    Resumo do mês
+    <!-- Botão “olho” (novo) -->
+    <button id="kpi-privacy-toggle"
+            class="icon-btn"
+            title="Ocultar/mostrar valores"
+            aria-pressed="false"
+            aria-label="Ocultar valores"
+            style="float:right; display:inline-flex; align-items:center; gap:6px; padding:6px 8px; border-radius:10px;">
+      <svg aria-hidden="true" width="20" height="20">
+        <use href="#i-eye"></use>
+      </svg>
+      <span class="sr-only"></span>
+    </button>
+  </h2>
 
   <div class="grid kpi">
     <div class="kpi kpi--income">

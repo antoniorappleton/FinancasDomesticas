@@ -47,6 +47,46 @@ export async function init({ sb, outlet } = {}) {
     });
   };
 
+  // ===================== PRIVACIDADE KPIs (NOVO) =====================
+  const PRIV_KEY = "wb:kpi:hidden";
+  let kpiHidden = localStorage.getItem(PRIV_KEY) === "1";
+  const maskDigits = (s) => String(s).replace(/\d/g, "*");
+
+  // escreve o valor num KPI e guarda o texto real
+  function setKpi(id, text) {
+    const el = byId(id);
+    if (!el) return;
+    el.dataset.raw = text;
+    el.textContent = kpiHidden ? maskDigits(text) : text;
+  }
+
+  // atualiza o botão “olho”
+  function updateKpiEyeBtn() {
+    const btn = outlet.querySelector("#kpi-privacy-toggle");
+    if (!btn) return;
+    btn.setAttribute("aria-pressed", String(kpiHidden));
+    const use = btn.querySelector("use");
+    if (use) use.setAttribute("href", kpiHidden ? "#i-eye-off" : "#i-eye");
+    btn.title = kpiHidden ? "Mostrar valores" : "Ocultar valores";
+    btn.setAttribute("aria-label", btn.title);
+  }
+
+  // toggle ao clicar no “olho”
+  outlet.querySelector("#kpi-privacy-toggle")?.addEventListener("click", () => {
+    kpiHidden = !kpiHidden;
+    localStorage.setItem(PRIV_KEY, kpiHidden ? "1" : "0");
+    ["kpi-income", "kpi-expense", "kpi-savings", "kpi-balance"].forEach(
+      (id) => {
+        const el = byId(id);
+        const raw = el?.dataset?.raw;
+        if (raw) el.textContent = kpiHidden ? maskDigits(raw) : raw;
+      }
+    );
+    updateKpiEyeBtn();
+  });
+  updateKpiEyeBtn();
+  // ================================================================
+
   function lastNMonthsKeys(n) {
     const out = [];
     const base = new Date();
@@ -87,7 +127,6 @@ export async function init({ sb, outlet } = {}) {
   destroyCharts();
 
   // ===================== 1) KPIs + séries 12m =====================
-
   const monthsKeys = lastNMonthsKeys(12);
   const from12Local = (() => {
     const d = new Date();
@@ -102,9 +141,7 @@ export async function init({ sb, outlet } = {}) {
       .select("month,income,expense,savings,net")
       .gte("month", from12Local)
       .order("month", { ascending: true });
-
     if (error || !data) return null;
-
     const map = new Map(
       data.map((r) => [
         monthKeyFromRow(r.month),
@@ -127,18 +164,15 @@ export async function init({ sb, outlet } = {}) {
   }
 
   async function getMonthlyFallback() {
-    // id→code
     const { data: types } = await sb
       .from("transaction_types")
       .select("id,code");
     const TYPE_BY_ID = new Map((types || []).map((t) => [t.id, t.code]));
-
     const { data: tx } = await sb
       .from("transactions")
       .select("date,amount,type_id")
       .gte("date", from12Local)
       .order("date", { ascending: true });
-
     const agg = new Map();
     (tx || []).forEach((r) => {
       const k = String(r.date).slice(0, 7);
@@ -157,7 +191,6 @@ export async function init({ sb, outlet } = {}) {
       }
       agg.set(k, m);
     });
-
     return monthsKeys.map((k) => ({
       key: k,
       label: labelMonthPT(k),
@@ -182,10 +215,11 @@ export async function init({ sb, outlet } = {}) {
   };
   const pct = (a, b) => (b ? ((a - b) / Math.abs(b)) * 100 : 0);
 
-  setText("kpi-income", money(latest.income));
-  setText("kpi-expense", money(Math.abs(latest.expense)));
-  setText("kpi-savings", money(Math.abs(latest.savings)));
-  setText("kpi-balance", money(latest.net));
+  // (alterado) usar setKpi para respeitar a privacidade
+  setKpi("kpi-income", money(latest.income));
+  setKpi("kpi-expense", money(Math.abs(latest.expense)));
+  setKpi("kpi-savings", money(Math.abs(latest.savings)));
+  setKpi("kpi-balance", money(latest.net));
 
   const setPill = (id, val, goodWhenUp = true) => {
     const el = byId(id);
@@ -244,14 +278,8 @@ export async function init({ sb, outlet } = {}) {
   // ========= Cashflow anual (acumulado) =========
   const netCum = [];
   const savCum = [];
-  monthly.reduce((acc, m, i) => {
-    netCum[i] = acc + m.net;
-    return netCum[i];
-  }, 0);
-  monthly.reduce((acc, m, i) => {
-    savCum[i] = acc + Math.abs(m.savings);
-    return savCum[i];
-  }, 0);
+  monthly.reduce((acc, m, i) => (netCum[i] = acc + m.net), 0);
+  monthly.reduce((acc, m, i) => (savCum[i] = acc + Math.abs(m.savings)), 0);
 
   mountChart("chart-cashflow", {
     type: "line",
@@ -283,7 +311,7 @@ export async function init({ sb, outlet } = {}) {
     },
   });
 
-  // ================= 2) Fixas vs Variáveis =================
+  // ================= 2) Fixas vs Variáveis (resto igual) =================
   let hasTxNature = true,
     hasCatNature = true;
   try {
@@ -466,7 +494,6 @@ export async function init({ sb, outlet } = {}) {
       .map(([name, total]) => ({ name, total }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 8);
-
     mountChart("chart-top-categories", {
       type: "bar",
       data: {
@@ -629,10 +656,11 @@ export async function init({ sb, outlet } = {}) {
         .map((lab, i) => {
           const v = values[i];
           const pct = ((v / total) * 100).toFixed(1);
-          return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span><strong>€ ${v.toLocaleString(
-            "pt-PT",
-            { minimumFractionDigits: 2 }
-          )}</strong><span style="color:#64748b">&nbsp;(${pct}%)</span></div>`;
+          return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span>
+          <strong>€ ${v.toLocaleString("pt-PT", {
+            minimumFractionDigits: 2,
+          })}</strong>
+          <span style="color:#64748b">&nbsp;(${pct}%)</span></div>`;
         })
         .join("");
     }
@@ -810,15 +838,13 @@ export async function init({ sb, outlet } = {}) {
         const color = COLORS[i % COLORS.length];
         return `<div class="cat-item">
         <div class="cat-left"><span class="cat-dot" style="background:${color}"></span>
-          <div><div class="cat-name">${
-            r.category
-          }</div><div class="cat-meta">${pct.toFixed(
-          1
-        )}% do total de despesas</div></div>
+          <div><div class="cat-name">${r.category}</div>
+          <div class="cat-meta">${pct.toFixed(
+            1
+          )}% do total de despesas</div></div>
         </div>
-        <div class="cat-right"><div class="cat-amount">${money(
-          r.total
-        )}</div><div class="cat-avg">${money(avg)}/mês</div></div>
+        <div class="cat-right"><div class="cat-amount">${money(r.total)}</div>
+          <div class="cat-avg">${money(avg)}/mês</div></div>
       </div>`;
       })
       .join("");
@@ -826,7 +852,6 @@ export async function init({ sb, outlet } = {}) {
 
   // --- Ajuda do ecrã (Dashboard) ---
   (function mountHelpForDashboard() {
-    // cria botão se não existir
     let btn = document.getElementById("help-fab");
     if (!btn) {
       btn = document.createElement("button");
@@ -836,8 +861,6 @@ export async function init({ sb, outlet } = {}) {
       btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
       document.body.appendChild(btn);
     }
-
-    // cria popup se não existir
     let pop = document.getElementById("help-pop");
     if (!pop) {
       pop = document.createElement("div");
@@ -845,15 +868,11 @@ export async function init({ sb, outlet } = {}) {
       pop.className = "help-pop hidden";
       document.body.appendChild(pop);
     }
-
-    // conteúdo específico do Dashboard
     pop.innerHTML = `
-    <h3>O que mostra este ecrã?</h3>
-    <p>KPIs do mês (Receitas, Despesas, Poupanças, Saldo) e análises: série 12 meses com saldo, gráficos pizza das despesas por categoria, donut Despesas Fixas vs Variáveis e barras para as Despesas por Regularidade.</p>
-    <button class="close" type="button">Fechar</button>
-  `;
-
-    // liga eventos (uma vez)
+      <h3>O que mostra este ecrã?</h3>
+      <p>KPIs do mês (Receitas, Despesas, Poupanças, Saldo) e análises: série 12 meses com saldo, gráficos pizza das despesas por categoria, donut Despesas Fixas vs Variáveis e barras para as Despesas por Regularidade.</p>
+      <button class="close" type="button">Fechar</button>
+    `;
     btn.onclick = () => pop.classList.toggle("hidden");
     pop
       .querySelector(".close")
