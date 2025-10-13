@@ -18,16 +18,41 @@ async function waitForSupabase(maxMs = 3000) {
 /* ===================== Router config ===================== */
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
-const APPV = (window.APP_VERSION || "v10") + "-" + Date.now();
+const APPV = (window.APP_VERSION || "v11") + "-" + Date.now();
 
 const ROUTES = {
-  "#/":              { file: "./src/screens/dashboard.html",   js: "./src/screens/dashboard.js",   showFooter: true },
-  "#/transactions":  { file: "./src/screens/transactions.html",js: "./src/screens/transactions.js",showFooter: true },
-  "#/new":           { file: "./src/screens/nova.html",         js: "./src/screens/nova.js",        showFooter: true },
-  "#/settings":      { file: "./src/screens/settings.html",     js: "./src/screens/settings.js",    showFooter: true },
-  "#/categories":    { file: "./src/screens/categories.html",   js: "./src/screens/categories.js",  showFooter: true },
-  "#/objetivos":     { file: "./src/screens/objetivos.html",    js: "./src/screens/objetivos.js",   showFooter: true },
+  "#/": {
+    file: "/src/screens/dashboard.html",
+    js: "/src/screens/dashboard.js",
+    showFooter: true,
+  },
+  "#/transactions": {
+    file: "/src/screens/transactions.html",
+    js: "/src/screens/transactions.js",
+    showFooter: true,
+  },
+  "#/new": {
+    file: "/src/screens/nova.html",
+    js: "/src/screens/nova.js",
+    showFooter: true,
+  },
+  "#/settings": {
+    file: "/src/screens/settings.html",
+    js: "/src/screens/settings.js",
+    showFooter: true,
+  },
+  "#/categories": {
+    file: "/src/screens/categories.html",
+    js: "/src/screens/categories.js",
+    showFooter: true,
+  },
+  "#/objetivos": {
+    file: "/src/screens/objetivos.html",
+    js: "/src/screens/objetivos.js",
+    showFooter: true,
+  },
 };
+
 
 function normalizeRoute(hash) {
   if (!hash || hash === "#" || hash === "#/") return "#/";

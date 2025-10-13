@@ -1,27 +1,28 @@
 // sw.js — Wisebudget PWA (hardened)
 // ---------------------------------
-const VERSION = (self.APP_VERSION || 'v1') + '-' + Date.now(); // força update em dev
+const VERSION = (self.APP_VERSION || 'v11') + '-' + Date.now(); // força update em dev
 const CACHE_STATIC = `wisebudget-static-${VERSION}`;
 const CACHE_DYNAMIC = `wisebudget-dynamic-${VERSION}`;
 const APP_SHELL = [
-  '/',                // só funciona quando alojado na raiz; ajusta se necessário
-  '/index.html',
-  '/styles.css',
-  '/main.js',
-  '/wisebudget.png',
+  "/", // só funciona quando alojado na raiz; ajusta se necessário
+  "/index.html",
+  "/styles.css",
+  "/main.js",
+  "/wisebudget.png",
   // screens (html)
-  '/src/screens/dashboard.html',
-  '/src/screens/transactions.html',
-  '/src/screens/nova.html',
-  '/src/screens/settings.html',
-  '/src/screens/categories.html',
+  "/src/screens/dashboard.html",
+  "/src/screens/transactions.html",
+  "/src/screens/nova.html",
+  "/src/screens/settings.html",
+  "/src/screens/categories.html",
   // screens (js)
-  '/src/screens/dashboard.js',
-  '/src/screens/transactions.js',
-  '/src/screens/nova.js',
-  '/src/screens/settings.js',
-  '/src/screens/categories.js',
+  "/src/screens/dashboard.js",
+  "/src/screens/transactions.js",
+  "/src/screens/nova.js",
+  "/src/screens/settings.js",
+  "/src/screens/categories.js",
   // libs via CDN NÃO devem ser pré-cacheadas (variantes/versões podem bloquear)
+  "/src/screens/export-template.js",
 ];
 
 // Helpers
@@ -90,22 +91,42 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     const cacheName = isShell ? CACHE_STATIC : CACHE_DYNAMIC;
     const cache = await caches.open(cacheName);
+    // tenta primeiro sem query string para ficheiros do APP_SHELL
+    const noQuery = new Request(url.origin + url.pathname, {
+      method: "GET",
+      headers: req.headers,
+    });
+    const cachedNoQuery = isShell ? await cache.match(noQuery) : null;
+    if (cachedNoQuery) {
+      // atualiza em background e devolve já o cached sem query
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) cache.put(req, res.clone());
+        })
+        .catch(() => {});
+      return cachedNoQuery;
+    }
+
     const cached = await cache.match(req);
     if (cached) {
       // Atualiza em background (stale-while-revalidate) para não bloquear a UI
-      fetch(req).then((res) => { if (res && res.ok) cache.put(req, res.clone()); }).catch(()=>{});
+      fetch(req)
+        .then((res) => {
+          if (res && res.ok) cache.put(req, res.clone());
+        })
+        .catch(() => {});
       return cached;
     }
     try {
       const res = await fetch(req);
-      if (res && res.ok && res.type === 'basic') {
+      if (res && res.ok && res.type === "basic") {
         // Só cacheia respostas simples (sem opaques)
         cache.put(req, res.clone());
       }
       return res;
     } catch {
       // Fallback genérico
-      return new Response('', { status: 504, statusText: 'Offline' });
+      return new Response("", { status: 504, statusText: "Offline" });
     }
   })());
 });

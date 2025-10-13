@@ -1,5 +1,11 @@
 // src/screens/settings.js
+
+import { exportImportTemplate } from "./export-template.js";
+
 export async function init({ sb, outlet } = {}) {
+  // Import do gerador de template
+  
+
   sb ||= window.sb;
   outlet ||= document.getElementById("outlet");
 
@@ -523,6 +529,10 @@ export async function init({ sb, outlet } = {}) {
     alert("Importação concluída!");
   });
 
+  document
+    .querySelector("#imp-export-template")
+    ?.addEventListener("click", () => exportImportTemplate());
+  
   // ================== RELATÓRIOS ========================
   const overlay = $("#report-overlay");
   const closeBtn = $("#rpt-close");
