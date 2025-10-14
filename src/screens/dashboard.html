@@ -42,69 +42,83 @@
   </div>
 </section>
 
+
+<!-- Modal genérico de detalhe -->
+<div id="dash-modal" class="modal" hidden>
+  <div class="modal__card">
+    <header class="modal__header">
+      <h3 class="modal__title" id="dash-modal-title">Detalhe</h3>
+      <button class="modal__close" type="button" aria-label="Fechar">×</button>
+    </header>
+
+    <div class="chart chart--tall">
+      <canvas id="dash-modal-canvas"></canvas>
+    </div>
+
+    <!-- espaço extra para legendas/listas quando necessário -->
+    <div id="dash-modal-extra" class="rpt-legend" style="margin-top:10px"></div>
+
+    <div class="actions" style="margin-top:10px">
+      <button class="btn" id="dash-modal-close">Fechar</button>
+    </div>
+  </div>
+</div>
+
+
  <section class="card" data-collapsible data-key="upcoming-fixed">
   <h2 class="section-title">Próximas despesas (30 dias)</h2>
   <div id="upcoming-fixed-list" class="cat-list"></div>
   <p class="row-note">Baseado nos pagamentos fixos do período homólogo anterior.</p>
 </section>
 
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Cashflow anual (12 meses)</h2>
-  <p class="row-note">Linha 1: saldo líquido acumulado (Receitas − Despesas). Linha 2: poupanças acumuladas.</p>
-  <div class="chart chart--tall"><canvas id="chart-cashflow"></canvas></div>
-</section>
+<section class="card">
+  <h2 class="section-title">Análises rápidas</h2>
+  <div class="dash-mini">
+    <button class="mini-card" data-chart="cashflow" aria-controls="dash-modal">
+      <span class="mini-card__title">Cashflow anual</span>
+      <span class="mini-card__hint">Abrir gráfico</span>
+    </button>
 
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Tendências (12 meses)</h2>
-  <div class="chart chart--tall"><canvas id="chart-monthly"></canvas></div>
-</section>
+    <button class="mini-card" data-chart="tendencias" aria-controls="dash-modal">
+      <span class="mini-card__title">Tendências (12m)</span>
+      <span class="mini-card__hint">Abrir gráfico</span>
+    </button>
 
-<section class="card" data-collapsible data-key="comparativos-12m">
-      <h2 class="section-title">Fixas vs Variáveis (12 meses)</h2>
-      <div class="chart"><canvas id="chart-fixed-stacked"></canvas></div>
-</section>
+    <button class="mini-card" data-chart="fixvar_mes" aria-controls="dash-modal">
+      <span class="mini-card__title">Fixas vs Variáveis (mês)</span>
+      <span class="mini-card__hint">Abrir donut</span>
+    </button>
 
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Uso de métodos de pagamento (4 meses)</h2>
-  <div class="chart chart--short"><canvas id="chart-methods"></canvas></div>
-</section>
+    <button class="mini-card" data-chart="fixvar_12m" aria-controls="dash-modal">
+      <span class="mini-card__title">Fixas vs Variáveis (12m)</span>
+      <span class="mini-card__hint">Abrir barras</span>
+    </button>
 
-<section class="card" data-collapsible data-key="comparativos-12m">
-      <h2 class="section-title">Top categorias (mês atual)</h2>
-      <div class="chart"><canvas id="chart-top-categories"></canvas></div>
-</section>
+    <button class="mini-card" data-chart="categorias" aria-controls="dash-modal">
+      <span class="mini-card__title">Despesas por categoria</span>
+      <span class="mini-card__hint">Abrir pizza</span>
+    </button>
 
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Fixas vs Variáveis (mês atual)</h2>
-  <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-    <div>
-      <div class="kpi__title">Despesas Fixas</div>
-      <div id="kpi-fixed" class="kpi__value">€ 0,00</div>
-      <div class="kpi__trend"><span id="kpi-fixed-share" class="pill">0%</span></div>
-    </div>
-    <div>
-      <div class="kpi__title">Despesas Variáveis</div>
-      <div id="kpi-variable" class="kpi__value">€ 0,00</div>
-      <div class="kpi__trend"><span id="kpi-variable-share" class="pill">0%</span></div>
-    </div>
+    <button class="mini-card" data-chart="top_categorias" aria-controls="dash-modal">
+      <span class="mini-card__title">Top categorias (mês)</span>
+      <span class="mini-card__hint">Abrir barras</span>
+    </button>
+
+    <button class="mini-card" data-chart="gasto_diario" aria-controls="dash-modal">
+      <span class="mini-card__title">Gasto diário (mês)</span>
+      <span class="mini-card__hint">Abrir linha</span>
+    </button>
+
+    <button class="mini-card" data-chart="metodos" aria-controls="dash-modal">
+      <span class="mini-card__title">Métodos de pagamento (120d)</span>
+      <span class="mini-card__hint">Abrir barras</span>
+    </button>
+
+    <button class="mini-card" data-chart="regularidades" aria-controls="dash-modal">
+      <span class="mini-card__title">Regularidades (mês)</span>
+      <span class="mini-card__hint">Abrir barras</span>
+    </button>
   </div>
-  <div class="chart"><canvas id="chart-fixed-donut"></canvas></div>
-</section>
-
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Gasto diário acumulado (mês atual)</h2>
-  <div class="chart chart--short"><canvas id="chart-daily-cum"></canvas></div>
-</section>
-
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Despesas por Regularidade (mês atual)</h2>
-  <div class="chart chart--short"><canvas id="chart-regularities"></canvas></div>
-  <div id="regularities-legend" class="rpt-legend"></div>
-</section>
-
-<section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Distribuição de Despesas</h2>
-  <div class="chart chart--short"><canvas id="chart-cat-pie"></canvas></div>
 </section>
 
 <section class="card" data-collapsible data-key="cashflow">
