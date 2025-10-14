@@ -610,31 +610,36 @@ export async function init({ sb, outlet } = {}) {
         if (!upcoming.length) {
           box.innerHTML = `<div class="muted">Sem despesas fixas previstas nos próximos 30 dias.</div>`;
         } else {
-          box.innerHTML = upcoming
-            .map((u) => {
-              const dateStr = u.next.toLocaleDateString("pt-PT", {
-                day: "2-digit",
-                month: "short",
-              });
-              const cls = statusClass(u.daysLeft);
-              const dot = statusDotColor(cls);
-              return `<div class="cat-item ${cls}">
-    <div class="cat-left">
-      <span class="cat-dot" style="background:${dot}"></span>
-      <div>
-        <div class="cat-name">${u.name}</div>
-        <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
-                u.daysLeft === 1 ? "" : "s"
-              }</div>
+      box.innerHTML = upcoming
+        .map((u) => {
+          const dateStr = u.next.toLocaleDateString("pt-PT", {
+            day: "2-digit",
+            month: "short",
+          });
+
+    // NOVO: calcular classe/cores por urgência
+    const cls = statusClass(u.daysLeft); // "ok" | "warn" | "danger"
+    const color = statusDotColor(cls); // verde | amarelo | encarnado
+
+    return `<div class="cat-item ${cls}">
+      <div class="cat-left">
+        <span class="cat-dot" style="background:${color}"></span>
+        <div>
+          <div class="cat-name">${u.name}</div>
+          <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
+      u.daysLeft === 1 ? "" : "s"
+    }</div>
+        </div>
       </div>
-    </div>
-    <div class="cat-right">
-      <div class="cat-amount">${money(u.amount)}</div>
-      <div class="cat-avg">${dateStr}</div>
-    </div>
-  </div>`;
-            })
-            .join("");
+      <div class="cat-right" style="text-align:right">
+        <div class="cat-amount">${money(u.amount)}</div>
+        <div class="cat-avg" style="display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid ${color};">
+          ${dateStr}
+        </div>
+      </div>
+    </div>`;
+  })
+  .join("");
 
         }
       }
@@ -671,25 +676,95 @@ export async function init({ sb, outlet } = {}) {
     });
     dayMap.set(label, (dayMap.get(label) || 0) + Number(r.amount || 0));
   });
-  const dayLabels = Array.from(dayMap.keys());
-  const cum = [];
-  dayLabels.reduce(
-    (acc, k, i) => ((cum[i] = acc + (dayMap.get(k) || 0)), cum[i]),
-    0
-  );
+  // --- daily-cum com previsão (rosa) protegido ---
+  try {
+    // labels 1..último dia do mês corrente
+    const _today = new Date();
+    const _year = _today.getFullYear();
+    const _month = _today.getMonth();
+    const _lastDay = new Date(_year, _month + 1, 0).getDate();
+    const _fmt = (d) =>
+      new Date(_year, _month, d).toLocaleDateString("pt-PT", {
+        day: "2-digit",
+        month: "short",
+      });
+    const monthLabels = Array.from({ length: _lastDay }, (_, i) => _fmt(i + 1));
 
-  mountChart("chart-daily-cum", {
-    type: "line",
-    data: {
-      labels: dayLabels,
-      datasets: [{ label: "Acumulado", data: cum, fill: true, tension: 0.25 }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true } },
-    },
-  });
+    // valores diários reais (0 quando não houve movimentos)
+    const dailyValues = monthLabels.map((lbl) => dayMap.get(lbl) || 0);
+
+    // acumulado real
+    const cumReal = [];
+    dailyValues.reduce((acc, v, i) => (cumReal[i] = acc + v), 0);
+
+    // índice do dia atual (0-based, clamp por segurança)
+    const todayIdx = Math.max(0, Math.min(_today.getDate() - 1, _lastDay - 1));
+
+    // série real: só até hoje
+    const cumRealSeries = cumReal.map((v, i) => (i <= todayIdx ? v : null));
+
+    // previsão por ritmo médio (evita dividir por 0)
+    const spentSoFar = cumReal[todayIdx] || 0;
+    const daysPassed = todayIdx + 1;
+    const dailyRate = daysPassed > 0 ? spentSoFar / daysPassed : 0;
+
+    // previsão a partir de HOJE (dias anteriores ficam null)
+    const cumForecastSeries = monthLabels.map((_, i) =>
+      i >= todayIdx ? dailyRate * (i + 1) : null
+    );
+
+    mountChart("chart-daily-cum", {
+      type: "line",
+      data: {
+        labels: monthLabels,
+        datasets: [
+          {
+            label: "Acumulado",
+            data: cumRealSeries,
+            fill: true,
+            borderColor: "rgba(50, 129, 163, 1)",
+            backgroundColor: "rgba(23, 84, 153, 0.2)",
+            tension: 0.25,
+          },  
+          {
+            label: "Previsão (mês)",
+            data: cumForecastSeries,
+            fill: true,
+            tension: 0.25,
+            borderColor: "rgba(236,72,153,1)",
+            backgroundColor: "rgba(236,72,153,0.2)",
+            borderDash: [6, 4],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  } catch (e) {
+    console.warn("chart-daily-cum previsão erro:", e);
+    // fallback: desenha só o acumulado clássico se algo falhar
+    const _labels = Array.from(dayMap.keys());
+    const _cum = [];
+    _labels.reduce((acc, k, i) => (_cum[i] = acc + (dayMap.get(k) || 0)), 0);
+    mountChart("chart-daily-cum", {
+      type: "line",
+      data: {
+        labels: _labels,
+        datasets: [
+          { label: "Acumulado", data: _cum, fill: true, tension: 0.25 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true } },
+      },
+    });
+  }
+  // --- fim ---
 
   // =========== Métodos de pagamento (120 dias) ===========
   let pmRaw = [];
