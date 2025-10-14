@@ -509,6 +509,132 @@ export async function init({ sb, outlet } = {}) {
     });
   })();
 
+  // =========== Próximas despesas (30 dias) ===========
+  (async () => {
+    try {
+      // Descobrir ID do tipo EXPENSE
+      const { data: ttype } = await sb
+        .from("transaction_types")
+        .select("id,code")
+        .eq("code", "EXPENSE")
+        .single();
+      const expId = ttype?.id || -999;
+
+      // Olhamos 18 meses para trás para cobrir anuais/semestrais
+      const back = new Date();
+      back.setMonth(back.getMonth() - 18);
+      back.setDate(1);
+
+      const { data } = await sb
+        .from("transactions")
+        .select(
+          "date, amount, category_id, categories(name,parent_id), regularities(name_pt,code)"
+        )
+        .eq("type_id", expId)
+        .gte("date", yyyMmDdLocal(back))
+        .order("date", { ascending: false });
+
+      const byCat = new Map(); // key: category_id|periodMonths
+      const catParents = new Map();
+
+      // cache de categorias (para montar "Pai > Filho")
+      try {
+        const { data: cats } = await sb
+          .from("categories")
+          .select("id,name,parent_id");
+        (cats || []).forEach((c) => catParents.set(c.id, c));
+      } catch {}
+
+      const catPathName = (row) => {
+        const child = row.categories?.name;
+        const pid = row.categories?.parent_id;
+        const p = pid ? catParents.get(pid) : null;
+        return p?.name ? `${p.name} > ${child}` : child || "(Sem categoria)";
+      };
+
+      const periodMonths = (reg) => {
+        const s = (reg?.code || reg?.name_pt || "").toString().toLowerCase();
+        if (/anual|annual|year/.test(s)) return 12;
+        if (/semestr/.test(s)) return 6;
+        if (/trimestr|quarter/.test(s)) return 3;
+        if (/bimestr|bi-?mensal/.test(s)) return 2;
+        if (/mensal|month/.test(s)) return 1;
+        return 0;
+      };
+
+      const today = new Date();
+      const in30 = new Date();
+      in30.setDate(in30.getDate() + 30);
+
+      (data || []).forEach((r) => {
+        const months = periodMonths(r.regularities);
+        if (!months) return; // só consideramos regulares conhecidas
+        const key = `${r.category_id}|${months}`;
+
+        const d = new Date(r.date);
+        const prev = byCat.get(key);
+        if (!prev || d > prev.lastDate) {
+          byCat.set(key, {
+            lastDate: d,
+            amount: Number(r.amount || 0),
+            name: catPathName(r),
+            regLabel: r.regularities?.name_pt || r.regularities?.code || "Fixa",
+            months,
+          });
+        }
+      });
+
+      // prever próxima data e filtrar para os próximos 30 dias
+      const upcoming = [];
+      for (const v of byCat.values()) {
+        const next = new Date(v.lastDate);
+        next.setMonth(next.getMonth() + v.months);
+
+        if (next >= today && next <= in30) {
+          const daysLeft = Math.ceil((next - today) / (1000 * 60 * 60 * 24));
+          upcoming.push({ ...v, next, daysLeft });
+        }
+      }
+
+      // ordenar por data crescente
+      upcoming.sort((a, b) => a.next - b.next);
+
+      // render
+      const box = outlet.querySelector("#upcoming-fixed-list");
+      if (box) {
+        if (!upcoming.length) {
+          box.innerHTML = `<div class="muted">Sem despesas fixas previstas nos próximos 30 dias.</div>`;
+        } else {
+          box.innerHTML = upcoming
+            .map((u) => {
+              const dateStr = u.next.toLocaleDateString("pt-PT", {
+                day: "2-digit",
+                month: "short",
+              });
+              return `<div class="cat-item">
+            <div class="cat-left">
+              <span class="cat-dot" style="background:#64748b"></span>
+              <div>
+                <div class="cat-name">${u.name}</div>
+                <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
+                u.daysLeft === 1 ? "" : "s"
+              }</div>
+              </div>
+            </div>
+            <div class="cat-right">
+              <div class="cat-amount">${money(u.amount)}</div>
+              <div class="cat-avg">${dateStr}</div>
+            </div>
+          </div>`;
+            })
+            .join("");
+        }
+      }
+    } catch (e) {
+      console.warn("upcoming fixed error:", e);
+    }
+  })();
+
   // =========== Gasto diário acumulado (mês) ===========
   let expMonth = [];
   try {
