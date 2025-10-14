@@ -10,7 +10,7 @@
   --shadow-card:0 8px 24px rgba(2,6,23,.06); --radius:14px;
   --income:#16a34a; --expense:#ef4444; --savings:#2563eb; --balance:#065f46;
   --footer-grad: linear-gradient(180deg, var(--green-900), #0b7a5d);
-
+  --font-head: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial;
   --maxw:1100px;
   --footer-h:64px;
 }
@@ -22,7 +22,7 @@
 html,body{ height:100% }
 body{
   margin:0; background:var(--bg); color:var(--text);
-  font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Segoe UI", Arial, "Noto Sans";
+  --font-head: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial;
 }
 a{ color:inherit; text-decoration:none }
 .hidden{ display:none !important }
@@ -551,7 +551,6 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
   --fab-gap: 18px;                     /* usado para labels/margens */
   --fab-arc-radius: clamp(110px, 24vw, 180px); /* raio do arco */
   --fab-arc-spread: 160deg;            /* “abertura” do leque (0–180) */
-   --font-head: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial;
 }
 
 /* (mantém as tuas regras atuais do .fab-nav, .fab-nav__toggle, .fab-nav__items, .fab-item, .fab-label) */
@@ -655,7 +654,7 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 
 .card .section-title{ 
   padding-right:42px;
-  font-family: var(--font-head);
+  font-family: var(--font-head); font-weight: 500;
   font-weight: 800;       /* 700 se quiseres menos bold */
   letter-spacing: .2px;   /* opcional, dá um toque “tech” */
   line-height: 1.2;
