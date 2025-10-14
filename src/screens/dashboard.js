@@ -510,6 +510,11 @@ export async function init({ sb, outlet } = {}) {
   })();
 
   // =========== Próximas despesas (30 dias) ===========
+  const statusClass = (days) =>
+    days <= 5 ? "danger" : days <= 15 ? "warn" : "ok";
+  const statusDotColor = (cls) =>
+    cls === "danger" ? "#ef4444" : cls === "warn" ? "#facc15" : "#64748b";
+
   (async () => {
     try {
       // Descobrir ID do tipo EXPENSE
@@ -611,23 +616,26 @@ export async function init({ sb, outlet } = {}) {
                 day: "2-digit",
                 month: "short",
               });
-              return `<div class="cat-item">
-            <div class="cat-left">
-              <span class="cat-dot" style="background:#64748b"></span>
-              <div>
-                <div class="cat-name">${u.name}</div>
-                <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
+              const cls = statusClass(u.daysLeft);
+              const dot = statusDotColor(cls);
+              return `<div class="cat-item ${cls}">
+    <div class="cat-left">
+      <span class="cat-dot" style="background:${dot}"></span>
+      <div>
+        <div class="cat-name">${u.name}</div>
+        <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
                 u.daysLeft === 1 ? "" : "s"
               }</div>
-              </div>
-            </div>
-            <div class="cat-right">
-              <div class="cat-amount">${money(u.amount)}</div>
-              <div class="cat-avg">${dateStr}</div>
-            </div>
-          </div>`;
+      </div>
+    </div>
+    <div class="cat-right">
+      <div class="cat-amount">${money(u.amount)}</div>
+      <div class="cat-avg">${dateStr}</div>
+    </div>
+  </div>`;
             })
             .join("");
+
         }
       }
     } catch (e) {

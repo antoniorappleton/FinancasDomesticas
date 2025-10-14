@@ -691,3 +691,10 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
   margin-top:0 !important;
   margin-bottom:0 !important;
 }
+/* Semáforo para próximas despesas */
+.cat-item.ok    { border-left: 3px solid #94a3b8; }   /* cinza/ok */
+.cat-item.warn  { border-left: 3px solid #facc15; background: rgba(250, 204, 21, 0.08); } /* amarelo suave */
+.cat-item.danger{ border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.08); }  /* encarnado suave */
+
+/* opcional: dar um toque no meta quando é urgente */
+.cat-item.danger .cat-meta { font-weight: 600; }
