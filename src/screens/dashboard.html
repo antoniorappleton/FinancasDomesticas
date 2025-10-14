@@ -42,13 +42,13 @@
   </div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Cashflow anual (acumulado)</h2>
   <p class="row-note">Linha 1: saldo líquido acumulado (Receitas − Despesas). Linha 2: poupanças acumuladas.</p>
   <div class="chart chart--tall"><canvas id="chart-cashflow"></canvas></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Fixas vs Variáveis (mês atual)</h2>
   <div class="grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
     <div>
@@ -65,44 +65,47 @@
   <div class="chart"><canvas id="chart-fixed-donut"></canvas></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Tendências (12 meses)</h2>
   <div class="chart chart--tall"><canvas id="chart-monthly"></canvas></div>
 </section>
 
-<section class="dash-2col">
-  <div class="card">
-    <h2 class="section-title">Fixas vs Variáveis (12m)</h2>
-    <div class="chart"><canvas id="chart-fixed-stacked"></canvas></div>
-  </div>
-  <div class="card">
-    <h2 class="section-title">Top categorias (mês)</h2>
-    <div class="chart"><canvas id="chart-top-categories"></canvas></div>
+<section class="card" data-collapsible data-key="comparativos-12m">
+  <h2 class="section-title">Comparativos (12m)</h2>
+  <div class="dash-2col">
+    <div class="card">
+      <h2 class="section-title">Fixas vs Variáveis (12m)</h2>
+      <div class="chart"><canvas id="chart-fixed-stacked"></canvas></div>
+    </div>
+    <div class="card">
+      <h2 class="section-title">Top categorias (mês)</h2>
+      <div class="chart"><canvas id="chart-top-categories"></canvas></div>
+    </div>
   </div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Gasto diário acumulado (mês)</h2>
   <div class="chart chart--short"><canvas id="chart-daily-cum"></canvas></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Uso de métodos de pagamento (120 dias)</h2>
   <div class="chart chart--short"><canvas id="chart-methods"></canvas></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Despesas por Regularidade (mês)</h2>
   <div class="chart chart--short"><canvas id="chart-regularities"></canvas></div>
   <div id="regularities-legend" class="rpt-legend"></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Distribuição de Despesas</h2>
   <div class="chart chart--short"><canvas id="chart-cat-pie"></canvas></div>
 </section>
 
-<section class="card">
+<section class="card" data-collapsible data-key="cashflow">
   <h2 class="section-title">Análise Detalhada por Categoria</h2>
   <div id="cat-list" class="cat-list"></div>
 </section>

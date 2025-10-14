@@ -626,3 +626,68 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 
 /* Se quiseres etiqueta por baixo: adiciona .below no span */
 .fab-label.below{ bottom: auto; top: 100%; transform: translate(-50%, 10px); }
+/* ---- Cards colapsáveis ---- */
+.card[data-collapsible]{
+  position: relative;
+  padding-top: 14px; /* espaço p/ o toggle sem mexer no header */
+}
+
+.card__toggle{
+  position:absolute; top:10px; right:10px;
+  background:transparent; border:1px solid var(--border);
+  width:30px; height:30px; display:grid; place-items:center;
+  border-radius:10px; cursor:pointer;
+}
+.card__toggle svg{ width:18px; height:18px; opacity:.85 }
+.card__toggle:focus-visible{ outline:2px solid var(--ring); outline-offset:2px }
+
+/* área que abre/fecha com transição suave */
+.card__content{
+  overflow:hidden;
+  transition: grid-template-rows .22s ease, opacity .18s ease, padding .18s ease;
+  display:grid; grid-template-rows: 1fr; /* “truque” para transição */
+}
+.card.is-collapsed .card__content{
+  grid-template-rows: 0fr; opacity:.0; padding-top:0 !important; padding-bottom:0 !important;
+}
+.card__content > * { min-height:0 } /* permite encolher o conteúdo */
+
+.card .section-title{ padding-right:42px } /* espaço para o botão no header */
+/* === Cards colapsáveis (só para os que tiverem data-collapsible) === */
+.card[data-collapsible]{ position:relative; padding-top: 6px; }
+.card .section-title{ padding-right:44px } /* espaço para o botão */
+
+.card__toggle{
+  position:absolute; top:10px; right:10px;
+  width:30px; height:30px; display:grid; place-items:center;
+  border:1px solid var(--border); border-radius:10px; background:#fff;
+  cursor:pointer; box-shadow:var(--shadow-card);
+}
+.card__toggle svg{ width:18px; height:18px; opacity:.85 }
+.card__toggle:focus-visible{ outline:2px solid var(--ring); outline-offset:2px }
+
+/* wrapper que abre/fecha suavemente */
+.card__content{ display:grid; grid-template-rows:1fr; overflow:hidden;
+  transition:grid-template-rows .22s ease, opacity .18s ease, padding .18s ease;
+}
+.card__content > *{ min-height:0 }
+.card.is-collapsed .card__content{ grid-template-rows:0fr; opacity:.0; padding-top:0!important; padding-bottom:0!important }
+/* Wrapper dos cartões colapsáveis: transição por height */
+.card__content{
+  overflow:hidden;
+  height:auto;                    /* aberto por defeito */
+  opacity:1;
+  transition: height .22s ease, opacity .18s ease;
+}
+
+/* Quando colapsado, fica com altura zero */
+.card.is-collapsed > .card__content{
+  height:0 !important;
+  opacity:0;
+}
+
+/* (opcional) elimina espaçamento interno quando fechado */
+.card.is-collapsed > .card__content > *{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+}

@@ -886,4 +886,90 @@ export async function init({ sb, outlet } = {}) {
   window.addEventListener("hashchange", () => {
     if (!location.hash.startsWith("#/")) destroyCharts();
   });
+  // ====== Colapsar/expandir cartões de gráficos ======
+  function enhanceCollapsibles(root = document) {
+    const LS_KEY = "wb:dash:collapsed";
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+    const hasUp = !!document.getElementById("i-chevron-up");
+    const hasDn = !!document.getElementById("i-chevron-down");
+
+    root
+      .querySelectorAll("section.card[data-collapsible]")
+      .forEach((card, idx) => {
+        const titleEl = card.querySelector(
+          ":scope > .section-title, :scope > h2.section-title"
+        );
+        if (!titleEl) return;
+
+        // chave única para persistência
+        const key =
+          card.dataset.key || titleEl.textContent.trim() || `card-${idx}`;
+
+        // embrulhar todos os irmãos após o título em .card__content (se ainda não existir)
+        if (!card.querySelector(":scope > .card__content")) {
+          const wrap = document.createElement("div");
+          wrap.className = "card__content";
+          const toMove = [];
+          let afterTitle = false;
+          Array.from(card.childNodes).forEach((n) => {
+            if (n === titleEl) {
+              afterTitle = true;
+              return;
+            }
+            if (afterTitle) toMove.push(n);
+          });
+          toMove.forEach((n) => wrap.appendChild(n));
+          card.appendChild(wrap);
+        }
+
+        // botão toggle (único)
+        let btn = card.querySelector(":scope > .card__toggle");
+        if (!btn) {
+          btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "card__toggle";
+          btn.setAttribute("aria-label", "Fechar secção");
+          btn.setAttribute("aria-expanded", "true");
+          // preferir ícones do sprite; fallback texto
+          btn.innerHTML =
+            hasUp && hasDn
+              ? `<svg aria-hidden="true"><use href="#i-chevron-up"></use></svg>`
+              : `<span aria-hidden="true">–</span>`;
+          card.appendChild(btn);
+        }
+
+        // aplicar estado guardado
+        const collapsed = !!saved[key];
+        card.classList.toggle("is-collapsed", collapsed);
+        btn.setAttribute("aria-expanded", String(!collapsed));
+        const use = btn.querySelector("use");
+        if (use && hasUp && hasDn)
+          use.setAttribute(
+            "href",
+            collapsed ? "#i-chevron-down" : "#i-chevron-up"
+          );
+        else if (!hasUp || !hasDn)
+          btn.firstChild.textContent = collapsed ? "+" : "–";
+
+        // alternar estado no clique
+        btn.addEventListener("click", () => {
+          card.classList.toggle("is-collapsed");
+          const isCollapsed = card.classList.contains("is-collapsed");
+          btn.setAttribute("aria-expanded", String(!isCollapsed));
+          if (use && hasUp && hasDn)
+            use.setAttribute(
+              "href",
+              isCollapsed ? "#i-chevron-down" : "#i-chevron-up"
+            );
+          else btn.firstChild.textContent = isCollapsed ? "+" : "–";
+          saved[key] = isCollapsed ? 1 : 0;
+          localStorage.setItem(LS_KEY, JSON.stringify(saved));
+          if (!isCollapsed)
+            setTimeout(() => window.dispatchEvent(new Event("resize")), 120); // reflow Chart.js
+        });
+      });
+  }
+
+  // chama no fim do init, quando o HTML da dashboard já está no outlet
+  enhanceCollapsibles(document);
 }
