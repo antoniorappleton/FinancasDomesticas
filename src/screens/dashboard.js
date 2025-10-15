@@ -1515,7 +1515,7 @@ export async function init({ sb, outlet } = {}) {
     }
     pop.innerHTML = `
       <h3>O que mostra este ecrã?</h3>
-      <p>KPIs do mês e análises: série 12 meses com saldo, distribuição (pais), Fixas vs Variáveis (mês/12m), métodos e regularidades.</p>
+      <p>KPIs do mês corrente com Análises Anuais e Mensais: Despesas Acumuladas, distribuição das despesas [Fixas vs Variáveis], métodos e regularidades de pagamento.</p>
       <button class="close" type="button">Fechar</button>
     `;
     btn.onclick = () => pop.classList.toggle("hidden");
