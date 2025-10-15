@@ -1367,8 +1367,9 @@ export async function init({ sb, outlet } = {}) {
     }
   })();
 
-  // Distribuição (pais) + lista detalhada (mês)
-  (function renderCategoryArea() {
+  // Distribuição (pais, 12m) + lista detalhada (12m: €/ano, €/mês, €/registo)
+  (async function renderCategoryArea() {
+    // === PIZZA (pais, 12m) ===
     const el = byId("chart-cat-pie");
     const ctx = el?.getContext("2d");
     if (ctx) {
@@ -1387,7 +1388,8 @@ export async function init({ sb, outlet } = {}) {
       const bg = (parentDist.labels || []).map(
         (_, i) => COLORS[i % COLORS.length]
       );
-      const total = (parentDist.values || []).reduce((a, b) => a + b, 0) || 1;
+      const totalParents =
+        (parentDist.values || []).reduce((a, b) => a + b, 0) || 1;
 
       const PieLabels = {
         id: "pieLabels",
@@ -1399,7 +1401,7 @@ export async function init({ sb, outlet } = {}) {
           meta.data.forEach((arc, i) => {
             const val = Number(ds[i] || 0);
             if (!val) return;
-            const pct = total ? (val / total) * 100 : 0;
+            const pct = totalParents ? (val / totalParents) * 100 : 0;
             if (pct < 4) return;
             const label = chart.data.labels[i];
             const angle = (arc.startAngle + arc.endAngle) / 2;
@@ -1442,7 +1444,7 @@ export async function init({ sb, outlet } = {}) {
               callbacks: {
                 label: (tt) => {
                   const v = tt.parsed || 0;
-                  const p = ((v / total) * 100).toFixed(1);
+                  const p = ((v / totalParents) * 100).toFixed(1);
                   return `${tt.label}: ${money(v)} (${p}%)`;
                 },
               },
@@ -1454,45 +1456,140 @@ export async function init({ sb, outlet } = {}) {
       addChart(pie);
     }
 
+    // === LISTA DETALHADA (pai > filho, 12m) ===
     const box = document.getElementById("cat-list");
-    if (box) {
-      const COLORS = [
-        "#ef4444",
-        "#22c55e",
-        "#3b82f6",
-        "#0f766e",
-        "#f59e0b",
-        "#8b5cf6",
-        "#10b981",
-        "#f43f5e",
-        "#64748b",
-        "#e11d48",
-      ];
-      const arr = Array.from(topCatThisMonth.entries()).sort(
-        (a, b) => b[1] - a[1]
-      );
-      const total = arr.reduce((s, [, v]) => s + v, 0) || 1;
-      const monthsCount = 12;
-      box.innerHTML = arr
-        .map(([name, totalVal], i) => {
-          const pct = (totalVal / total) * 100;
-          const avg = totalVal / monthsCount;
-          const color = COLORS[i % COLORS.length];
-          return `<div class="cat-item">
-          <div class="cat-left"><span class="cat-dot" style="background:${color}"></span>
-            <div><div class="cat-name">${name}</div>
-            <div class="cat-meta">${pct.toFixed(
-              1
-            )}% do total de despesas</div></div>
-          </div>
-          <div class="cat-right"><div class="cat-amount">${money(
-            totalVal
-          )}</div>
-            <div class="cat-avg">${money(avg)}/mês</div></div>
-        </div>`;
-        })
-        .join("");
+    if (!box) return;
+
+    const COLORS = [
+      "#ef4444",
+      "#22c55e",
+      "#3b82f6",
+      "#0f766e",
+      "#f59e0b",
+      "#8b5cf6",
+      "#10b981",
+      "#f43f5e",
+      "#64748b",
+      "#e11d48",
+    ];
+
+    // Reutiliza se já existir noutro bloco
+    let catAgg12m = window.catAgg12m instanceof Map ? window.catAgg12m : null;
+    let catCount12m =
+      window.catCount12m instanceof Map ? window.catCount12m : null;
+
+    // Se não existir, agrega agora a partir da Supabase
+    if (
+      (!catAgg12m || !catCount12m) &&
+      window.sb &&
+      typeof window.sb.from === "function"
+    ) {
+      try {
+        // id do tipo 'EXPENSE'
+        const { data: ttype } = await sb
+          .from("transaction_types")
+          .select("id,code")
+          .eq("code", "EXPENSE")
+          .single();
+        const expId = ttype?.id ?? -999;
+
+        // 12 meses de despesas (com categoria)
+        const { data: rows } = await sb
+          .from("transactions")
+          .select("amount, category_id, categories(name,parent_id)")
+          .eq("type_id", expId)
+          .gte("date", from12Local)
+          .order("date", { ascending: true });
+
+        // mapa de categorias para descobrir o pai
+        const parentsMap = new Map();
+        try {
+          const { data: cats } = await sb
+            .from("categories")
+            .select("id,name,parent_id");
+          (cats || []).forEach((c) => parentsMap.set(c.id, c));
+        } catch {}
+
+        // monta "Pai > Filho"
+        const pathFromRow = (row) => {
+          const child = row.categories?.name;
+          const pid = row.categories?.parent_id;
+          const p = pid ? parentsMap.get(pid) : null;
+          return p?.name ? `${p.name} > ${child}` : child || "(Sem categoria)";
+        };
+
+        const agg = new Map();
+        const cnt = new Map();
+
+        (rows || []).forEach((r) => {
+          // normaliza sinal para despesas negativas
+          const amt = Math.abs(Number(r.amount || 0));
+          if (!amt) return;
+          const name = pathFromRow(r);
+          agg.set(name, (agg.get(name) || 0) + amt);
+          cnt.set(name, (cnt.get(name) || 0) + 1);
+        });
+
+        catAgg12m = agg;
+        catCount12m = cnt;
+        // expõe globalmente
+        window.catAgg12m = agg;
+        window.catCount12m = cnt;
+      } catch (e) {
+        console.warn("catAgg12m/catCount12m (SB) falhou:", e);
+      }
     }
+
+    // Fallback demo (se não houver SB): usa mês * 12 e 1 registo por categoria
+    if (!catAgg12m || !catCount12m) {
+      const demoAgg = new Map(
+        Array.from((topCatThisMonth || new Map()).entries()).map(([k, v]) => [
+          k,
+          (v || 0) * 12,
+        ])
+      );
+      const demoCnt = new Map(Array.from(demoAgg.keys()).map((k) => [k, 1]));
+      catAgg12m = demoAgg;
+      catCount12m = demoCnt;
+    }
+
+    // ordenação + percentagens
+    const arr = Array.from(catAgg12m.entries()).sort((a, b) => b[1] - a[1]);
+    const totalAnual = arr.reduce((s, [, v]) => s + (v || 0), 0) || 1;
+    const monthsCount = 12;
+
+    box.innerHTML = arr
+      .map(([name, totalVal], i) => {
+        const total = Number(totalVal || 0);
+        const pct = (total / totalAnual) * 100;
+        const avgMes = total / monthsCount;
+        const n = Math.max(1, Number(catCount12m.get(name) || 0));
+        const avgReg = total / n;
+        const color = COLORS[i % COLORS.length];
+
+        return `<div class="cat-item">
+      <div class="cat-left">
+        <span class="cat-dot" style="background:${color}"></span>
+        <div>
+          <div class="cat-name">${name}</div>
+          <div class="cat-meta">${pct.toFixed(
+            1
+          )}% do total de despesas (12m)</div>
+        </div>
+      </div>
+      <div class="cat-right" style="text-align:right">
+        <div class="cat-amount">${money(
+          total
+        )}<span class="muted">/ano</span></div>
+        <div class="cat-avg">
+          ${money(avgMes)}<span class="muted">/mês</span>
+          &nbsp;|&nbsp;
+          ${money(avgReg)}<span class="muted">/registo</span>
+        </div>
+      </div>
+    </div>`;
+      })
+      .join("");
   })();
 
   // Ajuda FAB

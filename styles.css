@@ -771,3 +771,5 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 .rpt-legend{ display:grid; gap:6px }
 .rpt-legend__item{ display:flex; align-items:center; gap:8px }
 .rpt-legend__item strong{ font-variant-numeric: tabular-nums }
+
+/*Análises Rapidas - dashboard*/
