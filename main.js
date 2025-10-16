@@ -48,9 +48,9 @@ const ROUTES = {
     js: "/src/screens/dashboard.js",
     showFooter: true,
   },
-  "#/transactions": {
-    file: "/src/screens/transactions.html",
-    js: "/src/screens/transactions.js",
+  "#/Movimentos": {
+    file: "/src/screens/Movimentos.html",
+    js: "/src/screens/Movimentos.js",
     showFooter: true,
   },
   "#/new": {
@@ -68,9 +68,9 @@ const ROUTES = {
     js: "/src/screens/categories.js",
     showFooter: true,
   },
-  "#/objetivos": {
-    file: "/src/screens/objetivos.html",
-    js: "/src/screens/objetivos.js",
+  "#/Metas": {
+    file: "/src/screens/Metas.html",
+    js: "/src/screens/Metas.js",
     showFooter: true,
   },
 };
