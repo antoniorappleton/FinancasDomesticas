@@ -478,7 +478,7 @@ export async function init(ctx = {}) {
     // conteúdo específico do Dashboard
     pop.innerHTML = `
     <h3>O que mostra este ecrã?</h3>
-    <p>Neste Screen pode consultar, editar ou eliminar as suas transações. Pode também filtrar por vários critérios</p>
+    <p>· Neste Screen pode consultar, editar ou eliminar as suas transações.</p>
     <button class="close" type="button">Fechar</button>
   `;
 

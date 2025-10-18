@@ -1652,9 +1652,9 @@ function renderMiniShelf(root=document) {
     // conteúdo específico das Definições/Relatórios/Import CSV
     pop.innerHTML = `
     <h3>O que podes fazer aqui?</h3>
-    <p>Gerar relatórios (Mensal, Intervalo, Anual). Pode também exportar Relatório em PDF.</p>
-    <p>Exportar modelo Excel e voltar a Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
-    <p>Podes também repor os mini cartões ocultos da Dashboard.</p>
+    <p>· Gerar relatórios (Mensal, Intervalo, Anual). Pode também exportar Relatório em PDF.</p>
+    <p>· Exportar modelo Excel e voltar a Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
+    <p>· Possibilidade de repor os mini cartões ocultos da Dashboard.</p>
     <button class="close" type="button">Fechar</button>
   `;
 

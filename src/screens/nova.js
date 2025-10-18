@@ -369,7 +369,8 @@ export async function init({ outlet } = {}) {
     // conteúdo específico do Dashboard
     pop.innerHTML = `
     <h3>O que mostra este ecrã?</h3>
-    <p>Neste Screen pode adicionar as suas despesas, receitas, poupanças ou transferências. Para novas categorias, vá a definções e crie as suas</p>
+    <p>· Neste Screen pode adicionar as suas despesas, receitas, poupanças ou transferências. </p>
+    <p>· Para novas categorias, pode criar as suas personalizadas no screen Definições</p>
     <button class="close" type="button">Fechar</button>
   `;
 

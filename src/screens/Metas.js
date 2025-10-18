@@ -547,7 +547,8 @@ const cards = (objs || [])
   // conteúdo específico do Dashboard
   pop.innerHTML = `
     <h3>O que mostra este ecrã?</h3>
-    <p>Neste screen pode criar objectivos de poupança. Ou aceitar aqueles que a aplicação lhe sugere com base nos registos dos últimos 6 meses</p>
+    <p>· Neste screen pode criar objectivos de poupança.</p>
+    <p>· Ou aceitar aqueles que a aplicação sugere com base nos registos dos últimos 6 meses</p>
     <button class="close" type="button">Fechar</button>
   `;
 
