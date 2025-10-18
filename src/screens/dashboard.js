@@ -68,46 +68,55 @@ function setupDashboardModal(ds) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Cashflow anual (12 meses)";
-    const labels = ds.labels12m || [];
-    const netCum = [],
-      savCum = [];
-    (ds.saldo12m || []).reduce((acc, v, i) => (netCum[i] = acc + v), 0);
-    (ds.savings12m || []).reduce(
-      (acc, v, i) => (savCum[i] = acc + Math.abs(v)),
-      0
-    );
+  titleEl.textContent = "Cashflow anual (12 meses)";
 
-    mount({
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          {
-            label: "Saldo líquido (acum.)",
-            data: netCum,
-            tension: 0.25,
-            borderWidth: 2,
-            fill: true,
-          },
-          {
-            label: "Poupanças (acum.)",
-            data: savCum,
-            tension: 0.25,
-            borderWidth: 2,
-            fill: false,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: "index", intersect: false },
-        plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
-        scales: { y: { ...axisMoney, beginAtZero: true } },
-      },
-    });
+  const labels = ds.labels12m || [];
+  const income  = ds.income12m  || [];
+  const expense = (ds.expense12m || []).map(Math.abs);
+  const savings = (ds.savings12m || []).map(Math.abs);
+
+  // net por mês: Receitas - (Despesas + Poupanças)
+  const netMonthly = labels.map((_, i) =>
+    (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
+  );
+
+  // acumulados
+  const netCum = [];
+  const savCum = [];
+  netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
+  savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+
+  mount({
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Disponível (acum.)",
+          data: netCum,
+          tension: 0.25,
+          borderWidth: 2,
+          fill: true,
+        },
+        {
+          label: "Poupanças (acum.)",
+          data: savCum,
+          tension: 0.25,
+          borderWidth: 2,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
+      scales: { y: { ...axisMoney, beginAtZero: true } },
+    },
+  });
   }
+
 
   function renderTendencias() {
     titleEl.textContent = "Tendências (12 meses)";
@@ -378,6 +387,72 @@ function setupDashboardModal(ds) {
       .join("");
     document.getElementById("dash-modal-extra").innerHTML = html;
   }
+
+  function renderCashflow() {
+  titleEl.textContent = "Cashflow anual (12 meses)";
+
+  const labels  = ds.labels12m || [];
+  const income  = ds.income12m  || [];
+  const expense = (ds.expense12m || []).map(Math.abs);
+  const savings = (ds.savings12m || []).map(Math.abs);
+
+  // já existente: disponível (income - (expense + savings))
+  const netMonthly = labels.map((_, i) =>
+    (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
+  );
+  const netCum = [];
+  netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
+
+  // NOVO: líquido sem poupanças (income - expense)
+  const liqNoSavMonthly = labels.map((_, i) =>
+    (income[i] || 0) - (expense[i] || 0)
+  );
+  const liqNoSavCum = [];
+  liqNoSavMonthly.reduce((acc, v, i) => (liqNoSavCum[i] = acc + v), 0);
+
+  // já existente: poupanças acumuladas (para comparar)
+  const savCum = [];
+  savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+
+  mount({
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Disponível (acum.)",
+          data: netCum,
+          tension: 0.25,
+          borderWidth: 2,
+          fill: true,
+        },
+        {
+          label: "Líquido s/ poupanças (acum.)", // NOVO
+          data: liqNoSavCum,
+          tension: 0.25,
+          borderWidth: 2,
+          fill: false,
+          borderDash: [6, 4],
+        },
+        {
+          label: "Poupanças (acum.)",
+          data: savCum,
+          tension: 0.25,
+          borderWidth: 2,
+          fill: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
+      scales: { y: { ...axisMoney, beginAtZero: true } },
+    },
+  });
+  }
+
 
   const handlers = {
     cashflow: renderCashflow,
@@ -792,6 +867,16 @@ export async function init({ sb, outlet } = {}) {
         }));
       } catch (e) {}
     }
+
+          // --- Normalizar e forçar o NET ---
+      // Queremos: net = income - (expense + savings)  (tudo positivo excepto o próprio net)
+      monthly = (monthly || []).map(m => {
+        const income  = Number(m.income  || 0);
+        const expense = Math.abs(Number(m.expense || 0));
+        const savings = Math.abs(Number(m.savings || 0));
+        const net = income - expense - savings;
+        return { ...m, income, expense, savings, net };
+      });
 
     // ------- Fixas/Variáveis + Top categorias + Pais -------
     try {
@@ -1283,11 +1368,16 @@ async function dashFetchPortfoliosAgg(){
     },
   });
 
-  // Cashflow (acumulado)
-  const netCum = [],
-    savCum = [];
-  monthly.reduce((acc, m, i) => (netCum[i] = acc + m.net), 0);
-  monthly.reduce((acc, m, i) => (savCum[i] = acc + Math.abs(m.savings)), 0);
+  // Cashflow (acumulado) — net = income - (|expense| + |savings|)
+  const netPerMonth = monthly.map(m =>
+  (Number(m.income)||0) - Math.abs(Number(m.expense)||0) - Math.abs(Number(m.savings)||0)
+  );
+  const netCum = [];
+  const savCum = [];
+  netPerMonth.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
+  monthly.map(m => Math.abs(Number(m.savings)||0))
+       .reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+
   mountChart("chart-cashflow", {
     type: "line",
     data: {
