@@ -1669,7 +1669,10 @@ export async function init({ sb, outlet } = {}) {
     }
     pop.innerHTML = `
       <h3>O que mostra este ecrã?</h3>
-      <p>KPIs do mês corrente com Análises Anuais e Mensais: Despesas Acumuladas, distribuição das despesas [Fixas vs Variáveis], métodos e regularidades de pagamento.</p>
+      <p>KPIs do mês corrente com Análises Anuais e Mensais</p>
+      <p>Análises Anuais e Mensais arrumados em mini cartões. Podem ser ocultados e repostos no screen Configurações.</p>
+      <p> Cartão com as datas e despesas fixas agendadas com base nos últimos registos.</p>
+      <p>Podem ser também consultado neste screen as despesas acumuladoas por ano/mês e média por registos.</p>
       <button class="close" type="button">Fechar</button>
     `;
     btn.onclick = () => pop.classList.toggle("hidden");
