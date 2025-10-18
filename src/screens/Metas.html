@@ -109,3 +109,56 @@
     </div>
   </div>
 </div>
+
+<!-- Carteiras: container e modal -->
+<section class="card" id="pf-card">
+  <h2 class="section-title">Carteiras de Investimento</h2>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+    <button id="pf-new" class="btn btn--primary">Nova carteira</button>
+    <span class="row-note">Associa as tuas transações de poupança a carteiras para ver o crescimento de cada uma.</span>
+  </div>
+
+  <div id="pf-list" class="cat-list" style="margin-top:10px"></div>
+</section>
+
+<div id="pf-modal" class="modal" hidden>
+  <div class="modal__card">
+    <header class="modal__header">
+      <h3 class="modal__title" id="pf-modal-title">Carteira</h3>
+      <button class="modal__close" type="button" aria-label="Fechar">×</button>
+    </header>
+    <div class="grid" style="grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px">
+      <label>Nome <input id="pf-name" type="text"></label>
+      <label>Tipo
+        <select id="pf-kind">
+          <option>Certificados Aforro</option>
+          <option>Ações</option>
+          <option>ETFs</option>
+          <option>Depósito</option>
+          <option>Outro</option>
+        </select>
+      </label>
+      <label>Valor investido inicial (€)
+        <input type="number" id="pf-initial" placeholder="ex: 1500">
+      </label>
+      <label>Data de início
+        <input type="date" id="pf-start" value="">
+      </label>
+      <label>Taxa anual (%) <input id="pf-apr" type="number" step="0.01" min="0"></label>
+      <label>Capitalização
+        <select id="pf-comp">
+          <option value="monthly" selected>Mensal</option>
+          <option value="annual">Anual</option>
+        </select>
+      </label>
+      <label>Cor (opcional) <input id="pf-color" type="color" value="#0ea5e9"></label>
+      <label style="grid-column:1/-1">Notas <textarea id="pf-notes"></textarea></label>
+      <input id="pf-id" type="hidden">
+    </div>
+    <div class="actions" style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end">
+      <button class="btn" id="pf-del">Eliminar</button>
+      <button class="btn btn--primary" id="pf-save">Guardar</button>
+    </div>
+  </div>
+</div>

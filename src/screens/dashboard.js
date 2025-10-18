@@ -389,7 +389,127 @@ function setupDashboardModal(ds) {
     gasto_diario: renderGastoDiario,
     metodos: renderMetodos,
     regularidades: renderRegularidades,
+    investimentos: renderInvestimentos,
   };
+
+
+  // ==== INVESTIMENTOS (mini-card) ====
+async function _dashFetchPortfoliosAgg(){
+  const sb = window.sb;
+  async function getUserId(){ return (await sb.auth.getUser()).data?.user?.id; }
+  const uid = await getUserId();
+  const { data: pf } = await sb.from("portfolios").select("*").eq("user_id", uid);
+  if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
+
+  const { data: ttype } = await sb.from("transaction_types").select("id,code");
+  const SAV = ttype?.find(t=>t.code==="SAVINGS")?.id;
+
+  const pad2 = n => String(n).padStart(2,"0");
+  const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  const monthKeysBetween = (fromISO, toISO) => {
+    const out=[], [y1,m1]=fromISO.split("-").map(Number), [y2,m2]=toISO.split("-").map(Number);
+    for (let y=y1,m=m1; y<y2 || (y===y2 && m<=m2);){ out.push(`${y}-${pad2(m)}`); m++; if(m===13){m=1;y++;} }
+    return out;
+  };
+  function buildSeries({ aprPct, compounding='monthly', initial_amount=0, start_date=null }, txs, fromISO, toISO){
+    const r = Number(aprPct||0)/100;
+    const months = monthKeysBetween(fromISO.slice(0,7), toISO.slice(0,7));
+    const byMonth = new Map(months.map(k=>[k,{contrib:0,interest:0,balance:0}]));
+    for(const t of txs){
+      const k = String(t.date).slice(0,7);
+      if(!byMonth.has(k)) byMonth.set(k,{contrib:0,interest:0,balance:0});
+      byMonth.get(k).contrib += Number(t.amount||0);
+    }
+    let balance = Number(initial_amount||0);
+    const annivMonth = start_date ? Number(String(start_date).slice(5,7)) : Number(fromISO.slice(5,7));
+    const out=[];
+    for (const k of months){
+      const row = byMonth.get(k) || {contrib:0,interest:0,balance:0};
+      balance += row.contrib;
+      let i=0;
+      if (compounding === 'monthly') i = balance>0 ? balance*(r/12) : 0;
+      else { const m = Number(k.slice(5,7)); if (balance>0 && m===annivMonth) i = balance*r; }
+      balance += i;
+      row.interest = i; row.balance = balance; out.push({key:k, ...row});
+    }
+    return out;
+  }
+
+  const today = new Date();
+  const toISO = ymd(today);
+  const out = [];
+
+  for (const p of pf){
+    const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(0,10);
+    const { data: tx } = await sb
+      .from("transactions").select("date,amount")
+      .eq("type_id", SAV).eq("portfolio_id", p.id)
+      .gte("date", fromISO).lte("date", toISO).order("date",{ascending:true});
+
+    const series = buildSeries(
+      { aprPct: p.apr, compounding: p.compounding, initial_amount: Number(p.initial_amount||0), start_date: p.start_date },
+      tx||[], fromISO, toISO
+    );
+    const aportes = (tx||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
+    const invested = Number(p.initial_amount||0) + aportes;
+    const current = series.length ? series.at(-1).balance : invested;
+
+    // projeção 12m (sem novos aportes)
+    const projTo = new Date(today); projTo.setMonth(projTo.getMonth()+12);
+    const projSeries = buildSeries(
+      { aprPct: p.apr, compounding: p.compounding, initial_amount: current, start_date: p.start_date },
+      [], ymd(today), ymd(projTo)
+    );
+    const projected = projSeries.length ? projSeries.at(-1).balance : current;
+
+    out.push({ ...p, invested, current, projected });
+  }
+
+  const byKind = new Map();
+  for (const p of out){
+    const k = p.kind || "Outro";
+    if(!byKind.has(k)) byKind.set(k,{ invested:0, current:0, projected:0, color: p.color || null });
+    const b = byKind.get(k);
+    b.invested += p.invested;
+    b.current += p.current;
+    b.projected += p.projected;
+    if (!b.color && p.color) b.color = p.color;
+  }
+  return { kinds: Array.from(byKind.keys()), byKind, raw: out };
+}
+
+  async function renderInvestimentos(){
+    titleEl.textContent = "Investimentos por categoria";
+    const agg = await _dashFetchPortfoliosAgg();
+    const labels = agg.kinds;
+    const dataNow = labels.map(k => agg.byKind.get(k)?.current || 0);
+    const palette = labels.map((_,i)=>`hsl(${(i*62)%360} 70% 45%)`);
+
+    mount({
+      type: "bar",
+      data: { labels, datasets: [{ label: "Valor atual", data: dataNow, backgroundColor: palette }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: toolMoney },
+        scales: { y: { ...axisMoney, beginAtZero: true } },
+        onClick: (_, elements) => {
+          if (!elements?.length) return;
+          const idx = elements[0].index;
+          const kind = labels[idx];
+          const invested = agg.byKind.get(kind)?.invested || 0;
+          const projected = agg.byKind.get(kind)?.projected || 0;
+          chart.data.labels = ["Investido", "Projetado (12m)"];
+          chart.data.datasets = [
+            { label: kind, data: [invested, projected], backgroundColor: ["#94a3b8", palette[idx]] }
+          ];
+          chart.options.plugins.legend.display = true;
+          chart.update();
+          titleEl.textContent = `Investimentos · ${kind}`;
+        }
+      }
+    });
+  }
 
   handlers.gasto_diario_acum = renderGastoDiario; // alias para o mini-card antigo
   console.debug(
@@ -860,6 +980,93 @@ export async function init({ sb, outlet } = {}) {
     } catch {}
   }
 
+
+  //====== Mini-Card: Investimentos ======//
+  // ===== Investimentos (portfolios) – helpers locais =====
+async function dashGetUserId() {
+  return (await sb.auth.getUser()).data?.user?.id;
+}
+function dashPad2(n){ return String(n).padStart(2,"0"); }
+function dashYmd(d){ return `${d.getFullYear()}-${dashPad2(d.getMonth()+1)}-${dashPad2(d.getDate())}`; }
+function dashMonthKeysBetween(fromISO, toISO){
+  const out=[], [y1,m1]=fromISO.split("-").map(Number), [y2,m2]=toISO.split("-").map(Number);
+  for (let y=y1,m=m1; y<y2 || (y===y2 && m<=m2);){ out.push(`${y}-${dashPad2(m)}`); m++; if(m===13){m=1;y++;}}
+  return out;
+}
+function dashBuildSeries({ aprPct, compounding='monthly', initial_amount=0, start_date=null }, txs, fromISO, toISO){
+  const r = Number(aprPct||0)/100;
+  const months = dashMonthKeysBetween(fromISO.slice(0,7), toISO.slice(0,7));
+  const byMonth = new Map(months.map(k=>[k,{contrib:0,interest:0,balance:0}]));
+  for(const t of txs){
+    const k = String(t.date).slice(0,7);
+    if(!byMonth.has(k)) byMonth.set(k,{contrib:0,interest:0,balance:0});
+    byMonth.get(k).contrib += Number(t.amount||0);
+  }
+  let balance = Number(initial_amount||0);
+  const annivMonth = start_date ? Number(String(start_date).slice(5,7)) : Number(fromISO.slice(5,7));
+  const out=[];
+  for(const k of months){
+    const row = byMonth.get(k) || {contrib:0,interest:0,balance:0};
+    balance += row.contrib;
+    let i = 0;
+    if (compounding === 'monthly') i = balance>0 ? balance*(r/12) : 0;
+    else { const m = Number(k.slice(5,7)); if (balance>0 && m===annivMonth) i = balance*r; }
+    balance += i;
+    row.interest = i; row.balance = balance; out.push({key:k, ...row});
+  }
+  return out;
+}
+async function dashFetchPortfoliosAgg(){
+  const uid = await dashGetUserId();
+  const { data: pf } = await sb.from("portfolios").select("*").eq("user_id", uid);
+  if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
+
+  const { data: ttype } = await sb.from("transaction_types").select("id,code");
+  const SAV = ttype?.find(t=>t.code==="SAVINGS")?.id;
+
+  const today = new Date();
+  const toISO = dashYmd(today);
+
+  const out = [];
+  for (const p of pf){
+    const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(0,10);
+    const { data: tx } = await sb
+      .from("transactions").select("date,amount")
+      .eq("type_id", SAV).eq("portfolio_id", p.id)
+      .gte("date", fromISO).lte("date", toISO).order("date",{ascending:true});
+    const series = dashBuildSeries(
+      { aprPct: p.apr, compounding: p.compounding, initial_amount: Number(p.initial_amount||0), start_date: p.start_date },
+      tx||[], fromISO, toISO
+    );
+    const aportes = (tx||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
+    const invested = Number(p.initial_amount||0) + aportes;
+    const current = series.length ? series.at(-1).balance : invested;
+
+    // projeção: +12 meses, sem novos aportes (só juros)
+    const projTo = new Date(today); projTo.setMonth(projTo.getMonth()+12);
+    const projSeries = dashBuildSeries(
+      { aprPct: p.apr, compounding: p.compounding, initial_amount: current, start_date: p.start_date },
+      [], dashYmd(today), dashYmd(projTo)
+    );
+    const projected = projSeries.length ? projSeries.at(-1).balance : current;
+
+    out.push({ ...p, invested, current, projected });
+  }
+
+  const byKind = new Map();
+  for (const p of out){
+    const k = p.kind || "Outro";
+    if(!byKind.has(k)) byKind.set(k,{ invested:0, current:0, projected:0, color: p.color || null });
+    const b = byKind.get(k);
+    b.invested += p.invested;
+    b.current += p.current;
+    b.projected += p.projected;
+    if (!b.color && p.color) b.color = p.color;
+  }
+  return { kinds: Array.from(byKind.keys()), byKind, raw: out };
+}
+
+  //====== Fim mini-card: Investimentos==//
   // ---------------- DEMO (fallback) ----------------
   if (!monthly.length) {
     const labs = [

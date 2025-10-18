@@ -799,3 +799,24 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 .mini-shelf__chip button {
   border:0; background:#111827; color:#e5e7eb; border-radius:14px; padding:4px 8px; cursor:pointer;
 }
+#pf-card {
+  margin-top: 24px;
+}
+
+#pf-list .cat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.cat-card__title {
+  font-weight: 600;
+}
+
+.cat-card__subtitle {
+  color: #475569;
+  font-size: 0.9rem;
+}
+  

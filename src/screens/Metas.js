@@ -4,6 +4,11 @@ export async function init({ sb, outlet } = {}) {
   const $ = (sel) =>
     (outlet && outlet.querySelector(sel)) || document.querySelector(sel);
 
+  async function getUserId() {
+  return (await sb.auth.getUser()).data?.user?.id;
+}
+
+
   // ========= helpers =========
   const money = (n) =>
     "€ " +
@@ -134,6 +139,112 @@ export async function init({ sb, outlet } = {}) {
     return { total, byCat };
   }
 
+  //======== Carteiras Poupanças acumuladas para meta =========
+
+  function monthKeysBetween(fromISO, toISO){
+    const out = [];
+    const [y1,m1] = fromISO.split("-").map(Number);
+    const [y2,m2] = toISO.split("-").map(Number);
+    for (let y=y1, m=m1; y<y2 || (y===y2 && m<=m2); ){
+      out.push(`${y}-${pad2(m)}`);
+      m++; if (m===13){ m=1; y++; }
+    }
+    return out;
+  }
+
+  async function listPortfolios(){
+    const uid = await getUserId();
+    const { data, error } = await sb
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+  async function upsertPortfolio(payload){
+    if (payload.id){
+      const { error } = await sb.from("portfolios").update(payload).eq("id", payload.id);
+      if (error) throw error;
+    } else {
+      const uid = await getUserId();
+      const { error } = await sb.from("portfolios").insert({ ...payload, user_id: uid });
+      if (error) throw error;
+    }
+  }
+  async function deletePortfolio(id){
+    const { error } = await sb.from("portfolios").delete().eq("id", id);
+    if (error) throw error;
+  }
+  async function getSavingsTypeId(){
+    const { data } = await sb.from("transaction_types").select("id,code").eq("code","SAVINGS").single();
+    return data?.id;
+  }
+  async function fetchPortfolioTx(portfolio_id, fromISO="1970-01-01", toISO=ymd(new Date())){
+    const SAV = await getSavingsTypeId();
+    const { data, error } = await sb
+      .from("transactions")
+      .select("date,amount")
+      .eq("type_id", SAV)
+      .eq("portfolio_id", portfolio_id)
+      .gte("date", fromISO)
+      .lte("date", toISO)
+      .order("date", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+
+  // devolve série mensal: [{key:'YYYY-MM', balance, contrib, interest}]
+  function buildPortfolioSeries(
+    { aprPct, compounding = 'monthly', initial_amount = 0, start_date = null },
+    txs,
+    fromISO,
+    toISO
+  ) {
+    const r = Number(aprPct || 0) / 100;             // taxa anual em decimal
+    const months = monthKeysBetween(fromISO.slice(0, 7), toISO.slice(0, 7));
+
+    const byMonth = new Map(months.map(k => [k, { contrib: 0, interest: 0, balance: 0 }]));
+    for (const t of txs) {
+      const k = String(t.date).slice(0, 7);
+      if (!byMonth.has(k)) byMonth.set(k, { contrib: 0, interest: 0, balance: 0 });
+      byMonth.get(k).contrib += Number(t.amount || 0);
+    }
+
+    let balance = Number(initial_amount || 0);
+
+    // Para capitalização anual, usa o mês “aniversário” da carteira (start_date);
+    // se não houver, usa o mês do primeiro período (fromISO)
+    const annivMonth = start_date
+      ? Number(String(start_date).slice(5, 7))
+      : Number(fromISO.slice(5, 7));
+
+    const out = [];
+    for (const k of months) {
+      const row = byMonth.get(k) || { contrib: 0, interest: 0, balance: 0 };
+
+      // aportes do mês
+      balance += row.contrib;
+
+      // juros
+      let i = 0;
+      if (compounding === 'monthly') {
+        i = balance > 0 ? balance * (r / 12) : 0;
+      } else {
+        const m = Number(k.slice(5, 7));
+        if (balance > 0 && m === annivMonth) i = balance * r;
+      }
+
+      balance += i;
+      row.interest = i;
+      row.balance = balance;
+      out.push({ key: k, ...row });
+    }
+    return out;
+  }
+
+
   // antes: async function computeSpentForGoal(o, monthAgg) { ... }
   function computeSpentForGoal(o, monthAgg) {
     if (o.type !== "budget_cap") return 0;
@@ -141,6 +252,180 @@ export async function init({ sb, outlet } = {}) {
     if (!o.category_id) return monthAgg.total; // teto geral do mês
     return Number(monthAgg.byCat.get(o.category_id) || 0);
   }
+
+  async function computeSavingsForGoal(o) {
+    const SAV = await getTypeId("SAVINGS");
+
+    // ✅ incluir poupanças anteriores à criação da meta:
+    // Se no futuro adicionares um campo 'start_from' na tabela 'objectives',
+    // ele será usado; caso contrário, apanha "desde sempre".
+    const start = o.start_from ? String(o.start_from).slice(0,10) : "1970-01-01";
+    const end = o.due_date || ymd(new Date());
+
+    const { data, error } = await sb
+      .from("transactions")
+      .select("amount")
+      .eq("type_id", SAV)
+      .gte("date", start)
+      .lte("date", end);
+
+    if (error) return Number(o.current_amount || 0);
+
+    // Se registas as poupanças com sinal negativo, converte para absoluto:
+    // return (data || []).reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0);
+
+    return (data || []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  }
+
+  async function renderPortfolios(){
+  const $ = (sel) => document.querySelector(sel);
+  const wrap = $("#pf-list");
+  if (!wrap) return;
+
+  const pf = await listPortfolios();
+  if (!pf.length){
+    wrap.innerHTML = `<div class="row-note">Sem carteiras ainda.</div>`;
+    return;
+  }
+
+  const toISO = ymd(new Date());
+  const cards = await Promise.all(pf.map(async p => {
+    const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(0,10);
+const tx = await fetchPortfolioTx(p.id, fromISO, toISO);
+
+const series = buildPortfolioSeries(
+  {
+    aprPct: p.apr,
+    compounding: p.compounding,
+    initial_amount: Number(p.initial_amount || 0),
+    start_date: p.start_date
+  },
+  tx,
+  fromISO,
+  toISO
+);
+
+// Investido = inicial + aportes (deste período)
+const aportes = (tx || []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+const invested = Number(p.initial_amount || 0) + aportes;
+
+const current = series.length ? series[series.length - 1].balance : invested;
+const interest = current - invested;
+
+
+    const color = p.color || "#0ea5e9";
+    return `
+      <div class="cat-card" data-pf="${p.id}" style="border-left:5px solid ${color}">
+        <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div class="cat-card__title"><strong>${p.name}</strong> <span class="row-note">(${p.kind})</span></div>
+          <div class="row-note">${p.apr}% a.a. • ${p.compounding === 'monthly' ? 'cap. mensal' : 'cap. anual'}</div>
+          <div style="flex:1"></div>
+          <button class="icon-btn" data-pf-edit="${p.id}" title="Editar" aria-label="Editar">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="cat-card__subtitle">
+          Investido: <strong>${money(invested)}</strong> · Valor atual: <strong>${money(current)}</strong> · Juros: <strong>${money(interest)}</strong>
+        </div>
+      </div>`;
+  }));
+
+  wrap.innerHTML = cards.join("");
+
+  // abrir modal editar
+  wrap.querySelectorAll("[data-pf-edit]").forEach(btn => {
+    btn.addEventListener("click", () => openPfModal(btn.getAttribute("data-pf-edit")));
+  });
+}
+
+function openPfModal(id = null) {
+  const m = document.getElementById("pf-modal");
+  if (!m) { alert("Modal de carteira não encontrado no HTML (#pf-modal)."); return; }
+
+  const titleEl = document.getElementById("pf-modal-title");
+  const idEl = document.getElementById("pf-id");
+  const nameEl = document.getElementById("pf-name");
+  const kindEl = document.getElementById("pf-kind");
+  const aprEl = document.getElementById("pf-apr");
+  const compEl = document.getElementById("pf-comp");
+  const colorEl = document.getElementById("pf-color");
+  const notesEl = document.getElementById("pf-notes");
+  const initEl = document.getElementById("pf-initial");
+  const startEl = document.getElementById("pf-start");
+
+  // valida elementos
+  if (!titleEl || !idEl || !nameEl || !kindEl || !aprEl || !compEl || !colorEl || !notesEl || !initEl || !startEl) {
+    alert("Campos do modal em falta (confirma IDs: pf-modal-title, pf-id, pf-name, pf-kind, pf-apr, pf-comp, pf-color, pf-notes, pf-initial, pf-start).");
+    return;
+  }
+
+  titleEl.textContent = id ? "Editar carteira" : "Nova carteira";
+  idEl.value = id || "";
+
+  if (!id) {
+    nameEl.value = "";
+    kindEl.value = "Outro";
+    aprEl.value = "";
+    compEl.value = "monthly";
+    colorEl.value = "#0ea5e9";
+    notesEl.value = "";
+    initEl.value = 0;
+    startEl.value = new Date().toISOString().slice(0,10);
+  } else {
+    loadPortfolioIntoForm(id);
+  }
+
+  m.hidden = false;
+}
+
+async function loadPortfolioIntoForm(id){
+  const { data, error } = await sb.from("portfolios").select("*").eq("id", id).single();
+  if (error || !data) return;
+  document.getElementById("pf-name").value = data.name || "";
+  document.getElementById("pf-kind").value = data.kind || "Outro";
+  document.getElementById("pf-apr").value = data.apr || 0;
+  document.getElementById("pf-comp").value = data.compounding || "monthly";
+  document.getElementById("pf-color").value = data.color || "#0ea5e9";
+  document.getElementById("pf-notes").value = data.notes || "";
+  document.getElementById("pf-initial").value = data.initial_amount || 0;
+  document.getElementById("pf-start").value = data.start_date || new Date().toISOString().slice(0,10);
+}
+function closePfModal(){ document.getElementById("pf-modal").hidden = true; }
+
+// ligações
+document.getElementById("pf-new")?.addEventListener("click", () => openPfModal());
+document.querySelector("#pf-modal .modal__close")?.addEventListener("click", closePfModal);
+document.getElementById("pf-save")?.addEventListener("click", async () => {
+  const payload = {
+  id: document.getElementById("pf-id").value || undefined,
+  name: document.getElementById("pf-name").value.trim(),
+  kind: document.getElementById("pf-kind").value,
+  apr: Number(document.getElementById("pf-apr").value || 0),
+  compounding: document.getElementById("pf-comp").value,
+  color: document.getElementById("pf-color").value || null,
+  notes: document.getElementById("pf-notes").value || null,
+  initial_amount: Number(document.getElementById("pf-initial").value || 0),
+  start_date: document.getElementById("pf-start").value || new Date().toISOString().slice(0,10),
+};
+
+  if (!payload.name) return alert("Indica um nome.");
+  await upsertPortfolio(payload);
+  closePfModal();
+  await renderPortfolios();
+});
+document.getElementById("pf-del")?.addEventListener("click", async () => {
+  const id = document.getElementById("pf-id").value;
+  if (!id) return;
+  if (!confirm("Eliminar esta carteira?")) return;
+  await deletePortfolio(id);
+  closePfModal();
+  await renderPortfolios();
+});
+
+
+  //======== //FIM Poupanças acumuladas para meta =========
 
   // ========= LISTA =========
   async function refreshList() {
@@ -158,59 +443,55 @@ export async function init({ sb, outlet } = {}) {
 
     const monthAgg = await computeMonthExpenseTotals();
 
-const cards = (objs || [])
-  .map((o) => {
-    let secondary = "";
-    let progress = 0,
-      current = 0,
-      goal = 0,
-      ratio = 0;
+    const cardsArr = await Promise.all((objs || []).map(async (o) => {
+      let secondary = "";
+      let progress = 0, current = 0, goal = 0, ratio = 0;
 
-    if (o.type === "budget_cap") {
-      current = computeSpentForGoal(o, monthAgg);
-      goal = Number(o.monthly_cap || 0);
-      ratio = goal ? current / goal : 0;
-      progress = Math.min(100, ratio * 100);
-      secondary = `Teto: ${money(goal)} · Gasto: ${money(current)}`;
-    } else if (o.type === "savings_goal") {
-      current = Number(o.current_amount || 0);
-      goal = Number(o.target_amount || 0);
-      ratio = goal ? current / goal : 0;
-      progress = Math.min(100, ratio * 100);
-      secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
-    } else {
-      secondary = o.notes || "Alerta personalizado";
-    }
+      if (o.type === "budget_cap") {
+        current = computeSpentForGoal(o, monthAgg);
+        goal = Number(o.monthly_cap || 0);
+        ratio = goal ? current / goal : 0;
+        progress = Math.min(100, ratio * 100);
+        secondary = `Teto: ${money(goal)} · Gasto: ${money(current)}`;
 
-    const color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
-    const warn =
-      o.type === "budget_cap" && goal && current > goal ? "color:#b91c1c" : "";
-    const due = o.due_date
-      ? `<span class="row-note">Limite: ${o.due_date}</span>`
-      : "";
+      } else if (o.type === "savings_goal") {
+          const manual = Number(o.current_amount || 0);
+          const auto = await computeSavingsForGoal(o);
+          current = manual > 0 ? manual : auto;     // manual tem prioridade se > 0
+          goal = Number(o.target_amount || 0);
+          ratio = goal ? current / goal : 0;
+          progress = Math.min(100, ratio * 100);
+          secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
+      } else {
+        secondary = o.notes || "Alerta personalizado";
+      }
 
-    return `
-      <div class="card" data-id="${o.id}">
-        <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-          <div class="cat-card__title"><strong>${o.title}</strong></div>
-          <button class="icon-btn" data-edit="${
-            o.id
-          }" title="Editar">✏️</button>
-        </div>
-        <div class="cat-card__subtitle" style="${warn}">${secondary}</div>
-        <div style="margin-top:8px;background:#f1f5f9;border-radius:999px;height:8px;overflow:hidden">
-          <div style="height:8px;width:${progress.toFixed(
-            0
-          )}%;background:${color}"></div>
-        </div>
-        ${due}
-      </div>`;
-  })
-  .join("");
+      const color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+      const warn = o.type === "budget_cap" && goal && current > goal ? "color:#b91c1c" : "";
+      const due = o.due_date ? `<span class="row-note">Limite: ${o.due_date}</span>` : "";
 
+      // 👇 trocamos o ícone aqui na secção 2)
+      return `
+        <div class="card" data-id="${o.id}">
+          <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <div class="cat-card__title"><strong>${o.title}</strong></div>
+            <button class="icon-btn" data-edit="${o.id}" title="Editar" aria-label="Editar">
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
+          <div class="cat-card__subtitle" style="${warn}">${secondary}</div>
+          <div style="margin-top:8px;background:#f1f5f9;border-radius:999px;height:8px;overflow:hidden">
+            <div style="height:8px;width:${progress.toFixed(0)}%;background:${color}"></div>
+          </div>
+          ${due}
+        </div>`;
+    }));
 
-    $("#obj-list").innerHTML =
-      cards || '<div class="row-note">Sem objetivos ainda.</div>';
+    const cards = cardsArr.join("");
+    $("#obj-list").innerHTML = cards || '<div class="row-note">Sem objetivos ainda.</div>';
+
 
     // botões editar
     $("#obj-list")
@@ -234,12 +515,6 @@ const cards = (objs || [])
     $("#obj-summary").innerHTML = caps.length
       ? `Tetos ativos: <strong>${caps.length}</strong> · A ultrapassar: <strong>${over.length}</strong>`
       : "Sem tetos ativos este mês.";
-
-    for (const o of caps) {
-      const g = Number(o.monthly_cap || 0);
-      const c = computeSpentForGoal(o, monthAgg); // <- já não é await
-      if (g && c > g) over.push(o.id);
-    }
   }
 
   // ========= SUGESTÕES RÁPIDAS =========
@@ -557,5 +832,7 @@ const cards = (objs || [])
   pop.querySelector('.close')?.addEventListener('click', () => pop.classList.add('hidden'));
   document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') pop.classList.add('hidden'); });
 })();
+
+await renderPortfolios();
 
 }
