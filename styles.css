@@ -773,3 +773,29 @@ td:nth-child(5){ max-width:280px; overflow:hidden; text-overflow:ellipsis }
 .rpt-legend__item strong{ font-variant-numeric: tabular-nums }
 
 /*Análises Rapidas - dashboard*/
+.mini-card {
+  position: relative;
+}
+.mini-card__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: .85;
+}
+.mini-card__close:hover { opacity: 1; }
+.mini-shelf__chip {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1px solid #e5e7eb; border-radius:999px; padding:6px 10px;
+  background:#f8fafc; font-size:14px;
+}
+.mini-shelf__chip button {
+  border:0; background:#111827; color:#e5e7eb; border-radius:14px; padding:4px 8px; cursor:pointer;
+}

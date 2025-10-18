@@ -143,6 +143,38 @@ export async function init({ sb, outlet } = {}) {
     });
   }
 
+  //==== Mini cards ocultos na dashboard =====//
+  // ===== MINI-CARDS SHELF (sincroniza com localStorage que a Dashboard usa) =====
+const HIDDEN_KEY = "wb:hiddenMiniCards";
+function getHiddenCards() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); } catch { return []; }
+}
+function setHiddenCards(arr) { localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr || [])); }
+function unhideCard(key) {
+  setHiddenCards(getHiddenCards().filter(x => x.key !== key));
+  // notificar outras páginas/ecrãs
+  window.dispatchEvent(new CustomEvent("wb:minicard:changed", { detail: { action: "unhide", key } }));
+}
+function renderMiniShelf(root=document) {
+  const shelf = root.querySelector("#mini-shelf");
+  if (!shelf) return;
+  const data = getHiddenCards();
+  shelf.innerHTML = data.length ? "" : "<div class='muted'>Nenhum mini-card oculto.</div>";
+  data.forEach(({key, title}) => {
+    const chip = document.createElement("div");
+    chip.className = "mini-shelf__chip";
+    chip.innerHTML = `<span>${title || key}</span>`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Mostrar";
+    btn.title = "Voltar a mostrar na Dashboard";
+    btn.addEventListener("click", () => { unhideCard(key); renderMiniShelf(root); });
+    chip.appendChild(btn);
+    shelf.appendChild(chip);
+  });
+}
+
+
   // ================= Regularidades ======================
   const { data: regs } = await sb
     .from("regularities")
@@ -1636,4 +1668,7 @@ export async function init({ sb, outlet } = {}) {
 
   // ===== LOGO no modal: tamanho via CSS ou JS opcional =====
   // (mantemos simples; se precisares de ajustar dinamicamente, usa CSS .rep-logo)
+// ... resto do init de settings (importação CSV, relatórios, etc.) 
+renderMiniShelf(outlet);
+
 }

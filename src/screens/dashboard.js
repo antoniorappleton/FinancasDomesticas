@@ -413,6 +413,63 @@ function setupDashboardModal(ds) {
   });
 }
 
+
+// ======= MINI-CARDS: esconder/mostrar via localStorage =======
+const HIDDEN_KEY = "wb:hiddenMiniCards";
+
+// Lê/grava o estado (guardamos pares {key,title} para o Settings conseguir mostrar nomes)
+function getHiddenCards() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); } catch { return []; }
+}
+function setHiddenCards(arr) {
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr || []));
+}
+function isHidden(key) {
+  return getHiddenCards().some(x => x.key === key);
+}
+function hideCard(key, title) {
+  const set = getHiddenCards();
+  if (!set.some(x => x.key === key)) {
+    set.push({ key, title });
+    setHiddenCards(set);
+  }
+}
+function unhideCard(key) {
+  setHiddenCards(getHiddenCards().filter(x => x.key !== key));
+}
+
+// Insere botão ❌ e aplica estado visível/oculto
+function setupMiniCardHider(outletEl) {
+  const cards = [...(outletEl || document).querySelectorAll(".mini-card[data-chart]")];
+  cards.forEach(card => {
+    const key = card.dataset.chart;
+    const title = card.querySelector(".mini-card__title")?.textContent?.trim() || key;
+
+    // cria botão ❌ se não existir
+    if (!card.querySelector(".mini-card__close")) {
+      const btn = document.createElement("button");
+      btn.className = "mini-card__close";
+      btn.type = "button";
+      btn.title = "Ocultar este mini-card";
+      btn.setAttribute("aria-label", "Ocultar este mini-card");
+      btn.textContent = "×";
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // não abrir o modal por engano
+        // marca como oculto e esconde já
+        hideCard(key, title);
+        card.style.display = "none";
+        // dispara evento global para o Settings atualizar a “prateleira”
+        window.dispatchEvent(new CustomEvent("wb:minicard:changed", { detail: { action: "hide", key, title } }));
+      });
+      card.appendChild(btn);
+    }
+
+    // estado inicial
+    card.style.display = isHidden(key) ? "none" : "";
+  });
+}
+
+
 // =============================== DASHBOARD INIT ===============================
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
@@ -1765,4 +1822,6 @@ export async function init({ sb, outlet } = {}) {
   } catch (e) {
     console.warn("mini-cards wiring falhou:", e);
   }
+
+setupMiniCardHider(outlet);
 }
