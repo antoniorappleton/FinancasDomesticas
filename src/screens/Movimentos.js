@@ -293,9 +293,17 @@ export async function init(ctx = {}) {
     }
     const { data, error } = await sb
       .from("categories")
-      .select("id,name,parent_id")
+      .select("id,name,parent_id,parent:parent_id(name)")
       .eq("kind", kind)
-      .order("name");
+      // ordenar pelo nome do pai (nulls first para listar os PAIS antes),
+      // depois pelo nome do filho
+      .order("name", {
+        foreignTable: "parent",
+        ascending: true,
+        nullsFirst: true,
+      })
+      .order("name", { ascending: true });
+
     if (error) {
       console.error(error);
       return;
@@ -303,17 +311,19 @@ export async function init(ctx = {}) {
     const parents = new Map(
       (data || []).filter((c) => !c.parent_id).map((c) => [c.id, c.name])
     );
-    const seen = new Set();
+
     const rows = [];
+    const seen = new Set();
     (data || []).forEach((c) => {
-      const label = c.parent_id
-        ? `${parents.get(c.parent_id) || ""} > ${c.name}`
-        : c.name;
-      if (seen.has(label)) return;
-      seen.add(label);
-      rows.push({ id: c.id, label });
+      const parentName = c.parent?.name || parents.get(c.parent_id) || "";
+      const label = c.parent_id ? `${parentName} > ${c.name}` : c.name;
+      if (!seen.has(label)) {
+        seen.add(label);
+        rows.push({ id: c.id, label });
+      }
     });
     fillSelect(dom.ed.category, rows, "label");
+
     if (selectedId) dom.ed.category.value = selectedId;
   }
   function openModal() {
