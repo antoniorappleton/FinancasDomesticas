@@ -119,43 +119,178 @@ function setupDashboardModal(ds) {
 
 
   function renderTendencias() {
-    titleEl.textContent = "Tendências (12 meses)";
+    titleEl.textContent = "Tendências (12 meses + previsão próxima)";
+
+    const labels = [...(ds.labels12m || [])];
+    const inc = ds.income12m ? [...ds.income12m] : [];
+    const exp = ds.expense12m ? [...ds.expense12m].map(Math.abs) : [];
+    const sav = ds.savings12m ? [...ds.savings12m].map(Math.abs) : [];
+    const saldoReal =
+      ds.saldo12m && ds.saldo12m.length
+        ? [...ds.saldo12m]
+        : inc.map((_, i) => (inc[i] || 0) - (exp[i] || 0) - (sav[i] || 0));
+
+    // Paleta consistente (histórico cheio; previsão translúcida)
+    const col = {
+      inc: "rgba(16,185,129,0.85)", // verde
+      exp: "rgba(239,68,68,0.85)", // vermelho
+      sav: "rgba(59,130,246,0.85)", // azul
+      saldo: "rgba(99,102,241,1.00)", // violeta
+    };
+    const colF = {
+      inc: "rgba(16,185,129,0.28)",
+      exp: "rgba(239,68,68,0.25)",
+      sav: "rgba(59,130,246,0.22)",
+    };
+
+    // Previsão = média móvel (últimos 6, ajusta se quiseres)
+    const WINDOW = Math.min(6, inc.length);
+    const avg = (arr) => {
+      const n = Math.min(WINDOW, arr.length);
+      if (!n) return 0;
+      let s = 0;
+      for (let i = arr.length - n; i < arr.length; i++)
+        s += Number(arr[i] || 0);
+      return s / n;
+    };
+
+    const last = labels.length ? new Date(labels.at(-1) + "-01") : new Date();
+    const next = new Date(last.getFullYear(), last.getMonth() + 1, 1);
+    const pt = next
+      .toLocaleDateString("pt-PT", { month: "short", year: "2-digit" })
+      .replace(".", "");
+    const nextLabel = pt.charAt(0).toUpperCase() + pt.slice(1) + " *";
+
+    const incF = avg(inc);
+    const expF = avg(exp);
+    const savF = avg(sav);
+    const saldoF = incF - expF - savF;
+
+    // Construção dos datasets (histórico a cores; previsão translúcida)
+    const baseData = {
+      labels: [...labels, nextLabel],
+      datasets: [
+        {
+          type: "bar",
+          label: "Receitas",
+          data: [...inc, null],
+          backgroundColor: col.inc,
+          borderColor: col.inc,
+          borderWidth: 1,
+        },
+        {
+          type: "bar",
+          label: "Despesas",
+          data: [...exp, null],
+          backgroundColor: col.exp,
+          borderColor: col.exp,
+          borderWidth: 1,
+        },
+        {
+          type: "bar",
+          label: "Poupanças",
+          data: [...sav, null],
+          backgroundColor: col.sav,
+          borderColor: col.sav,
+          borderWidth: 1,
+        },
+
+        // barras previsão: mesma cor, mais ténues (só no último índice)
+        {
+          type: "bar",
+          label: "Receitas (prev.)",
+          data: Array(labels.length).fill(null).concat(incF),
+          backgroundColor: colF.inc,
+          borderColor: col.inc,
+          borderWidth: 2,
+        },
+        {
+          type: "bar",
+          label: "Despesas (prev.)",
+          data: Array(labels.length).fill(null).concat(expF),
+          backgroundColor: colF.exp,
+          borderColor: col.exp,
+          borderWidth: 2,
+        },
+        {
+          type: "bar",
+          label: "Poupanças (prev.)",
+          data: Array(labels.length).fill(null).concat(savF),
+          backgroundColor: colF.sav,
+          borderColor: col.sav,
+          borderWidth: 2,
+        },
+
+        // Linha do saldo: todo o histórico colorido; último segmento até ao ponto previsto é tracejado
+        {
+          type: "line",
+          label: "Saldo",
+          data: [...saldoReal, saldoF],
+          borderColor: col.saldo,
+          borderWidth: 2,
+          tension: 0.25,
+          fill: false,
+          // só o segmento final (último real -> previsão) fica tracejado
+          segment: {
+            borderDash: (ctx) =>
+              ctx.p0DataIndex >= labels.length - 1 ? [6, 4] : [],
+          },
+          // pontos discretos; destaca o ponto previsto
+          pointRadius: (ctx) => (ctx.dataIndex === labels.length ? 3 : 0),
+          pointHoverRadius: 4,
+          pointBackgroundColor: (ctx) =>
+            ctx.dataIndex === labels.length ? "#fff" : col.saldo,
+          pointBorderColor: col.saldo,
+        },
+      ],
+    };
+
     mount({
-      data: {
-        labels: ds.labels12m || [],
-        datasets: [
-          { type: "bar", label: "Receitas", data: ds.income12m || [] },
-          {
-            type: "bar",
-            label: "Despesas",
-            data: (ds.expense12m || []).map(Math.abs),
-          },
-          {
-            type: "bar",
-            label: "Poupanças",
-            data: (ds.savings12m || []).map(Math.abs),
-          },
-          {
-            type: "line",
-            label: "Saldo",
-            data: ds.saldo12m || [],
-            tension: 0.25,
-            borderWidth: 2,
-            fill: false,
-          },
-        ],
-      },
+      data: baseData,
       options: {
         responsive: true,
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
-        plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: toolMoney,
+        },
         scales: {
           x: { stacked: false },
           y: { ...axisMoney, beginAtZero: true },
         },
       },
     });
+
+    extraEl.innerHTML = `<div class="muted">
+    A linha a tracejado é previsão (média dos últimos ${WINDOW} meses).
+  </div>`;
+
+    // (Opcional) Fixas vs Variáveis previsto
+    const fixed = ds.fixed12m || [];
+    const variable = ds.variable12m || [];
+    if (fixed.length && variable.length) {
+      const avgFixed = avg(fixed),
+        avgVar = avg(variable);
+      const tot = avgFixed + avgVar || 1;
+      const pf = ((avgFixed / tot) * 100).toFixed(1);
+      const pv = ((avgVar / tot) * 100).toFixed(1);
+      const EUR = (v) =>
+        "€ " +
+        Number(v || 0).toLocaleString("pt-PT", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      extraEl.innerHTML += `
+      <div class="rpt-legend" style="margin-top:8px">
+        <div class="rpt-legend__item"><span style="flex:1">Fixas (prev.)</span><strong>${EUR(
+          avgFixed
+        )}</strong><span class="muted">&nbsp;(${pf}%)</span></div>
+        <div class="rpt-legend__item"><span style="flex:1">Variáveis (prev.)</span><strong>${EUR(
+          avgVar
+        )}</strong><span class="muted">&nbsp;(${pv}%)</span></div>
+      </div>`;
+    }
   }
 
   function renderFixVarMes() {
