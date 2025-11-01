@@ -327,7 +327,7 @@ export async function init({ outlet } = {}) {
       const { error } = await sb.from("transactions").insert([payload]);
       if (error) throw error;
 
-      toast("Transação registada ✅");
+      toast("Movimento registado ✅");
       ["tx-amount", "tx-desc", "tx-loc", "tx-notes"].forEach(
         (id) => $(id) && ($(id).value = "")
       );
