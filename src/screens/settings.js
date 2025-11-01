@@ -1447,6 +1447,30 @@ function renderMiniShelf(root=document) {
     y += 10;
     y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 16;
 
+    // === NOVO: Despesas por regularidade ===
+    ensureSpace(240 + 18);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Despesas por regularidade", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-regularity", M, y, W - 2 * M, 220) + 16;
+
+    // === NOVO: Top 6 categorias de despesa ===
+    ensureSpace(240 + 18);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Top 6 categorias de despesa", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M, 220) + 16;
+
+    // === NOVO: Taxa de esforço mensal ===
+    ensureSpace(240 + 18);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text("Taxa de esforço mensal", M, y);
+    y += 10;
+    y = canvasToPage("#rpt-effort", M, y, W - 2 * M, 220) + 16;
+
     // Página 2: Tabelas (Categorias + Resumo + Regularidade)
     footer();
     doc.addPage();
