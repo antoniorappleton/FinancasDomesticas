@@ -1230,10 +1230,7 @@ function renderMiniShelf(root=document) {
       insights.push(
         `Liquidez no fim do período: <strong>${money(lastLiq)}</strong>.`
       );
-      if (regSorted.length)
-        insights.push(
-          `Somatório por regularidade incluído (<strong>${regSorted.length}</strong> grupos).`
-        );
+      
       $("#rpt-insights") &&
         ($("#rpt-insights").innerHTML = insights
           .map((x) => `<li>${x}</li>`)
