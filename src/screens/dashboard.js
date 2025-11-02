@@ -2072,8 +2072,7 @@ async function dashFetchPortfoliosAgg(){
         )}<span class="muted">/ano</span></div>
         <div class="cat-avg">
           ${money(avgMes)}<span class="muted">/mês</span>
-          &nbsp;|&nbsp;
-          ${money(avgReg)}<span class="muted">/registo</span>
+          &nbsp;&nbsp;
         </div>
       </div>
     </div>`;
@@ -2104,7 +2103,7 @@ async function dashFetchPortfoliosAgg(){
       <p>· KPIs do mês corrent.</p>
       <p>· Análises Anuais e Mensais arrumados em mini cartões. Podem ser ocultados e repostos no screen Definições.</p>
       <p>· Cartão com as datas e despesas fixas agendadas com base nos últimos registos.</p>
-      <p>· Podem ser também consultado neste screen as despesas acumuladoas por ano/mês e média por registos.</p>
+      <p>· Podem ser também consultado neste screen as despesas acumuladoas por ano/mês.</p>
       <button class="close" type="button">Fechar</button>
     `;
     btn.onclick = () => pop.classList.toggle("hidden");
