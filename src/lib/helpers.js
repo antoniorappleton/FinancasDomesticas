@@ -99,8 +99,13 @@ export async function ensureChartStack() {
       );
     }
     // Register plugin if both are loaded
+    // Register plugin if both are loaded
     if (window.Chart && window.ChartDataLabels) {
       window.Chart.register(window.ChartDataLabels);
+      // Disable globally (user asked to remove values from points)
+      if (window.Chart.defaults.plugins) {
+         window.Chart.defaults.plugins.datalabels = { display: false };
+      }
     }
     chartStackLoaded = true;
   } catch (error) {

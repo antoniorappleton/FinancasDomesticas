@@ -2,15 +2,19 @@
    Design tokens
    ========================= */
 :root{
-  --bg:#f7f9fb; --surface:#fff; --text:#111827; --muted:#6b7280;
+  --bg:#f7f9fb; --surface:#fff; --text:#0f172a; --muted:#64748b;
   --green-900:#064e3b; --green-700:#047857; --green-600:#059669; --green-500:#10b981;
   --red-500:#ef4444; --red-100:#fee2e2;
   --blue-500:#3b82f6; --blue-100:#dbeafe;
-  --border:#e5e7eb; --ring:rgba(16,185,129,.25);
-  --shadow-card:0 8px 24px rgba(2,6,23,.06); --radius:14px;
+  --border:#e2e8f0; --ring:rgba(16,185,129,.25);
+  --shadow-card:0 4px 6px -1px rgba(0,0,0,.05), 0 2px 4px -1px rgba(0,0,0,.03); --radius:16px;
   --income:#16a34a; --expense:#ef4444; --savings:#2563eb; --balance:#065f46;
   --footer-grad: linear-gradient(180deg, var(--green-900), #0b7a5d);
-  --font-head: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Helvetica Neue", Arial;
+  
+  /* Fonts */
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-head: "Outfit", system-ui, -apple-system, sans-serif;
+  
   --maxw:1100px;
   --footer-h:64px;
 }
@@ -22,7 +26,12 @@
 html,body{ height:100% }
 body{
   margin:0; background:var(--bg); color:var(--text);
+  font-family: var(--font-body);
+  font-size: 15px; /* base um pouco maior que 14px */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+h1,h2,h3,h4,h5,h6{ font-family: var(--font-head); margin:0; line-height:1.2; letter-spacing:-0.015em; }
 a{ color:inherit; text-decoration:none }
 .hidden{ display:none !important }
 .visually-hidden{ position:absolute!important; width:1px; height:1px; clip:rect(1px,1px,1px,1px); overflow:hidden; white-space:nowrap }
@@ -42,7 +51,7 @@ a{ color:inherit; text-decoration:none }
 .brand{ display:flex; align-items:center; gap:12px }
 .brand__logo{ width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:rgba(255,255,255,.12); box-shadow:inset 0 0 0 1px rgba(255,255,255,.12) }
 .brand__text{ display:flex; flex-direction:column; justify-content:center; margin-left:8px }
-.brand__title{ font-weight:700; display:block; font-size:1.2em }
+.brand__title{ font-family:var(--font-head); font-weight:700; display:block; font-size:1.25em; letter-spacing:-0.025em }
 .brand__subtitle{ font-size:.9em; color:#e8e7e7; display:block }
 .top-nav{ display:flex; gap:10px }
 .top-nav__item{ color:#e8fffa; font-weight:600; font-size:14px; padding:8px 12px; border-radius:10px; opacity:.95 }
@@ -57,7 +66,12 @@ a{ color:inherit; text-decoration:none }
   min-height:calc(100svh - var(--footer-h));
 }
 .outlet{ max-width:var(--maxw); margin:0 auto }
-.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow-card); margin-bottom:14px }
+.card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:clamp(16px, 4vw, 24px); box-shadow:var(--shadow-card); margin-bottom:14px }
+.section-title{
+  font-family:var(--font-head); font-weight:700;
+  font-size:clamp(18px, 4vw, 22px);
+  margin-bottom:16px; color:var(--text);
+}
 
 /* =========================
    KPI
@@ -166,8 +180,12 @@ a{ color:inherit; text-decoration:none }
 /* =========================
    Form / Botões base
    ========================= */
-label{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px }
-input,select,textarea{ border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px; font:inherit }
+label{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; font-weight:500; font-size:14px; color:var(--muted) }
+input,select,textarea{
+  border:1px solid #cbd5e1; border-radius:12px; padding:12px 14px;
+  font-family:var(--font-body); font-size:16px; /* evita zoom no iOS */
+  transition: border-color .15s, box-shadow .15s;
+}
 textarea{ min-height:80px; resize:vertical }
 .btn{ border:1px solid #cbd5e1; padding:10px 12px; border-radius:10px; background:#fff; cursor:pointer }
 .btn--primary{ background:#065f46; color:#fff; border-color:#065f46 }
@@ -221,7 +239,7 @@ input[type="text"], input[type="number"], input[type="date"], select, textarea{
   box-shadow:0 24px 60px rgba(2,6,23,.25); padding:16px;
 }
 .modal__header{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:10px }
-.modal__title{ font-weight:700 }
+.modal__title{ font-family:var(--font-head); font-weight:700; font-size:clamp(18px, 4vw, 20px) }
 .modal__close{ background:transparent; border:0; font-size:22px; cursor:pointer }
 .badge-muted{ font-size:12px; color:#475569 }
 .row-note{ font-size:12px; color:#64748b }

@@ -42,7 +42,7 @@ const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
 
 // Versão estática (sem cache-buster dinâmico) para aproveitar a cache do SW
-const APPV = window.APP_VERSION || "v15";
+const APPV = window.APP_VERSION || "v17";
 
 const ROUTES = {
   "#/": {
