@@ -1810,39 +1810,58 @@ renderMiniShelf(outlet);
           return;
         try {
           const uid = await getUserId();
-          for (const r of rows) {
-            if (r.id === "uncat") continue;
+          
+          // Calcular totais globais
+          const totalProp = rows.reduce((acc, r) => acc + (r.id === "uncat" ? 0 : (Number(r.prop) || 0)), 0);
+          const monthlyProp = totalProp / 12;
 
-            const monthly = r.prop / 12;
+          // 1. Orçamento Mensal (Usando budget_cap + monthly_cap)
+          const { data: existingM } = await sb
+            .from("objectives")
+            .select("id")
+            .eq("type", "budget_cap")
+            .eq("title", "Orçamento Mensal (Global)")
+            .maybeSingle();
 
-            const { data: existing } = await sb
-              .from("objectives")
-              .select("id")
-              .eq("type", "budget_cap")
-              .eq("category_id", r.id)
-              .eq("is_active", true)
-              .maybeSingle();
-
-            if (existing) {
-              await sb
-                .from("objectives")
-                .update({
-                  monthly_cap: monthly,
-                  title: `Orçamento: ${r.name}`,
-                })
-                .eq("id", existing.id);
-            } else {
-              await sb.from("objectives").insert({
-                user_id: uid,
-                title: `Orçamento: ${r.name}`,
-                type: "budget_cap",
-                category_id: r.id,
-                monthly_cap: monthly,
-                is_active: true,
-              });
-            }
+          const payloadM = {
+            user_id: uid,
+            title: "Orçamento Mensal (Global)",
+            type: "budget_cap",
+            category_id: null,
+            monthly_cap: monthlyProp,
+            target_amount: null,
+            is_active: true,
+          };
+          if (existingM) {
+            await sb.from("objectives").update(payloadM).eq("id", existingM.id);
+          } else {
+            await sb.from("objectives").insert(payloadM);
           }
-          alert("Orçamento guardado (Metas atualizadas)!");
+
+          // 2. Orçamento Anual (Usando budget_cap + target_amount para diferenciar)
+          const { data: existingY } = await sb
+            .from("objectives")
+            .select("id")
+            .eq("type", "budget_cap")
+            .eq("title", "Orçamento Anual (Global)")
+            .maybeSingle();
+
+          const payloadY = {
+            user_id: uid,
+            title: "Orçamento Anual (Global)",
+            type: "budget_cap",
+            category_id: null,
+            monthly_cap: null,
+            target_amount: totalProp,
+            is_active: true,
+          };
+          if (existingY) {
+            await sb.from("objectives").update(payloadY).eq("id", existingY.id);
+          } else {
+            await sb.from("objectives").insert(payloadY);
+          }
+
+          alert("Orçamento Global guardado com sucesso!");
           budOverlay?.classList.add("hidden");
         } catch (e) {
           alert("Erro ao guardar: " + e.message);

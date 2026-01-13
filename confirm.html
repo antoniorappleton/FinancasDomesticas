@@ -26,11 +26,11 @@
     .ok{color:var(--ok); font-weight:700}
     .err{color:var(--err); font-weight:700}
     .hint{color:#475569; font-size:.9rem}
-    .btn{
-      display:inline-block; padding:10px 14px; border-radius:10px;
-      background:var(--green); color:#fff; text-decoration:none; font-weight:700;
-      border:1px solid rgba(255,255,255,.12);
+    input{
+      border:1px solid #cbd5e1; border-radius:10px; padding:10px 12px;
+      font:inherit; width:100%; box-sizing:border-box; margin-bottom:10px;
     }
+    input:focus{outline:2px solid var(--green); outline-offset:2px}
   </style>
 </head>
 <body>
@@ -54,7 +54,6 @@
       <div class="ok">A redirecionar para o dashboard…</div>
       <a class="btn" href="./index.html#/">Ir agora</a>
     `;
-    // location.replace evita que o "back" volte a esta página de loading
     setTimeout(()=>location.replace("./index.html#/?confirmed=1"), 900);
   };
   const errUI = (err) => {
@@ -64,6 +63,30 @@
       <div class="hint">Se o link já tiver sido usado, basta entrares na app.</div>
       <a class="btn" href="./index.html#/">Voltar à app</a>
     `;
+  };
+
+  const recoverUI = () => {
+    box.innerHTML = `
+      <div class="title">Definir Nova Password</div>
+      <div class="hint">Escolhe uma nova password para a tua conta.</div>
+      <form id="rec-form" style="margin-top:10px;display:grid;gap:10px">
+        <input type="password" id="new-pw" placeholder="Nova password" required minlength="6">
+        <button type="submit" class="btn">Guardar Password</button>
+      </form>
+    `;
+    document.getElementById("rec-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById("new-pw").value;
+      if (!newPassword) return;
+      try {
+        box.innerHTML = `<div class="hint">A guardar...</div>`;
+        const { error } = await sb.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        okUI("Password alterada com sucesso!");
+      } catch (err) {
+        errUI(err);
+      }
+    };
   };
 
   // ✅ TESTE rápido manual: /confirm.html?ok=1
@@ -81,13 +104,15 @@
       }
 
       // 2) Tokens no fragmento #access_token=…&refresh_token=…
-      // (alguns templates antigos/magic link podem vir assim)
       const hashParams = new URLSearchParams(location.hash.slice(1));
       const at = hashParams.get("access_token");
       const rt = hashParams.get("refresh_token");
       if (at && rt) {
         const { error } = await sb.auth.setSession({ access_token: at, refresh_token: rt });
         if (error) throw error;
+        // Check if we are in recovery mode via hash? Usually recovery comes via type param in OTP verify, 
+        // but if we are just setting session from magic link, we might check user intent logic if needed.
+        // For now, treat as login success.
         return okUI();
       }
 
@@ -97,11 +122,15 @@
       if (token_hash && type) {
         const { error } = await sb.auth.verifyOtp({ type, token_hash });
         if (error) throw error;
+        
+        if (type === "recovery") {
+          return recoverUI();
+        }
+
         return okUI(type === "signup" ? "Email confirmado ✔" : "Ligação validada ✔");
       }
 
       // Se não detetámos nenhum dos formatos…
-      // Mas só lançamos erro se NÃO for uma simulação manual
       if (url.searchParams.get("ok") !== "1") {
          throw new Error("Link inválido ou expirado.");
       }

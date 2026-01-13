@@ -139,6 +139,32 @@ export async function init({ sb, outlet } = {}) {
     return { total, byCat };
   }
 
+  async function computeYearExpenseTotals() {
+    const EXPENSE = await getTypeId("EXPENSE");
+    const today = new Date();
+    const from = `${today.getFullYear()}-01-01`; // start of year
+    const to = `${today.getFullYear() + 1}-01-01`; // start of next year
+
+    const { data, error } = await sb
+      .from("transactions")
+      .select("amount,category_id")
+      .eq("type_id", EXPENSE)
+      .gte("date", from)
+      .lt("date", to);
+
+    if (error) return { total: 0, byCat: new Map() };
+
+    const byCat = new Map();
+    let total = 0;
+    for (const r of data || []) {
+      const v = Number(r.amount || 0);
+      total += v;
+      const k = r.category_id ?? "uncat";
+      byCat.set(k, (byCat.get(k) || 0) + v);
+    }
+    return { total, byCat };
+  }
+
   //======== Carteiras Poupanças acumuladas para meta =========
 
   function monthKeysBetween(fromISO, toISO){
@@ -246,9 +272,16 @@ export async function init({ sb, outlet } = {}) {
 
 
   // antes: async function computeSpentForGoal(o, monthAgg) { ... }
-  function computeSpentForGoal(o, monthAgg) {
+  // Atualizado para suportar Orçamentos Globais (hack via campos)
+  function computeSpentForGoal(o, monthAgg, yearAgg) {
     if (o.type !== "budget_cap") return 0;
-    if (!monthAgg) return 0; // segurança
+
+    // Se tiver target_amount mas não tiver monthly_cap, assumimos ANUAL
+    if (Number(o.target_amount) > 0 && !Number(o.monthly_cap)) {
+       return yearAgg ? yearAgg.total : 0;
+    }
+
+    if (!monthAgg) return 0; 
     if (!o.category_id) return monthAgg.total; // teto geral do mês
     return Number(monthAgg.byCat.get(o.category_id) || 0);
   }
@@ -442,17 +475,31 @@ document.getElementById("pf-del")?.addEventListener("click", async () => {
     }
 
     const monthAgg = await computeMonthExpenseTotals();
+    const yearAgg = await computeYearExpenseTotals();
 
     const cardsArr = await Promise.all((objs || []).map(async (o) => {
       let secondary = "";
       let progress = 0, current = 0, goal = 0, ratio = 0;
 
       if (o.type === "budget_cap") {
-        current = computeSpentForGoal(o, monthAgg);
-        goal = Number(o.monthly_cap || 0);
+        current = computeSpentForGoal(o, monthAgg, yearAgg);
+        
+        const isYearly = Number(o.target_amount) > 0 && !Number(o.monthly_cap);
+
+        if (isYearly) {
+           goal = Number(o.target_amount || 0);
+        } else {
+           goal = Number(o.monthly_cap || 0);
+        }
+
         ratio = goal ? current / goal : 0;
         progress = Math.min(100, ratio * 100);
-        secondary = `Teto: ${money(goal)} · Gasto: ${money(current)}`;
+        
+        let label = "Teto";
+        if (isYearly) label = "Anual";
+        else if (!o.category_id) label = "Mensal";
+
+        secondary = `${label}: ${money(goal)} · Gasto: ${money(current)}`;
 
       } else if (o.type === "savings_goal") {
           const manual = Number(o.current_amount || 0);
@@ -467,7 +514,8 @@ document.getElementById("pf-del")?.addEventListener("click", async () => {
       }
 
       const color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
-      const warn = o.type === "budget_cap" && goal && current > goal ? "color:#b91c1c" : "";
+      const isBudget = o.type.startsWith("budget_");
+      const warn = isBudget && goal && current > goal ? "color:#b91c1c" : "";
       const due = o.due_date ? `<span class="row-note">Limite: ${o.due_date}</span>` : "";
 
       // 👇 trocamos o ícone aqui na secção 2)
