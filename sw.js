@@ -1,5 +1,5 @@
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = (self.APP_VERSION || "v12") + "-" + Date.now();
+const VERSION = "v12";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -17,26 +17,31 @@ const APP_SHELL = [
   withBase("/wisebudget_bk_wt.png"),
   withBase("/icon-192.png"),
   withBase("/icon-512.png"),
+  withBase("/confirm.html"),
 
   // screens (HTML)
   withBase("/src/screens/dashboard.html"),
-  withBase("/src/screens/transactions.html"),
+  withBase("/src/screens/Movimentos.html"),
   withBase("/src/screens/nova.html"),
   withBase("/src/screens/settings.html"),
   withBase("/src/screens/categories.html"),
-  withBase("/src/screens/objetivos.html"),
+  withBase("/src/screens/Metas.html"),
 
   // screens (JS)
   withBase("/src/screens/dashboard.js"),
-  withBase("/src/screens/transactions.js"),
+  withBase("/src/screens/Movimentos.js"),
   withBase("/src/screens/nova.js"),
   withBase("/src/screens/settings.js"),
   withBase("/src/screens/categories.js"),
-  withBase("/src/screens/objetivos.js"),
+  withBase("/src/screens/Metas.js"),
 
   // módulos locais
   withBase("/src/screens/export-template.js"),
   withBase("/src/lib/auth.js"),
+  withBase("/src/lib/repo.js"),
+  withBase("/src/lib/helpers.js"),
+  withBase("/src/lib/categories-crud.js"),
+  withBase("/src/lib/validators.js")
 ];
 
 // Helpers
@@ -76,6 +81,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   if (!isHttp(req.url)) return;
+  if (url.searchParams.has("sw") && url.searchParams.get("sw") === "off") return;
   if (isRealtime(req.url) || req.headers.has("range")) return;
 
   // corrige typo /scr/ → /src/

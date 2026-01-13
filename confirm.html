@@ -54,7 +54,8 @@
       <div class="ok">A redirecionar para o dashboard…</div>
       <a class="btn" href="./index.html#/">Ir agora</a>
     `;
-    setTimeout(()=>location.href="./index.html#/?confirmed=1", 900);
+    // location.replace evita que o "back" volte a esta página de loading
+    setTimeout(()=>location.replace("./index.html#/?confirmed=1"), 900);
   };
   const errUI = (err) => {
     box.innerHTML = `
@@ -100,7 +101,10 @@
       }
 
       // Se não detetámos nenhum dos formatos…
-      throw new Error("Link inválido ou expirado.");
+      // Mas só lançamos erro se NÃO for uma simulação manual
+      if (url.searchParams.get("ok") !== "1") {
+         throw new Error("Link inválido ou expirado.");
+      }
     } catch (err) {
       console.error(err);
       errUI(err);

@@ -40,7 +40,9 @@ async function waitForSupabase(maxMs = 3000) {
 /* ===================== Router config ===================== */
 const outlet = document.getElementById("outlet");
 const footer = document.getElementById("app-footer");
-const APPV = (window.APP_VERSION || "v12") + "-" + Date.now();
+
+// Versão estática (sem cache-buster dinâmico) para aproveitar a cache do SW
+const APPV = window.APP_VERSION || "v15";
 
 const ROUTES = {
   "#/": {
@@ -48,7 +50,7 @@ const ROUTES = {
     js: "/src/screens/dashboard.js",
     showFooter: true,
   },
-  "#/Movimentos": {
+  "#/movimentos": {
     file: "/src/screens/Movimentos.html",
     js: "/src/screens/Movimentos.js",
     showFooter: true,
@@ -68,7 +70,7 @@ const ROUTES = {
     js: "/src/screens/categories.js",
     showFooter: true,
   },
-  "#/Metas": {
+  "#/metas": {
     file: "/src/screens/Metas.html",
     js: "/src/screens/Metas.js",
     showFooter: true,
@@ -77,14 +79,17 @@ const ROUTES = {
 
 function normalizeRoute(hash) {
   if (!hash || hash === "#" || hash === "#/") return "#/";
-  const clean = hash.split("?")[0];
+  // Normaliza para minúsculas para garantir match com as chaves de ROUTES
+  const clean = hash.split("?")[0].toLowerCase();
   return ROUTES[clean] ? clean : "#/";
 }
 
 function setActiveTab() {
   const hash = normalizeRoute(location.hash || "#/");
+  // Atualiza estado ativo no menu (footer)
   document.querySelectorAll(".foot-item").forEach((a) => {
-    const href = a.getAttribute("href");
+    // Compara o href (ex. #/movimentos) com o hash normalizado
+    const href = a.getAttribute("href").toLowerCase();
     a.toggleAttribute("aria-current", href === hash);
   });
 }
@@ -95,9 +100,11 @@ async function loadScreen(route) {
   await new Promise((res) => setTimeout(res, 90));
 
   try {
-    // carrega HTML (sem cache) usando base path
+    // carrega HTML (sem cache-buster aleatório, usa versão da app)
     const htmlURL = `${resolveUrl(r.file)}?v=${APPV}`;
-    const res = await fetch(htmlURL, { cache: "no-store" });
+    const res = await fetch(htmlURL); 
+    // Nota: removemos cache: "no-store" para permitir que o SW sirva a versão cacheada se existir
+    
     if (!res.ok)
       throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
     outlet.innerHTML = await res.text();

@@ -288,6 +288,34 @@ export const transactions = {
     const { error } = await window.sb.from("transactions").delete().eq("id", id);
     if (error) throw error;
   },
+
+  async getFixedExpensesByYear(year) {
+    const type_id = await idByCode("transaction_types", "EXPENSE");
+    const start = `${year}-01-01`;
+    const end = `${year}-12-31`;
+
+    const { data, error } = await window.sb
+      .from("transactions")
+      .select(`
+        id, date, amount, category_id, description, expense_nature, regularity_id,
+        categories(name),
+        regularities(code)
+      `)
+      .eq("type_id", type_id)
+      .gte("date", start)
+      .lte("date", end);
+
+    if (error) throw error;
+
+    return (data || []).filter((t) => {
+      const isFixed = t.expense_nature === "fixed";
+      const isRecurring =
+        t.regularity_id &&
+        t.regularities?.code &&
+        t.regularities.code !== "ONCE";
+      return isFixed || isRecurring;
+    });
+  }
 };
 
 export const dashboard = {

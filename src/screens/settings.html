@@ -419,41 +419,62 @@
   </div>
 </section>
 
-<script>
-/* Resolve o logo do modal (tenta caminhos comuns e tem fallback SVG) */
-(function resolveModalLogo(){
-  const img = document.getElementById('app-logo-img');
-  if (!img) return;
 
-  const CANDIDATES = [
-    './wisebudget_bk_wt.png',
-    '/wisebudget_bk_wt.png',
-    './assets/wisebudget_bk_wt.png',
-    '/assets/wisebudget_bk_wt.png',
-  ];
 
-  const BUSTER = ''; // podes pôr '?v=2025-10-03' se precisares forçar refresh
 
-  const tryOne = (u) =>
-    fetch(u + BUSTER, { cache: 'no-store' })
-      .then(r => r.ok ? u + BUSTER : null)
-      .catch(() => null);
 
-  (async () => {
-    for (const u of CANDIDATES) {
-      const ok = await tryOne(u);
-      if (ok) { img.src = ok; return; }
-    }
-    // fallback
-  const svg = encodeURIComponent(`
-    <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
-      <rect width='100%' height='100%' fill='black'/>
-      <text x='50%' y='56%' fill='white' font-size='36' font-family='Helvetica, Arial, sans-serif' font-weight='700' text-anchor='middle'>W</text>
-    </svg>`);
-    img.src = 'data:image/svg+xml,' + svg;
-  })();
-})();
-</script>
+<!-- ===== ORÇAMENTO DE ESTADO ===== -->
+<section class="card">
+  <h2 class="section-title">Orçamento de Estado</h2>
+  <p>Gera um orçamento anual com base nas tuas despesas fixas do ano anterior.</p>
+  <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+    <label style="flex:1;max-width:150px">
+      Ano Alvo
+      <input id="bud-target-year" type="number" min="2020" max="2100" step="1" />
+    </label>
+    <button id="btn-budget-open" class="btn btn--primary" style="margin-top:14px">Gerar Orçamento</button>
+  </div>
+</section>
+
+<!-- ===== MODAL ORÇAMENTO ===== -->
+<div id="budget-overlay" class="hidden rpt-overlay" aria-hidden="true" tabindex="-1">
+  <div class="rpt-modal" style="width:min(800px,92vw)">
+    <div class="rpt-modal-header" style="display:flex;justify-content:space-between;align-items:center">
+      <h2 id="bud-title">Orçamento de Estado</h2>
+      <button id="bud-close" class="rpt-close" aria-label="Fechar">×</button>
+    </div>
+    
+    <div class="rpt-content" style="padding-top:10px">
+      <div id="bud-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;text-align:center">
+         <!-- Summary populated by JS -->
+      </div>
+      
+      <div class="rpt-table-wrap">
+        <table id="bud-table" style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:2px solid #ddd;text-align:left">
+              <th style="padding:8px">Categoria</th>
+              <th style="padding:8px;text-align:right">Base (Ano Ant.)</th>
+              <th style="padding:8px;text-align:right">Proposto</th>
+              <th style="padding:8px;text-align:center">Fixar</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="alert warn hidden" id="bud-warn" style="margin-top:10px;font-size:13px"></div>
+
+      <div class="actions" style="margin-top:20px;justify-content:flex-end;display:flex;gap:10px">
+        <button id="bud-cancel" class="btn">Cancelar</button>
+        <button id="bud-save" class="btn btn--primary">Guardar Orçamento</button>
+      </div>
+      <p class="row-note" style="text-align:right;margin-top:5px">
+        Guardar cria metas mensais ("budget_cap") para estas categorias.
+      </p>
+    </div>
+  </div>
+</div>
 
 
 <!-- ===== MANUTENÇÃO DE DADOS ===== -->

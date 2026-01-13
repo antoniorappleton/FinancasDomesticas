@@ -475,11 +475,18 @@ document.getElementById("pf-del")?.addEventListener("click", async () => {
         <div class="card" data-id="${o.id}">
           <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
             <div class="cat-card__title"><strong>${o.title}</strong></div>
-            <button class="icon-btn" data-edit="${o.id}" title="Editar" aria-label="Editar">
-              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/>
-              </svg>
-            </button>
+            <div style="display:flex;gap:4px">
+              <button class="icon-btn" data-edit="${o.id}" title="Editar" aria-label="Editar">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/>
+                </svg>
+              </button>
+              <button class="icon-btn" data-delete="${o.id}" title="Eliminar" aria-label="Eliminar" style="color:#ef4444">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
           </div>
           <div class="cat-card__subtitle" style="${warn}">${secondary}</div>
           <div style="margin-top:8px;background:#f1f5f9;border-radius:999px;height:8px;overflow:hidden">
@@ -500,6 +507,18 @@ document.getElementById("pf-del")?.addEventListener("click", async () => {
         btn.addEventListener("click", () =>
           openEdit(btn.getAttribute("data-edit"))
         )
+      );
+    // botões eliminar (X)
+    $("#obj-list")
+      .querySelectorAll("[data-delete]")
+      .forEach((btn) =>
+        btn.addEventListener("click", async () => {
+           const id = btn.getAttribute("data-delete");
+           if(!confirm("Tem a certeza que deseja eliminar esta meta?")) return;
+           const { error } = await sb.from("objectives").delete().eq("id", id);
+           if(error) return alert("Erro ao eliminar: " + error.message);
+           await refreshList();
+        })
       );
 
     // resumo

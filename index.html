@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-PT">
   <head>
-    <script>window.APP_VERSION = "v12";</script>
+    <script>window.APP_VERSION = "v15";</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
@@ -9,6 +9,60 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <title>Wisebudget® — Gestão Doméstica</title>
 
+    <!-- Protocol Check & Loader -->
+    <script>
+      (function() {
+        if (window.location.protocol === "file:") {
+          // =========================
+          // MODO FICHEIRO (Bloqueio UI)
+          // =========================
+          // Não carregamos main.js nem manifest.
+          // Apenas mostramos o aviso quando o corpo estiver pronto.
+          
+          window.addEventListener("DOMContentLoaded", () => {
+             document.body.innerHTML = `
+              <div style="
+                position:fixed;top:0;left:0;right:0;bottom:0;
+                background:#111;color:#fff;z-index:99999;
+                display:flex;flex-direction:column;align-items:center;justify-content:center;
+                font-family:system-ui,sans-serif;text-align:center;padding:20px;
+              ">
+                <h1 style="color:#ef4444;margin-bottom:16px">⚠️ Modo de ficheiro detetado</h1>
+                <p style="font-size:18px;line-height:1.6;max-width:500px">
+                  Esta aplicação utiliza Módulos ES e Service Workers, que não funcionam diretamente do disco por segurança do browser.
+                </p>
+                <div style="background:#334155;padding:16px;border-radius:8px;margin-top:24px;font-family:monospace;font-size:16px">
+                  npm run dev
+                </div>
+                <p style="margin-top:16px;color:#94a3b8">Execute o comando acima ou faça <strong style="color:#fff">duplo clique no ficheiro run.bat</strong> na pasta do projeto.</p>
+              </div>
+            `;
+          });
+          
+          // Aviso na consola (sem throw Error para não parar o parsing do body)
+          console.warn("Aplicação em modo de ficheiro. Scripts principais não foram carregados.");
+          
+        } else {
+          // =========================
+          // MODO SERVIDOR (Normal)
+          // =========================
+          
+          // 1. Injeta Manifest
+          const link = document.createElement("link");
+          link.rel = "manifest";
+          link.href = "./manifest.json?v=12";
+          document.head.appendChild(link);
+
+          // 2. Injeta main.js (module)
+          // O fazemos no DOMContentLoaded ou defer para garantir ordem, mas como é module é defer por defeito.
+          const script = document.createElement("script");
+          script.type = "module";
+          script.src = "./main.js";
+          document.head.appendChild(script);
+        }
+      })();
+    </script>
+    
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
     <script>
       (function () {
@@ -33,7 +87,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./styles.css" />
-    <link rel="manifest" href="./manifest.json?v=12" />
+    <!-- Manifest inserido dinamicamente via JS acima -->
   </head>
   <body>
     <!-- Splash mínimo 3s -->
@@ -186,7 +240,7 @@
 
     <!-- Service Worker -->
     <script>
-      if ("serviceWorker" in navigator) {
+      if ("serviceWorker" in navigator && !window.location.protocol.includes("file")) {
         navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(console.error);
       }
     </script>
@@ -224,14 +278,12 @@
       </button>
       <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
         <button class="fab-item" data-to="#/" aria-label="Dashboard"><svg><use href="#i-home"/></svg><span class="fab-label">Dashboard</span></button>
-        <button class="fab-item" data-to="#/Metas" aria-label="Metas"><svg><use href="#i-target"/></svg><span class="fab-label">Metas</span></button>
-        <button class="fab-item" data-to="#/Movimentos" aria-label="Movimentos"><svg><use href="#i-receipt"/></svg><span class="fab-label">Movimentos</span></button>
+        <button class="fab-item" data-to="#/metas" aria-label="Metas"><svg><use href="#i-target"/></svg><span class="fab-label">Metas</span></button>
+        <button class="fab-item" data-to="#/movimentos" aria-label="Movimentos"><svg><use href="#i-receipt"/></svg><span class="fab-label">Movimentos</span></button>
         <button class="fab-item" data-to="#/new" aria-label="Nova"><svg><use href="#i-plus"/></svg><span class="fab-label">Nova</span></button>
         <button class="fab-item" data-to="#/settings" aria-label="Definições"><svg><use href="#i-cog"/></svg><span class="fab-label">Definições</span></button>
       </div>
     </div>
-
-    <!-- Router/App -->
-    <script type="module" src="./main.js"></script>
+    
   </body>
 </html>

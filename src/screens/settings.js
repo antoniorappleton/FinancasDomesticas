@@ -1,5 +1,6 @@
 // src/screens/settings.js
 
+import { repo } from "../lib/repo.js";
 import { exportImportTemplate } from "./export-template.js";
 
 export async function init({ sb, outlet } = {}) {
@@ -1616,35 +1617,21 @@ function renderMiniShelf(root=document) {
   });
 
   // Alterar palavra-passe (re-autentica opcionalmente com a atual)
-  $("#btn-change-pw")?.addEventListener("click", async () => {
-    const curr = $("#pw-current")?.value || "";
-    const next = $("#pw-new")?.value || "";
-    const conf = $("#pw-confirm")?.value || "";
+  $("#btn-change-pass")?.addEventListener("click", async () => {
+    const next = $("#set-new-pass")?.value || "";
+    const conf = $("#set-new-pass-2")?.value || "";
 
     if (!next || next.length < 8)
       return alert("A nova palavra-passe deve ter pelo menos 8 caracteres.");
     if (next !== conf) return alert("As novas palavras-passe não coincidem.");
 
     try {
-      const { data } = await sb.auth.getUser();
-      const email = data?.user?.email;
-      if (!email) throw new Error("Sessão inválida.");
-
-      if (curr) {
-        const { error: reErr } = await sb.auth.signInWithPassword({
-          email,
-          password: curr,
-        });
-        if (reErr) throw new Error("Palavra-passe atual incorreta.");
-      }
-
       const { error } = await sb.auth.updateUser({ password: next });
       if (error) throw error;
 
-      $("#pw-current") && ($("#pw-current").value = "");
-      $("#pw-new") && ($("#pw-new").value = "");
-      $("#pw-confirm") && ($("#pw-confirm").value = "");
-      alert("✅ Palavra-passe atualizada com sucesso.");
+      if ($("#set-new-pass")) $("#set-new-pass").value = "";
+      if ($("#set-new-pass-2")) $("#set-new-pass-2").value = "";
+      alert("Alteração feita com sucesso.");
     } catch (e) {
       alert(e?.message || "Não foi possível alterar a palavra-passe.");
     }
@@ -1693,4 +1680,183 @@ function renderMiniShelf(root=document) {
 // ... resto do init de settings (importação CSV, relatórios, etc.) 
 renderMiniShelf(outlet);
 
+  // ========= ORÇAMENTO DE ESTADO =========
+  const budOverlay = $("#budget-overlay");
+  const budClose = $("#bud-close");
+  const budTargetYear = $("#bud-target-year");
+  const budOpenBtn = $("#btn-budget-open");
+
+  if (budTargetYear) budTargetYear.value = new Date().getFullYear() + 1;
+
+  async function calculateBudget() {
+    const targetY = Number(budTargetYear?.value || new Date().getFullYear() + 1);
+    const baseY = targetY - 1;
+    const titleEl = $("#bud-title");
+    if (titleEl) titleEl.textContent = `Orçamento de Estado ${targetY}`;
+
+    let expenses = [];
+    try {
+      expenses = await repo.transactions.getFixedExpensesByYear(baseY);
+    } catch (e) {
+      alert("Erro a carregar despesas: " + e.message);
+      return;
+    }
+
+    // Group by category
+    const cats = new Map();
+    let baseTotal = 0;
+
+    for (const t of expenses) {
+      const cid = t.category_id || "uncat";
+      const cname = t.categories?.name || "(Sem Categoria)";
+      const val = Number(t.amount || 0);
+
+      if (!cats.has(cid))
+        cats.set(cid, {
+          id: cid,
+          name: cname,
+          base: 0,
+          prop: 0,
+          locked: false,
+        });
+      const c = cats.get(cid);
+      c.base += val;
+      baseTotal += val;
+    }
+
+    // Initial Proposed = Base
+    for (const c of cats.values()) {
+      c.prop = c.base;
+    }
+
+    // Sort logic handled in render but convenient to have list
+    const rows = Array.from(cats.values());
+
+    renderBudgetTable(rows, baseTotal);
+    budOverlay?.classList.remove("hidden");
+  }
+
+  function renderBudgetTable(rows, baseTotal) {
+    const tbody = $("#bud-table tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+
+    rows.sort((a, b) => b.base - a.base).forEach((r) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+            <td style="padding:8px">${r.name}</td>
+            <td style="padding:8px;text-align:right">${money(r.base)}</td>
+            <td style="padding:8px;text-align:right">
+                <input type="number" step="0.01" value="${r.prop.toFixed(2)}" 
+                       style="width:100px;text-align:right;border:1px solid #ccc;border-radius:4px"
+                       ${r.locked ? "disabled" : ""}
+                       data-cid="${r.id}">
+            </td>
+            <td style="padding:8px;text-align:center">
+                <input type="checkbox" ${
+                  r.locked ? "checked" : ""
+                } data-lock="${r.id}">
+            </td>
+        `;
+
+      const input = tr.querySelector("input[type=number]");
+      const lock = tr.querySelector("input[type=checkbox]");
+
+      input.addEventListener("change", (e) => {
+        r.prop = Number(e.target.value);
+        updateBudgetSummary(rows, baseTotal);
+      });
+
+      lock.addEventListener("change", (e) => {
+        r.locked = e.target.checked;
+        input.disabled = r.locked;
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    updateBudgetSummary(rows, baseTotal);
+  }
+
+  function updateBudgetSummary(rows, baseTotal) {
+    const propTotal = rows.reduce((s, r) => s + r.prop, 0);
+    const diff = propTotal - baseTotal;
+    const diffPct = baseTotal ? (diff / baseTotal) * 100 : 0;
+    const color = diff > 0 ? "#ef4444" : "#22c55e";
+
+    const summary = $("#bud-summary");
+    if (summary) {
+      summary.innerHTML = `
+        <div class="rpt-kpi"><div>Ano Base (${
+          $("#bud-target-year").value - 1
+        })</div><strong>${money(baseTotal)}</strong></div>
+        <div class="rpt-kpi"><div>Orçamento (${
+          $("#bud-target-year").value
+        })</div><strong>${money(propTotal)}</strong></div>
+        <div class="rpt-kpi"><div>Variação</div><strong style="color:${color}">${
+        diff >= 0 ? "+" : ""
+      }${diffPct.toFixed(1)}% (${money(diff)})</strong></div>
+      `;
+    }
+
+    const saveBtn = $("#bud-save");
+    if (saveBtn) {
+      saveBtn.onclick = async () => {
+        if (
+          !confirm(
+            "Isto irá criar/atualizar objetivos (tetos mensais) para estas categorias. Continuar?"
+          )
+        )
+          return;
+        try {
+          const uid = await getUserId();
+          for (const r of rows) {
+            if (r.id === "uncat") continue;
+
+            const monthly = r.prop / 12;
+
+            const { data: existing } = await sb
+              .from("objectives")
+              .select("id")
+              .eq("type", "budget_cap")
+              .eq("category_id", r.id)
+              .eq("is_active", true)
+              .maybeSingle();
+
+            if (existing) {
+              await sb
+                .from("objectives")
+                .update({
+                  monthly_cap: monthly,
+                  title: `Orçamento: ${r.name}`,
+                })
+                .eq("id", existing.id);
+            } else {
+              await sb.from("objectives").insert({
+                user_id: uid,
+                title: `Orçamento: ${r.name}`,
+                type: "budget_cap",
+                category_id: r.id,
+                monthly_cap: monthly,
+                is_active: true,
+              });
+            }
+          }
+          alert("Orçamento guardado (Metas atualizadas)!");
+          budOverlay?.classList.add("hidden");
+        } catch (e) {
+          alert("Erro ao guardar: " + e.message);
+        }
+      };
+    }
+  }
+
+  budOpenBtn?.addEventListener("click", calculateBudget);
+  budClose?.addEventListener("click", () =>
+    budOverlay?.classList.add("hidden")
+  );
+  $("#bud-cancel")?.addEventListener("click", () =>
+    budOverlay?.classList.add("hidden")
+  );
 }
+
