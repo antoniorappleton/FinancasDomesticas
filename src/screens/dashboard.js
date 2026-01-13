@@ -6,6 +6,19 @@
 // - Botão colapsar com SVG inline
 // - Mini-card "Gasto diário" azul (acumulado) e rosa (previsão)
 // -----------------------------------------------------------------------------
+import {
+  money,
+  pad2,
+  ymd,
+  movingAverage,
+  monthKeysBetween,
+  palette,
+  CHART_COLORS,
+  axisMoney,
+  toolMoney,
+  ensureChartStack,
+} from "../lib/helpers.js";
+import { repo } from "../lib/repo.js";
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds) {
@@ -37,30 +50,6 @@ function setupDashboardModal(ds) {
     if (e.key === "Escape" && !modal.hidden) close();
   });
 
-  const EUR = (v) =>
-    "€ " +
-    Number(v || 0).toLocaleString("pt-PT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  const axisMoney = { ticks: { callback: (v) => EUR(v) } };
-  const parsedValue = (ctx) => {
-    const ds = ctx.chart?.data?.datasets?.[ctx.datasetIndex] || {};
-    const ix = ds.indexAxis || ctx.chart?.options?.indexAxis || "x";
-    if (ctx.parsed && typeof ctx.parsed === "object") {
-      return ix === "y" ? ctx.parsed.x : ctx.parsed.y;
-    }
-    return ctx.parsed ?? 0;
-  };
-  const toolMoney = {
-    callbacks: {
-      label: (ctx) => {
-        const lbl = ctx.dataset?.label ? `${ctx.dataset.label}: ` : "";
-        return lbl + EUR(parsedValue(ctx));
-      },
-    },
-  };
-
   const mount = (cfg) => {
     if (chart) chart.destroy();
     chart = new Chart(canvas.getContext("2d"), cfg);
@@ -68,55 +57,54 @@ function setupDashboardModal(ds) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-  titleEl.textContent = "Cashflow anual (12 meses)";
+    titleEl.textContent = "Cashflow anual (12 meses)";
 
-  const labels = ds.labels12m || [];
-  const income  = ds.income12m  || [];
-  const expense = (ds.expense12m || []).map(Math.abs);
-  const savings = (ds.savings12m || []).map(Math.abs);
+    const labels = ds.labels12m || [];
+    const income = ds.income12m || [];
+    const expense = (ds.expense12m || []).map(Math.abs);
+    const savings = (ds.savings12m || []).map(Math.abs);
 
-  // net por mês: Receitas - (Despesas + Poupanças)
-  const netMonthly = labels.map((_, i) =>
-    (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
-  );
+    // net por mês: Receitas - (Despesas + Poupanças)
+    const netMonthly = labels.map(
+      (_, i) => (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
+    );
 
-  // acumulados
-  const netCum = [];
-  const savCum = [];
-  netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
-  savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+    // acumulados
+    const netCum = [];
+    const savCum = [];
+    netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
+    savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
 
-  mount({
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Disponível (acum.)",
-          data: netCum,
-          tension: 0.25,
-          borderWidth: 2,
-          fill: true,
-        },
-        {
-          label: "Poupanças (acum.)",
-          data: savCum,
-          tension: 0.25,
-          borderWidth: 2,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
-      scales: { y: { ...axisMoney, beginAtZero: true } },
-    },
-  });
+    mount({
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "Disponível (acum.)",
+            data: netCum,
+            tension: 0.25,
+            borderWidth: 2,
+            fill: true,
+          },
+          {
+            label: "Poupanças (acum.)",
+            data: savCum,
+            tension: 0.25,
+            borderWidth: 2,
+            fill: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
+        scales: { y: { ...axisMoney, beginAtZero: true } },
+      },
+    });
   }
-
 
   function renderTendencias() {
     titleEl.textContent = "Tendências (12 meses + previsão próxima)";
@@ -130,29 +118,12 @@ function setupDashboardModal(ds) {
         ? [...ds.saldo12m]
         : inc.map((_, i) => (inc[i] || 0) - (exp[i] || 0) - (sav[i] || 0));
 
-    // Paleta consistente (histórico cheio; previsão translúcida)
-    const col = {
-      inc: "rgba(16,185,129,0.85)", // verde
-      exp: "rgba(239,68,68,0.85)", // vermelho
-      sav: "rgba(59,130,246,0.85)", // azul
-      saldo: "rgba(99,102,241,1.00)", // violeta
-    };
-    const colF = {
-      inc: "rgba(16,185,129,0.28)",
-      exp: "rgba(239,68,68,0.25)",
-      sav: "rgba(59,130,246,0.22)",
-    };
-
-    // Previsão = média móvel (últimos 6, ajusta se quiseres)
+    // Previsão = média móvel
     const WINDOW = Math.min(6, inc.length);
-    const avg = (arr) => {
-      const n = Math.min(WINDOW, arr.length);
-      if (!n) return 0;
-      let s = 0;
-      for (let i = arr.length - n; i < arr.length; i++)
-        s += Number(arr[i] || 0);
-      return s / n;
-    };
+    const incF = movingAverage(inc, WINDOW);
+    const expF = movingAverage(exp, WINDOW);
+    const savF = movingAverage(sav, WINDOW);
+    const saldoF = incF - expF - savF;
 
     const last = labels.length ? new Date(labels.at(-1) + "-01") : new Date();
     const next = new Date(last.getFullYear(), last.getMonth() + 1, 1);
@@ -160,11 +131,6 @@ function setupDashboardModal(ds) {
       .toLocaleDateString("pt-PT", { month: "short", year: "2-digit" })
       .replace(".", "");
     const nextLabel = pt.charAt(0).toUpperCase() + pt.slice(1) + " *";
-
-    const incF = avg(inc);
-    const expF = avg(exp);
-    const savF = avg(sav);
-    const saldoF = incF - expF - savF;
 
     // Construção dos datasets (histórico a cores; previsão translúcida)
     const baseData = {
@@ -174,73 +140,71 @@ function setupDashboardModal(ds) {
           type: "bar",
           label: "Receitas",
           data: [...inc, null],
-          backgroundColor: col.inc,
-          borderColor: col.inc,
+          backgroundColor: CHART_COLORS.inc,
+          borderColor: CHART_COLORS.inc,
           borderWidth: 1,
         },
         {
           type: "bar",
           label: "Despesas",
           data: [...exp, null],
-          backgroundColor: col.exp,
-          borderColor: col.exp,
+          backgroundColor: CHART_COLORS.exp,
+          borderColor: CHART_COLORS.exp,
           borderWidth: 1,
         },
         {
           type: "bar",
           label: "Poupanças",
           data: [...sav, null],
-          backgroundColor: col.sav,
-          borderColor: col.sav,
+          backgroundColor: CHART_COLORS.sav,
+          borderColor: CHART_COLORS.sav,
           borderWidth: 1,
         },
 
-        // barras previsão: mesma cor, mais ténues (só no último índice)
+        // barras previsão
         {
           type: "bar",
           label: "Receitas (prev.)",
           data: Array(labels.length).fill(null).concat(incF),
-          backgroundColor: colF.inc,
-          borderColor: col.inc,
+          backgroundColor: CHART_COLORS.incF,
+          borderColor: CHART_COLORS.inc,
           borderWidth: 2,
         },
         {
           type: "bar",
           label: "Despesas (prev.)",
           data: Array(labels.length).fill(null).concat(expF),
-          backgroundColor: colF.exp,
-          borderColor: col.exp,
+          backgroundColor: CHART_COLORS.expF,
+          borderColor: CHART_COLORS.exp,
           borderWidth: 2,
         },
         {
           type: "bar",
           label: "Poupanças (prev.)",
           data: Array(labels.length).fill(null).concat(savF),
-          backgroundColor: colF.sav,
-          borderColor: col.sav,
+          backgroundColor: CHART_COLORS.savF,
+          borderColor: CHART_COLORS.sav,
           borderWidth: 2,
         },
 
-        // Linha do saldo: todo o histórico colorido; último segmento até ao ponto previsto é tracejado
+        // Linha do saldo
         {
           type: "line",
           label: "Saldo",
           data: [...saldoReal, saldoF],
-          borderColor: col.saldo,
+          borderColor: CHART_COLORS.saldo,
           borderWidth: 2,
           tension: 0.25,
           fill: false,
-          // só o segmento final (último real -> previsão) fica tracejado
           segment: {
             borderDash: (ctx) =>
               ctx.p0DataIndex >= labels.length - 1 ? [6, 4] : [],
           },
-          // pontos discretos; destaca o ponto previsto
           pointRadius: (ctx) => (ctx.dataIndex === labels.length ? 3 : 0),
           pointHoverRadius: 4,
           pointBackgroundColor: (ctx) =>
-            ctx.dataIndex === labels.length ? "#fff" : col.saldo,
-          pointBorderColor: col.saldo,
+            ctx.dataIndex === labels.length ? "#fff" : CHART_COLORS.saldo,
+          pointBorderColor: CHART_COLORS.saldo,
         },
       ],
     };
@@ -270,23 +234,18 @@ function setupDashboardModal(ds) {
     const fixed = ds.fixed12m || [];
     const variable = ds.variable12m || [];
     if (fixed.length && variable.length) {
-      const avgFixed = avg(fixed),
-        avgVar = avg(variable);
+      const avgFixed = movingAverage(fixed, WINDOW),
+        avgVar = movingAverage(variable, WINDOW);
       const tot = avgFixed + avgVar || 1;
       const pf = ((avgFixed / tot) * 100).toFixed(1);
       const pv = ((avgVar / tot) * 100).toFixed(1);
-      const EUR = (v) =>
-        "€ " +
-        Number(v || 0).toLocaleString("pt-PT", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
+
       extraEl.innerHTML += `
       <div class="rpt-legend" style="margin-top:8px">
-        <div class="rpt-legend__item"><span style="flex:1">Fixas (prev.)</span><strong>${EUR(
+        <div class="rpt-legend__item"><span style="flex:1">Fixas (prev.)</span><strong>${money(
           avgFixed
         )}</strong><span class="muted">&nbsp;(${pf}%)</span></div>
-        <div class="rpt-legend__item"><span style="flex:1">Variáveis (prev.)</span><strong>${EUR(
+        <div class="rpt-legend__item"><span style="flex:1">Variáveis (prev.)</span><strong>${money(
           avgVar
         )}</strong><span class="muted">&nbsp;(${pv}%)</span></div>
       </div>`;
@@ -310,7 +269,7 @@ function setupDashboardModal(ds) {
           tooltip: {
             callbacks: {
               label: (c) =>
-                `${c.label}: ${EUR(c.parsed)} (${(
+                `${c.label}: ${money(c.parsed)} (${(
                   (c.parsed / total) *
                   100
                 ).toFixed(1)}%)`,
@@ -321,13 +280,13 @@ function setupDashboardModal(ds) {
     });
     const fix = ds.fixasMes || 0,
       vari = ds.variaveisMes || 0;
-    extraEl.innerHTML = `<div class="rpt-legend__item"><span style="flex:1">Fixas</span><strong>${EUR(
+    extraEl.innerHTML = `<div class="rpt-legend__item"><span style="flex:1">Fixas</span><strong>${money(
       fix
     )}</strong>
         <span class="muted">&nbsp;(${((fix / (fix + vari || 1)) * 100).toFixed(
           1
         )}%)</span></div>
-       <div class="rpt-legend__item"><span style="flex:1">Variáveis</span><strong>${EUR(
+       <div class="rpt-legend__item"><span style="flex:1">Variáveis</span><strong>${money(
          vari
        )}</strong>
         <span class="muted">&nbsp;(${((vari / (fix + vari || 1)) * 100).toFixed(
@@ -403,7 +362,7 @@ function setupDashboardModal(ds) {
           tooltip: {
             callbacks: {
               label: (tt) =>
-                `${tt.label}: ${EUR(tt.parsed)} (${(
+                `${tt.label}: ${money(tt.parsed)} (${(
                   (tt.parsed / total) *
                   100
                 ).toFixed(1)}%)`,
@@ -515,7 +474,7 @@ function setupDashboardModal(ds) {
       .map((lab, i) => {
         const v = values[i] || 0;
         const p = ((v / total) * 100).toFixed(1);
-        return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span><strong>${EUR(
+        return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span><strong>${money(
           v
         )}</strong><span class="muted">&nbsp;(${p}%)</span></div>`;
       })
@@ -523,181 +482,23 @@ function setupDashboardModal(ds) {
     document.getElementById("dash-modal-extra").innerHTML = html;
   }
 
-  function renderCashflow() {
-  titleEl.textContent = "Cashflow anual (12 meses)";
 
-  const labels  = ds.labels12m || [];
-  const income  = ds.income12m  || [];
-  const expense = (ds.expense12m || []).map(Math.abs);
-  const savings = (ds.savings12m || []).map(Math.abs);
-
-  // já existente: disponível (income - (expense + savings))
-  const netMonthly = labels.map((_, i) =>
-    (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
-  );
-  const netCum = [];
-  netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
-
-  // NOVO: líquido sem poupanças (income - expense)
-  const liqNoSavMonthly = labels.map((_, i) =>
-    (income[i] || 0) - (expense[i] || 0)
-  );
-  const liqNoSavCum = [];
-  liqNoSavMonthly.reduce((acc, v, i) => (liqNoSavCum[i] = acc + v), 0);
-
-  // já existente: poupanças acumuladas (para comparar)
-  const savCum = [];
-  savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
-
-  mount({
-    type: "line",
-    data: {
-      labels,
-      datasets: [
-        {
-          label: "Disponível (acum.)",
-          data: netCum,
-          tension: 0.25,
-          borderWidth: 2,
-          fill: true,
-        },
-        {
-          label: "Líquido s/ poupanças (acum.)", // NOVO
-          data: liqNoSavCum,
-          tension: 0.25,
-          borderWidth: 2,
-          fill: false,
-          borderDash: [6, 4],
-        },
-        {
-          label: "Poupanças (acum.)",
-          data: savCum,
-          tension: 0.25,
-          borderWidth: 2,
-          fill: false,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
-      scales: { y: { ...axisMoney, beginAtZero: true } },
-    },
-  });
-  }
-
-
-  const handlers = {
-    cashflow: renderCashflow,
-    tendencias: renderTendencias,
-    fixvar_mes: renderFixVarMes,
-    fixvar_12m: renderFixVar12m,
-    categorias: renderCategorias,
-    top_categorias: renderTopCategorias,
-    gasto_diario: renderGastoDiario,
-    metodos: renderMetodos,
-    regularidades: renderRegularidades,
-    investimentos: renderInvestimentos,
-  };
-
-
-  // ==== INVESTIMENTOS (mini-card) ====
-async function _dashFetchPortfoliosAgg(){
-  const sb = window.sb;
-  async function getUserId(){ return (await sb.auth.getUser()).data?.user?.id; }
-  const uid = await getUserId();
-  const { data: pf } = await sb.from("portfolios").select("*").eq("user_id", uid);
-  if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
-
-  const { data: ttype } = await sb.from("transaction_types").select("id,code");
-  const SAV = ttype?.find(t=>t.code==="SAVINGS")?.id;
-
-  const pad2 = n => String(n).padStart(2,"0");
-  const ymd = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-  const monthKeysBetween = (fromISO, toISO) => {
-    const out=[], [y1,m1]=fromISO.split("-").map(Number), [y2,m2]=toISO.split("-").map(Number);
-    for (let y=y1,m=m1; y<y2 || (y===y2 && m<=m2);){ out.push(`${y}-${pad2(m)}`); m++; if(m===13){m=1;y++;} }
-    return out;
-  };
-  function buildSeries({ aprPct, compounding='monthly', initial_amount=0, start_date=null }, txs, fromISO, toISO){
-    const r = Number(aprPct||0)/100;
-    const months = monthKeysBetween(fromISO.slice(0,7), toISO.slice(0,7));
-    const byMonth = new Map(months.map(k=>[k,{contrib:0,interest:0,balance:0}]));
-    for(const t of txs){
-      const k = String(t.date).slice(0,7);
-      if(!byMonth.has(k)) byMonth.set(k,{contrib:0,interest:0,balance:0});
-      byMonth.get(k).contrib += Number(t.amount||0);
-    }
-    let balance = Number(initial_amount||0);
-    const annivMonth = start_date ? Number(String(start_date).slice(5,7)) : Number(fromISO.slice(5,7));
-    const out=[];
-    for (const k of months){
-      const row = byMonth.get(k) || {contrib:0,interest:0,balance:0};
-      balance += row.contrib;
-      let i=0;
-      if (compounding === 'monthly') i = balance>0 ? balance*(r/12) : 0;
-      else { const m = Number(k.slice(5,7)); if (balance>0 && m===annivMonth) i = balance*r; }
-      balance += i;
-      row.interest = i; row.balance = balance; out.push({key:k, ...row});
-    }
-    return out;
-  }
-
-  const today = new Date();
-  const toISO = ymd(today);
-  const out = [];
-
-  for (const p of pf){
-    const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(0,10);
-    const { data: tx } = await sb
-      .from("transactions").select("date,amount")
-      .eq("type_id", SAV).eq("portfolio_id", p.id)
-      .gte("date", fromISO).lte("date", toISO).order("date",{ascending:true});
-
-    const series = buildSeries(
-      { aprPct: p.apr, compounding: p.compounding, initial_amount: Number(p.initial_amount||0), start_date: p.start_date },
-      tx||[], fromISO, toISO
-    );
-    const aportes = (tx||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
-    const invested = Number(p.initial_amount||0) + aportes;
-    const current = series.length ? series.at(-1).balance : invested;
-
-    // projeção 12m (sem novos aportes)
-    const projTo = new Date(today); projTo.setMonth(projTo.getMonth()+12);
-    const projSeries = buildSeries(
-      { aprPct: p.apr, compounding: p.compounding, initial_amount: current, start_date: p.start_date },
-      [], ymd(today), ymd(projTo)
-    );
-    const projected = projSeries.length ? projSeries.at(-1).balance : current;
-
-    out.push({ ...p, invested, current, projected });
-  }
-
-  const byKind = new Map();
-  for (const p of out){
-    const k = p.kind || "Outro";
-    if(!byKind.has(k)) byKind.set(k,{ invested:0, current:0, projected:0, color: p.color || null });
-    const b = byKind.get(k);
-    b.invested += p.invested;
-    b.current += p.current;
-    b.projected += p.projected;
-    if (!b.color && p.color) b.color = p.color;
-  }
-  return { kinds: Array.from(byKind.keys()), byKind, raw: out };
-}
-
-  async function renderInvestimentos(){
+  async function renderInvestimentos() {
     titleEl.textContent = "Investimentos por categoria";
-    const agg = await _dashFetchPortfoliosAgg();
+    const agg = await repo.portfolios.aggregate();
     const labels = agg.kinds;
-    const dataNow = labels.map(k => agg.byKind.get(k)?.current || 0);
-    const palette = labels.map((_,i)=>`hsl(${(i*62)%360} 70% 45%)`);
+    const dataNow = labels.map((k) => agg.byKind.get(k)?.current || 0);
+    // USED HELPER PALETTE
+    const pal = palette(labels.length);
 
     mount({
       type: "bar",
-      data: { labels, datasets: [{ label: "Valor atual", data: dataNow, backgroundColor: palette }] },
+      data: {
+        labels,
+        datasets: [
+          { label: "Valor atual", data: dataNow, backgroundColor: pal },
+        ],
+      },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -711,23 +512,33 @@ async function _dashFetchPortfoliosAgg(){
           const projected = agg.byKind.get(kind)?.projected || 0;
           chart.data.labels = ["Investido", "Projetado (12m)"];
           chart.data.datasets = [
-            { label: kind, data: [invested, projected], backgroundColor: ["#94a3b8", palette[idx]] }
+            {
+              label: kind,
+              data: [invested, projected],
+              backgroundColor: ["#94a3b8", pal[idx]],
+            },
           ];
           chart.options.plugins.legend.display = true;
           chart.update();
           titleEl.textContent = `Investimentos · ${kind}`;
-        }
-      }
+        },
+      },
     });
   }
 
-  handlers.gasto_diario_acum = renderGastoDiario; // alias para o mini-card antigo
-  console.debug(
-    "mini-cards encontrados:",
-    [...document.querySelectorAll(".mini-card[data-chart]")].map(
-      (b) => b.dataset.chart
-    )
-  );
+  const handlers = {
+    cashflow: renderCashflow,
+    tendencias: renderTendencias,
+    fixvar_mes: renderFixVarMes,
+    fixvar_12m: renderFixVar12m,
+    categorias: renderCategorias,
+    top_categorias: renderTopCategorias,
+    gasto_diario: renderGastoDiario,
+    metodos: renderMetodos,
+    regularidades: renderRegularidades,
+    investimentos: renderInvestimentos,
+  };
+  handlers.gasto_diario_acum = renderGastoDiario;
 
   document.querySelectorAll(".mini-card[data-chart]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -806,18 +617,7 @@ export async function init({ sb, outlet } = {}) {
   outlet = outlet || document.getElementById("outlet");
 
   // -------- Chart.js on-demand --------
-  async function ensureChartJs() {
-    if (window.Chart) return;
-    await new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src =
-        "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-  await ensureChartJs();
+  await ensureChartStack();
 
   // -------- helpers --------
   const byId = (id) => outlet.querySelector("#" + id);
@@ -825,16 +625,8 @@ export async function init({ sb, outlet } = {}) {
     const el = byId(id);
     if (el) el.textContent = text;
   };
-  const money = (n) =>
-    "€ " +
-    Number(n || 0).toLocaleString("pt-PT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const yyyMmLocal = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-  const yyyMmDdLocal = (d) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  // Removed local money, pad2, etc. - using imports
+
   const labelMonthPT = (isoYYYYMM) => {
     const [y, m] = isoYYYYMM.split("-").map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString("pt-PT", {
@@ -848,17 +640,17 @@ export async function init({ sb, outlet } = {}) {
       base = new Date();
     base.setDate(1);
     base.setHours(0, 0, 0, 0);
-    for (let i = n - 1; i >= 0; i--)
-      out.push(
-        yyyMmLocal(new Date(base.getFullYear(), base.getMonth() - i, 1))
-      );
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(base.getFullYear(), base.getMonth() - i, 1);
+      out.push(ymd(d).slice(0, 7));
+    }
     return out;
   };
   const currentMonthRangeISO = () => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    return { from: yyyMmDdLocal(start), to: yyyMmDdLocal(end) };
+    return { from: ymd(start), to: ymd(end) };
   };
 
   // --- Privacidade KPIs ---
@@ -921,7 +713,7 @@ export async function init({ sb, outlet } = {}) {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() - 11);
-    return yyyMmDdLocal(d);
+    return ymd(d);
   })();
 
   let monthly = [];
@@ -1003,15 +795,14 @@ export async function init({ sb, outlet } = {}) {
       } catch (e) {}
     }
 
-          // --- Normalizar e forçar o NET ---
-      // Queremos: net = income - (expense + savings)  (tudo positivo excepto o próprio net)
-      monthly = (monthly || []).map(m => {
-        const income  = Number(m.income  || 0);
-        const expense = Math.abs(Number(m.expense || 0));
-        const savings = Math.abs(Number(m.savings || 0));
-        const net = income - expense - savings;
-        return { ...m, income, expense, savings, net };
-      });
+    // --- Normalizar e forçar o NET ---
+    monthly = (monthly || []).map((m) => {
+      const income = Number(m.income || 0);
+      const expense = Math.abs(Number(m.expense || 0));
+      const savings = Math.abs(Number(m.savings || 0));
+      const net = income - expense - savings;
+      return { ...m, income, expense, savings, net };
+    });
 
     // ------- Fixas/Variáveis + Top categorias + Pais -------
     try {
@@ -1161,7 +952,7 @@ export async function init({ sb, outlet } = {}) {
       const { data } = await sb
         .from("transactions")
         .select("amount, payment_methods(name_pt)")
-        .gte("date", yyyMmDdLocal(d));
+        .gte("date", ymd(d));
       const pmMap = new Map();
       (data || []).forEach((r) => {
         const name = r.payment_methods?.name_pt || "Outro";
@@ -1200,6 +991,69 @@ export async function init({ sb, outlet } = {}) {
     } catch {}
   }
 
+  // ---------------- DEMO (fallback) ----------------
+  if (!monthly.length) {
+    const labs = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
+    ];
+    const income = [500, 600, 550, 580, 620, 590, 610, 640, 600, 650, 670, 700];
+    const expense = [
+      400, 420, 390, 410, 430, 420, 440, 460, 450, 470, 480, 500,
+    ];
+    const savings = [
+      100, 150, 130, 140, 190, 170, 180, 180, 150, 180, 190, 200,
+    ];
+    const net = income.map((v, i) => v - expense[i] - savings[i]);
+    monthly = labs.map((label, i) => ({
+      key: label,
+      label,
+      income: income[i],
+      expense: expense[i],
+      savings: savings[i],
+      net: net[i],
+    }));
+
+    fixedVarByMonth = new Map(
+      labs.map((m, i) => [
+        m,
+        {
+          fixed: Math.round(expense[i] * 0.6),
+          variable: Math.round(expense[i] * 0.4),
+        },
+      ])
+    );
+    thisMonthAgg = { fixed: 720, variable: 330 };
+    topCatThisMonth = new Map([
+      ["Casa > Renda", 400],
+      ["Alimentação > Super", 250],
+      ["Carro > Combustível", 180],
+      ["Saúde > Consultas", 120],
+      ["Lazer > Restaurantes", 100],
+    ]);
+    parentDist = {
+      labels: ["Casa", "Alimentação", "Carro", "Saúde", "Lazer", "Outras"],
+      values: [520, 250, 180, 120, 100, 60],
+    };
+    methodsAgg = {
+      labels: ["Cartão", "MBWay", "Débito", "Transferência"],
+      values: [380, 210, 120, 90],
+    };
+    regularitiesAgg = {
+      labels: ["Mensal", "Semanal", "Anual", "Sem regularidade"],
+      values: [800, 150, 120, 80],
+    };
+  }
 
   //====== Mini-Card: Investimentos ======//
   // ===== Investimentos (portfolios) – helpers locais =====
@@ -1504,14 +1358,18 @@ async function dashFetchPortfoliosAgg(){
   });
 
   // Cashflow (acumulado) — net = income - (|expense| + |savings|)
-  const netPerMonth = monthly.map(m =>
-  (Number(m.income)||0) - Math.abs(Number(m.expense)||0) - Math.abs(Number(m.savings)||0)
+  const netPerMonth = monthly.map(
+    (m) =>
+      (Number(m.income) || 0) -
+      Math.abs(Number(m.expense) || 0) -
+      Math.abs(Number(m.savings) || 0)
   );
   const netCum = [];
   const savCum = [];
   netPerMonth.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
-  monthly.map(m => Math.abs(Number(m.savings)||0))
-       .reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+  monthly
+    .map((m) => Math.abs(Number(m.savings) || 0))
+    .reduce((acc, v, i) => (savCum[i] = acc + v), 0);
 
   mountChart("chart-cashflow", {
     type: "line",
@@ -1666,7 +1524,7 @@ async function dashFetchPortfoliosAgg(){
             "date, amount, category_id, categories(name,parent_id), regularities(name_pt,code)"
           )
           .eq("type_id", expId)
-          .gte("date", yyyMmDdLocal(back))
+          .gte("date", ymd(back))
           .order("date", { ascending: false });
         rows = data || [];
       }
@@ -1791,13 +1649,7 @@ async function dashFetchPortfoliosAgg(){
           callbacks: {
             label: (ctx) => {
               const v = ctx.parsed?.x ?? 0;
-              return (
-                "€ " +
-                Number(v).toLocaleString("pt-PT", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-              );
+              return " " + money(v);
             },
           },
         },
@@ -1830,10 +1682,7 @@ async function dashFetchPortfoliosAgg(){
               label: (ctx) => {
                 const v = ctx.parsed?.y ?? 0;
                 const p = ((v / total) * 100).toFixed(1) + "%";
-                return ` ${ctx.dataset.label}: € ${Number(v).toLocaleString(
-                  "pt-PT",
-                  { minimumFractionDigits: 2 }
-                )} (${p})`;
+                return ` ${ctx.dataset.label}: ${money(v)} (${p})`;
               },
             },
           },
@@ -1890,7 +1739,9 @@ async function dashFetchPortfoliosAgg(){
           meta.data.forEach((arc, i) => {
             const val = Number(ds[i] || 0);
             if (!val) return;
-            const pct = totalParents ? (val / totalParents) * 100 : 0;
+            const pct = parentDistValuesTotal
+              ? (val / parentDistValuesTotal) * 100
+              : 0;
             if (pct < 4) return;
             const label = chart.data.labels[i];
             const angle = (arc.startAngle + arc.endAngle) / 2;
@@ -1915,11 +1766,17 @@ async function dashFetchPortfoliosAgg(){
         },
       };
 
+      const parentDistValuesTotal = (parentDist.values || []).reduce(
+        (a, b) => a + b,
+        0
+      );
+      const pal = palette(parentDist.labels.length);
+
       const pie = new Chart(ctx, {
         type: "pie",
         data: {
           labels: parentDist.labels || [],
-          datasets: [{ data: parentDist.values || [], backgroundColor: bg }],
+          datasets: [{ data: parentDist.values || [], backgroundColor: pal }],
         },
         options: {
           responsive: true,
@@ -1933,7 +1790,10 @@ async function dashFetchPortfoliosAgg(){
               callbacks: {
                 label: (tt) => {
                   const v = tt.parsed || 0;
-                  const p = ((v / totalParents) * 100).toFixed(1);
+                  const p =
+                    parentDistValuesTotal > 0
+                      ? ((v / parentDistValuesTotal) * 100).toFixed(1)
+                      : 0;
                   return `${tt.label}: ${money(v)} (${p}%)`;
                 },
               },
@@ -1944,37 +1804,23 @@ async function dashFetchPortfoliosAgg(){
       });
       addChart(pie);
     }
+  })();
 
-    // === LISTA DETALHADA (pai > filho, 12m) ===
+  // === LISTA DETALHADA (pai > filho, 12m) ===
+  (async function () {
     const box = document.getElementById("cat-list");
     if (!box) return;
 
-    const COLORS = [
-      "#ef4444",
-      "#22c55e",
-      "#3b82f6",
-      "#0f766e",
-      "#f59e0b",
-      "#8b5cf6",
-      "#10b981",
-      "#f43f5e",
-      "#64748b",
-      "#e11d48",
-    ];
-
-    // Reutiliza se já existir noutro bloco
     let catAgg12m = window.catAgg12m instanceof Map ? window.catAgg12m : null;
     let catCount12m =
       window.catCount12m instanceof Map ? window.catCount12m : null;
 
-    // Se não existir, agrega agora a partir da Supabase
     if (
       (!catAgg12m || !catCount12m) &&
       window.sb &&
       typeof window.sb.from === "function"
     ) {
       try {
-        // id do tipo 'EXPENSE'
         const { data: ttype } = await sb
           .from("transaction_types")
           .select("id,code")
@@ -1982,7 +1828,6 @@ async function dashFetchPortfoliosAgg(){
           .single();
         const expId = ttype?.id ?? -999;
 
-        // 12 meses de despesas (com categoria)
         const { data: rows } = await sb
           .from("transactions")
           .select("amount, category_id, categories(name,parent_id)")
@@ -1990,7 +1835,6 @@ async function dashFetchPortfoliosAgg(){
           .gte("date", from12Local)
           .order("date", { ascending: true });
 
-        // mapa de categorias para descobrir o pai
         const parentsMap = new Map();
         try {
           const { data: cats } = await sb
@@ -1999,7 +1843,6 @@ async function dashFetchPortfoliosAgg(){
           (cats || []).forEach((c) => parentsMap.set(c.id, c));
         } catch {}
 
-        // monta "Pai > Filho"
         const pathFromRow = (row) => {
           const child = row.categories?.name;
           const pid = row.categories?.parent_id;
@@ -2011,7 +1854,6 @@ async function dashFetchPortfoliosAgg(){
         const cnt = new Map();
 
         (rows || []).forEach((r) => {
-          // normaliza sinal para despesas negativas
           const amt = Math.abs(Number(r.amount || 0));
           if (!amt) return;
           const name = pathFromRow(r);
@@ -2021,7 +1863,6 @@ async function dashFetchPortfoliosAgg(){
 
         catAgg12m = agg;
         catCount12m = cnt;
-        // expõe globalmente
         window.catAgg12m = agg;
         window.catCount12m = cnt;
       } catch (e) {
@@ -2029,7 +1870,6 @@ async function dashFetchPortfoliosAgg(){
       }
     }
 
-    // Fallback demo (se não houver SB): usa mês * 12 e 1 registo por categoria
     if (!catAgg12m || !catCount12m) {
       const demoAgg = new Map(
         Array.from((topCatThisMonth || new Map()).entries()).map(([k, v]) => [
@@ -2042,19 +1882,19 @@ async function dashFetchPortfoliosAgg(){
       catCount12m = demoCnt;
     }
 
-    // ordenação + percentagens
     const arr = Array.from(catAgg12m.entries()).sort((a, b) => b[1] - a[1]);
     const totalAnual = arr.reduce((s, [, v]) => s + (v || 0), 0) || 1;
     const monthsCount = 12;
 
+    const pal = palette(arr.length);
     box.innerHTML = arr
       .map(([name, totalVal], i) => {
         const total = Number(totalVal || 0);
         const pct = (total / totalAnual) * 100;
         const avgMes = total / monthsCount;
         const n = Math.max(1, Number(catCount12m.get(name) || 0));
-        const avgReg = total / n;
-        const color = COLORS[i % COLORS.length];
+        // const avgReg = total / n;
+        const color = pal[i % pal.length];
 
         return `<div class="cat-item">
       <div class="cat-left">
@@ -2072,13 +1912,210 @@ async function dashFetchPortfoliosAgg(){
         )}<span class="muted">/ano</span></div>
         <div class="cat-avg">
           ${money(avgMes)}<span class="muted">/mês</span>
-          &nbsp;&nbsp;
         </div>
       </div>
     </div>`;
       })
       .join("");
   })();
+
+  // Distribuição (pais, 12m) - Areachart empilhada
+  (async function () {
+    const ctx = byId("chart-cat-area");
+    if (!ctx) return;
+    try {
+      let series = [];
+      // Top 5 + outros (baseado no parentDist)
+      const top5 = parentDist.labels.slice(0, 5);
+
+      if (HAS_SB) {
+        const { data: ttype } = await sb
+          .from("transaction_types")
+          .select("id")
+          .eq("code", "EXPENSE")
+          .single();
+        const expId = ttype?.id;
+        const from = from12Local;
+
+        // Fetch all expenses 12m (paginado)
+        let allTx = [];
+        let page = 0;
+        const size = 1000;
+        while (true) {
+          const { data, error } = await sb
+            .from("transactions")
+            .select("date, amount, category_id, categories(name,parent_id)")
+            .eq("type_id", expId)
+            .gte("date", from)
+            .range(page * size, (page + 1) * size - 1);
+          if (error || !data || !data.length) break;
+          allTx = allTx.concat(data);
+          if (data.length < size) break;
+          page++;
+        }
+
+        const parentsMap = new Map();
+        try {
+          const { data: cats } = await sb
+            .from("categories")
+            .select("id,name");
+          (cats || []).forEach((c) => parentsMap.set(c.id, c.name));
+        } catch {}
+
+        const getParent = (r) => {
+          if (r.categories?.parent_id)
+            return (
+              parentsMap.get(r.categories.parent_id) ||
+              r.categories.name ||
+              "Outros"
+            );
+          return r.categories?.name || "Outros";
+        };
+
+        const dataMap = new Map(); // Key: month -> Map(parent -> val)
+        monthsKeys.forEach((m) => dataMap.set(m, new Map()));
+
+        allTx.forEach((r) => {
+          const m = String(r.date).slice(0, 7);
+          if (!dataMap.has(m)) return;
+          const p = getParent(r);
+          const realP = top5.includes(p) ? p : "Outros";
+          const d = dataMap.get(m);
+          d.set(realP, (d.get(realP) || 0) + Number(r.amount));
+        });
+
+        series = [...top5, "Outros"].map((p) => {
+          return {
+            label: p,
+            data: monthsKeys.map((m) => dataMap.get(m)?.get(p) || 0),
+            fill: true,
+          };
+        });
+      } else {
+        // demo (mock)
+        series = [
+          {
+            label: "Casa",
+            data: monthsKeys.map(() => 400 + Math.random() * 50),
+            fill: true,
+          },
+          {
+            label: "Supermercado",
+            data: monthsKeys.map(() => 200 + Math.random() * 50),
+            fill: true,
+          },
+          {
+            label: "Transporte",
+            data: monthsKeys.map(() => 100 + Math.random() * 30),
+            fill: true,
+          },
+        ];
+      }
+
+      // Estilo
+      const pal = palette(series.length);
+      series.forEach((s, i) => {
+        const c = pal[i];
+        // tenta converter hsl -> hsla manually ou usa opacidade se for hex
+        s.backgroundColor = c;
+        s.borderColor = c;
+        s.borderWidth = 1;
+      });
+
+      mountChart("chart-cat-area", {
+        type: "line",
+        data: {
+          labels: monthly.map((m) => m.label),
+          datasets: series,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${c.dataset.label}: ${money(c.parsed.y)}`,
+              },
+            },
+          },
+          scales: {
+            y: { stacked: true, beginAtZero: true },
+            x: { stacked: false },
+          },
+        },
+      });
+    } catch {}
+  })();
+
+  // Footer info
+  const fVer = outlet.querySelector("#footer-version");
+  if (fVer) fVer.textContent = window.APP_VERSION || "vDev";
+  const fHash = outlet.querySelector("#footer-hash");
+  if (fHash) fHash.textContent = "";
+
+  // Implementação local do MiniCardHider (recuperado)
+  function setupMiniCardHider(root) {
+    const HIDDEN_KEY = "wb:hiddenMiniCards";
+    function getHidden() {
+      try {
+        return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]");
+      } catch {
+        return [];
+      }
+    }
+    function hide(key, title) {
+      const arr = getHidden();
+      if (!arr.find((x) => x.key === key)) {
+        arr.push({ key, title });
+        localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr));
+      }
+    }
+
+    const cards = root.querySelectorAll(".mini-card[data-chart]");
+    if (!cards.length) return;
+
+    const hidden = getHidden();
+    const hiddenKeys = new Set(hidden.map((x) => x.key));
+
+    cards.forEach((card) => {
+      const key = card.dataset.chart;
+      if (hiddenKeys.has(key)) {
+        card.style.display = "none";
+        return;
+      }
+      if (card.querySelector(".mini-card__hide")) return;
+
+      const btn = document.createElement("button");
+      btn.className = "mini-card__hide";
+      btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
+      btn.title = "Ocultar (ver Definições)";
+      Object.assign(btn.style, {
+        position: "absolute",
+        top: "4px",
+        right: "4px",
+        border: "none",
+        background: "transparent",
+        color: "#9ca3af",
+        cursor: "pointer",
+        padding: "2px",
+        lineHeight: 0,
+      });
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (confirm("Ocultar cartão do dashboard?")) {
+          const title =
+            card.querySelector(".mini-card__title")?.textContent || key;
+          hide(key, title);
+          card.style.display = "none";
+        }
+      };
+      card.style.position = "relative";
+      card.appendChild(btn);
+    });
+  }
 
   // Ajuda FAB
   (function mountHelpForDashboard() {
@@ -2102,14 +2139,12 @@ async function dashFetchPortfoliosAgg(){
       <h3>O que mostra este ecrã?</h3>
       <p>· KPIs do mês corrent.</p>
       <p>· Análises Anuais e Mensais arrumados em mini cartões. Podem ser ocultados e repostos no screen Definições.</p>
-      <p>· Cartão com as datas e despesas fixas agendadas com base nos últimos registos.</p>
-      <p>· Podem ser também consultado neste screen as despesas acumuladoas por ano/mês.</p>
+      <p>· Cartão com as datas e despesas fixas agendadas com base nas próximas despesas mensais e acumulado anual.</p>
       <button class="close" type="button">Fechar</button>
     `;
     btn.onclick = () => pop.classList.toggle("hidden");
-    pop
-      .querySelector(".close")
-      ?.addEventListener("click", () => pop.classList.add("hidden"));
+    const close = pop.querySelector(".close");
+    if (close) close.onclick = () => pop.classList.add("hidden");
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") pop.classList.add("hidden");
     });
@@ -2257,5 +2292,5 @@ async function dashFetchPortfoliosAgg(){
     console.warn("mini-cards wiring falhou:", e);
   }
 
-setupMiniCardHider(outlet);
+  setupMiniCardHider(outlet);
 }
