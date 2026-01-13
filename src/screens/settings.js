@@ -1385,9 +1385,14 @@ function renderMiniShelf(root=document) {
     y += 34;
 
     // helper: desenhar canvas
-    const canvasToPage = (sel, x, y2, w, h) => {
+    // helper: desenhar canvas
+    const canvasToPage = (sel, x, y2, w, fixedH) => {
       const c = document.querySelector(sel);
       if (!c) return y2;
+      // Auto-height baseada no aspect ratio para evitar distorção
+      const ratio = c.height / c.width;
+      const h = fixedH || (w * ratio);
+      
       const img = c.toDataURL("image/png", 1.0);
       doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
       return y2 + h;
@@ -1417,57 +1422,53 @@ function renderMiniShelf(root=document) {
       return y2;
     };
 
-    // Pizza categorias (coluna 1) — **sozinhos em coluna, não lado-a-lado**
-    ensureSpace(240 + 12 + 120);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Despesas por categoria", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-cat-pie", M, y, W - 2 * M, 220) + 6;
-    y = drawLegend(window._catLegendPDF || _catLegendPDF, M, y, W - 2 * M);
-    y += 16;
+    // === LINHA 1: Pizza (Categoria) + Donut (Fixas) LADO A LADO ===
+    ensureSpace(240);
+    const row1Y = y;
+    const halfW = (W - 2 * M - 20) / 2;
+    
+    // Coluna Esq: Categorias
+    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text("Despesas por categoria", M, row1Y);
+    let yL = row1Y + 14;
+    yL = canvasToPage("#rpt-cat-pie", M, yL, halfW); // Auto-ratio
+    yL += 8;
+    yL = drawLegend(window._catLegendPDF || _catLegendPDF, M, yL, halfW);
 
-    // Donut fixas/variáveis (coluna única)
-    ensureSpace(240 + 12 + 60);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Fixas vs Variáveis", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-fixed-donut", M, y, W - 2 * M, 220) + 6;
-    y = drawLegend(window._fixLegendPDF || _fixLegendPDF, M, y, W - 2 * M);
-    y += 16;
+    // Coluna Dir: Fixas vs Variáveis
+    const xR = M + halfW + 20;
+    doc.text("Fixas vs Variáveis", xR, row1Y);
+    let yR = row1Y + 14;
+    yR = canvasToPage("#rpt-fixed-donut", xR, yR, halfW); // Auto-ratio
+    yR += 8;
+    yR = drawLegend(window._fixLegendPDF || _fixLegendPDF, xR, yR, halfW);
 
-    // Séries
-    ensureSpace(260 + 18);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
+    // Sincroniza Y pelo maior
+    y = Math.max(yL, yR) + 24;
+
+    // === LINHA 2: Evolução Mensal ===
+    ensureSpace(220);
     doc.text("Evolução mensal", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-series", M, y, W - 2 * M, 240) + 16;
+    y += 12;
+    y = canvasToPage("#rpt-series", M, y, W - 2 * M) + 24;
 
-    // === NOVO: Despesas por regularidade ===
-    ensureSpace(240 + 18);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Despesas por regularidade", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-regularity", M, y, W - 2 * M, 220) + 16;
-
-    // === NOVO: Top 6 categorias de despesa ===
-    ensureSpace(240 + 18);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
+    // === LINHA 3: Top 6 (para quebrar página se precisar) ===
+    ensureSpace(220);
     doc.text("Top 6 categorias de despesa", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M, 220) + 16;
+    y += 12;
+    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M) + 24;
 
-    // === NOVO: Taxa de esforço mensal ===
-    ensureSpace(240 + 18);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
+    // === LINHA 4: Regularidade ===
+    ensureSpace(220);
+    doc.text("Despesas por regularidade", M, y);
+    y += 12;
+    y = canvasToPage("#rpt-regularity", M, y, W - 2 * M) + 24;
+
+    // === LINHA 5: Taxa de esforço ===
+    ensureSpace(220);
     doc.text("Taxa de esforço mensal", M, y);
-    y += 10;
-    y = canvasToPage("#rpt-effort", M, y, W - 2 * M, 220) + 16;
+    y += 12;
+    y = canvasToPage("#rpt-effort", M, y, W - 2 * M) + 24;
 
     // Página 2: Tabelas (Categorias + Resumo + Regularidade)
     footer();
