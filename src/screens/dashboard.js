@@ -66,7 +66,7 @@ function setupDashboardModal(ds) {
 
     // net por mês: Receitas - (Despesas + Poupanças)
     const netMonthly = labels.map(
-      (_, i) => (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0)
+      (_, i) => (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0),
     );
 
     // acumulados
@@ -243,10 +243,10 @@ function setupDashboardModal(ds) {
       extraEl.innerHTML += `
       <div class="rpt-legend" style="margin-top:8px">
         <div class="rpt-legend__item"><span style="flex:1">Fixas (prev.)</span><strong>${money(
-          avgFixed
+          avgFixed,
         )}</strong><span class="muted">&nbsp;(${pf}%)</span></div>
         <div class="rpt-legend__item"><span style="flex:1">Variáveis (prev.)</span><strong>${money(
-          avgVar
+          avgVar,
         )}</strong><span class="muted">&nbsp;(${pv}%)</span></div>
       </div>`;
     }
@@ -281,16 +281,16 @@ function setupDashboardModal(ds) {
     const fix = ds.fixasMes || 0,
       vari = ds.variaveisMes || 0;
     extraEl.innerHTML = `<div class="rpt-legend__item"><span style="flex:1">Fixas</span><strong>${money(
-      fix
+      fix,
     )}</strong>
         <span class="muted">&nbsp;(${((fix / (fix + vari || 1)) * 100).toFixed(
-          1
+          1,
         )}%)</span></div>
        <div class="rpt-legend__item"><span style="flex:1">Variáveis</span><strong>${money(
-         vari
+         vari,
        )}</strong>
         <span class="muted">&nbsp;(${((vari / (fix + vari || 1)) * 100).toFixed(
-          1
+          1,
         )}%)</span></div>`;
   }
 
@@ -475,13 +475,12 @@ function setupDashboardModal(ds) {
         const v = values[i] || 0;
         const p = ((v / total) * 100).toFixed(1);
         return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span><strong>${money(
-          v
+          v,
         )}</strong><span class="muted">&nbsp;(${p}%)</span></div>`;
       })
       .join("");
     document.getElementById("dash-modal-extra").innerHTML = html;
   }
-
 
   async function renderInvestimentos() {
     titleEl.textContent = "Investimentos por categoria";
@@ -554,37 +553,43 @@ function setupDashboardModal(ds) {
   });
 }
 
-
 // ======= MINI-CARDS: esconder/mostrar via localStorage =======
 const HIDDEN_KEY = "wb:hiddenMiniCards";
 
 // Lê/grava o estado (guardamos pares {key,title} para o Settings conseguir mostrar nomes)
 function getHiddenCards() {
-  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 function setHiddenCards(arr) {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr || []));
 }
 function isHidden(key) {
-  return getHiddenCards().some(x => x.key === key);
+  return getHiddenCards().some((x) => x.key === key);
 }
 function hideCard(key, title) {
   const set = getHiddenCards();
-  if (!set.some(x => x.key === key)) {
+  if (!set.some((x) => x.key === key)) {
     set.push({ key, title });
     setHiddenCards(set);
   }
 }
 function unhideCard(key) {
-  setHiddenCards(getHiddenCards().filter(x => x.key !== key));
+  setHiddenCards(getHiddenCards().filter((x) => x.key !== key));
 }
 
 // Insere botão ❌ e aplica estado visível/oculto
 function setupMiniCardHider(outletEl) {
-  const cards = [...(outletEl || document).querySelectorAll(".mini-card[data-chart]")];
-  cards.forEach(card => {
+  const cards = [
+    ...(outletEl || document).querySelectorAll(".mini-card[data-chart]"),
+  ];
+  cards.forEach((card) => {
     const key = card.dataset.chart;
-    const title = card.querySelector(".mini-card__title")?.textContent?.trim() || key;
+    const title =
+      card.querySelector(".mini-card__title")?.textContent?.trim() || key;
 
     // cria botão ❌ se não existir
     if (!card.querySelector(".mini-card__close")) {
@@ -600,7 +605,11 @@ function setupMiniCardHider(outletEl) {
         hideCard(key, title);
         card.style.display = "none";
         // dispara evento global para o Settings atualizar a “prateleira”
-        window.dispatchEvent(new CustomEvent("wb:minicard:changed", { detail: { action: "hide", key, title } }));
+        window.dispatchEvent(
+          new CustomEvent("wb:minicard:changed", {
+            detail: { action: "hide", key, title },
+          }),
+        );
       });
       card.appendChild(btn);
     }
@@ -609,7 +618,6 @@ function setupMiniCardHider(outletEl) {
     card.style.display = isHidden(key) ? "none" : "";
   });
 }
-
 
 // =============================== DASHBOARD INIT ===============================
 export async function init({ sb, outlet } = {}) {
@@ -680,7 +688,7 @@ export async function init({ sb, outlet } = {}) {
         const el = byId(id);
         const raw = el?.dataset?.raw;
         if (raw) el.textContent = kpiHidden ? maskDigits(raw) : raw;
-      }
+      },
     );
     updateKpiEyeBtn();
   });
@@ -743,7 +751,7 @@ export async function init({ sb, outlet } = {}) {
               savings: +r.savings || 0,
               net: +r.net || 0,
             },
-          ])
+          ]),
         );
         return monthsKeys.map((k) => ({
           key: k,
@@ -854,7 +862,7 @@ export async function init({ sb, outlet } = {}) {
           .from("categories")
           .select("id,name,parent_id");
         (cats || []).forEach((c) =>
-          parentsMap.set(c.id, { name: c.name, parent_id: c.parent_id })
+          parentsMap.set(c.id, { name: c.name, parent_id: c.parent_id }),
         );
       } catch {}
 
@@ -933,7 +941,7 @@ export async function init({ sb, outlet } = {}) {
       });
 
       const parentArr = Array.from(parentAgg12m.entries()).sort(
-        (a, b) => b[1] - a[1]
+        (a, b) => b[1] - a[1],
       );
       const top = parentArr.slice(0, 9);
       const other = parentArr.slice(9).reduce((s, [, v]) => s + v, 0);
@@ -986,7 +994,7 @@ export async function init({ sb, outlet } = {}) {
       });
       regularitiesAgg.labels = Array.from(agg.keys());
       regularitiesAgg.values = regularitiesAgg.labels.map(
-        (k) => agg.get(k) || 0
+        (k) => agg.get(k) || 0,
       );
     } catch {}
   }
@@ -1031,7 +1039,7 @@ export async function init({ sb, outlet } = {}) {
           fixed: Math.round(expense[i] * 0.6),
           variable: Math.round(expense[i] * 0.4),
         },
-      ])
+      ]),
     );
     thisMonthAgg = { fixed: 720, variable: 330 };
     topCatThisMonth = new Map([
@@ -1057,88 +1065,152 @@ export async function init({ sb, outlet } = {}) {
 
   //====== Mini-Card: Investimentos ======//
   // ===== Investimentos (portfolios) – helpers locais =====
-async function dashGetUserId() {
-  return (await sb.auth.getUser()).data?.user?.id;
-}
-function dashPad2(n){ return String(n).padStart(2,"0"); }
-function dashYmd(d){ return `${d.getFullYear()}-${dashPad2(d.getMonth()+1)}-${dashPad2(d.getDate())}`; }
-function dashMonthKeysBetween(fromISO, toISO){
-  const out=[], [y1,m1]=fromISO.split("-").map(Number), [y2,m2]=toISO.split("-").map(Number);
-  for (let y=y1,m=m1; y<y2 || (y===y2 && m<=m2);){ out.push(`${y}-${dashPad2(m)}`); m++; if(m===13){m=1;y++;}}
-  return out;
-}
-function dashBuildSeries({ aprPct, compounding='monthly', initial_amount=0, start_date=null }, txs, fromISO, toISO){
-  const r = Number(aprPct||0)/100;
-  const months = dashMonthKeysBetween(fromISO.slice(0,7), toISO.slice(0,7));
-  const byMonth = new Map(months.map(k=>[k,{contrib:0,interest:0,balance:0}]));
-  for(const t of txs){
-    const k = String(t.date).slice(0,7);
-    if(!byMonth.has(k)) byMonth.set(k,{contrib:0,interest:0,balance:0});
-    byMonth.get(k).contrib += Number(t.amount||0);
+  async function dashGetUserId() {
+    return (await sb.auth.getUser()).data?.user?.id;
   }
-  let balance = Number(initial_amount||0);
-  const annivMonth = start_date ? Number(String(start_date).slice(5,7)) : Number(fromISO.slice(5,7));
-  const out=[];
-  for(const k of months){
-    const row = byMonth.get(k) || {contrib:0,interest:0,balance:0};
-    balance += row.contrib;
-    let i = 0;
-    if (compounding === 'monthly') i = balance>0 ? balance*(r/12) : 0;
-    else { const m = Number(k.slice(5,7)); if (balance>0 && m===annivMonth) i = balance*r; }
-    balance += i;
-    row.interest = i; row.balance = balance; out.push({key:k, ...row});
+  function dashPad2(n) {
+    return String(n).padStart(2, "0");
   }
-  return out;
-}
-async function dashFetchPortfoliosAgg(){
-  const uid = await dashGetUserId();
-  const { data: pf } = await sb.from("portfolios").select("*").eq("user_id", uid);
-  if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
-
-  const { data: ttype } = await sb.from("transaction_types").select("id,code");
-  const SAV = ttype?.find(t=>t.code==="SAVINGS")?.id;
-
-  const today = new Date();
-  const toISO = dashYmd(today);
-
-  const out = [];
-  for (const p of pf){
-    const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(0,10);
-    const { data: tx } = await sb
-      .from("transactions").select("date,amount")
-      .eq("type_id", SAV).eq("portfolio_id", p.id)
-      .gte("date", fromISO).lte("date", toISO).order("date",{ascending:true});
-    const series = dashBuildSeries(
-      { aprPct: p.apr, compounding: p.compounding, initial_amount: Number(p.initial_amount||0), start_date: p.start_date },
-      tx||[], fromISO, toISO
+  function dashYmd(d) {
+    return `${d.getFullYear()}-${dashPad2(d.getMonth() + 1)}-${dashPad2(d.getDate())}`;
+  }
+  function dashMonthKeysBetween(fromISO, toISO) {
+    const out = [],
+      [y1, m1] = fromISO.split("-").map(Number),
+      [y2, m2] = toISO.split("-").map(Number);
+    for (let y = y1, m = m1; y < y2 || (y === y2 && m <= m2); ) {
+      out.push(`${y}-${dashPad2(m)}`);
+      m++;
+      if (m === 13) {
+        m = 1;
+        y++;
+      }
+    }
+    return out;
+  }
+  function dashBuildSeries(
+    { aprPct, compounding = "monthly", initial_amount = 0, start_date = null },
+    txs,
+    fromISO,
+    toISO,
+  ) {
+    const r = Number(aprPct || 0) / 100;
+    const months = dashMonthKeysBetween(fromISO.slice(0, 7), toISO.slice(0, 7));
+    const byMonth = new Map(
+      months.map((k) => [k, { contrib: 0, interest: 0, balance: 0 }]),
     );
-    const aportes = (tx||[]).reduce((s,r)=>s+(Number(r.amount)||0),0);
-    const invested = Number(p.initial_amount||0) + aportes;
-    const current = series.length ? series.at(-1).balance : invested;
-
-    // projeção: +12 meses, sem novos aportes (só juros)
-    const projTo = new Date(today); projTo.setMonth(projTo.getMonth()+12);
-    const projSeries = dashBuildSeries(
-      { aprPct: p.apr, compounding: p.compounding, initial_amount: current, start_date: p.start_date },
-      [], dashYmd(today), dashYmd(projTo)
-    );
-    const projected = projSeries.length ? projSeries.at(-1).balance : current;
-
-    out.push({ ...p, invested, current, projected });
+    for (const t of txs) {
+      const k = String(t.date).slice(0, 7);
+      if (!byMonth.has(k))
+        byMonth.set(k, { contrib: 0, interest: 0, balance: 0 });
+      byMonth.get(k).contrib += Number(t.amount || 0);
+    }
+    let balance = Number(initial_amount || 0);
+    const annivMonth = start_date
+      ? Number(String(start_date).slice(5, 7))
+      : Number(fromISO.slice(5, 7));
+    const out = [];
+    for (const k of months) {
+      const row = byMonth.get(k) || { contrib: 0, interest: 0, balance: 0 };
+      balance += row.contrib;
+      let i = 0;
+      if (compounding === "monthly") i = balance > 0 ? balance * (r / 12) : 0;
+      else {
+        const m = Number(k.slice(5, 7));
+        if (balance > 0 && m === annivMonth) i = balance * r;
+      }
+      balance += i;
+      row.interest = i;
+      row.balance = balance;
+      out.push({ key: k, ...row });
+    }
+    return out;
   }
+  async function dashFetchPortfoliosAgg() {
+    const uid = await dashGetUserId();
+    const { data: pf } = await sb
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", uid);
+    if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
 
-  const byKind = new Map();
-  for (const p of out){
-    const k = p.kind || "Outro";
-    if(!byKind.has(k)) byKind.set(k,{ invested:0, current:0, projected:0, color: p.color || null });
-    const b = byKind.get(k);
-    b.invested += p.invested;
-    b.current += p.current;
-    b.projected += p.projected;
-    if (!b.color && p.color) b.color = p.color;
+    const { data: ttype } = await sb
+      .from("transaction_types")
+      .select("id,code");
+    const SAV = ttype?.find((t) => t.code === "SAVINGS")?.id;
+
+    const today = new Date();
+    const toISO = dashYmd(today);
+
+    const out = [];
+    for (const p of pf) {
+      const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(
+        0,
+        10,
+      );
+      const { data: tx } = await sb
+        .from("transactions")
+        .select("date,amount")
+        .eq("type_id", SAV)
+        .eq("portfolio_id", p.id)
+        .gte("date", fromISO)
+        .lte("date", toISO)
+        .order("date", { ascending: true });
+      const series = dashBuildSeries(
+        {
+          aprPct: p.apr,
+          compounding: p.compounding,
+          initial_amount: Number(p.initial_amount || 0),
+          start_date: p.start_date,
+        },
+        tx || [],
+        fromISO,
+        toISO,
+      );
+      const aportes = (tx || []).reduce(
+        (s, r) => s + (Number(r.amount) || 0),
+        0,
+      );
+      const invested = Number(p.initial_amount || 0) + aportes;
+      const current = series.length ? series.at(-1).balance : invested;
+
+      // projeção: +12 meses, sem novos aportes (só juros)
+      const projTo = new Date(today);
+      projTo.setMonth(projTo.getMonth() + 12);
+      const projSeries = dashBuildSeries(
+        {
+          aprPct: p.apr,
+          compounding: p.compounding,
+          initial_amount: current,
+          start_date: p.start_date,
+        },
+        [],
+        dashYmd(today),
+        dashYmd(projTo),
+      );
+      const projected = projSeries.length ? projSeries.at(-1).balance : current;
+
+      out.push({ ...p, invested, current, projected });
+    }
+
+    const byKind = new Map();
+    for (const p of out) {
+      const k = p.kind || "Outro";
+      if (!byKind.has(k))
+        byKind.set(k, {
+          invested: 0,
+          current: 0,
+          projected: 0,
+          color: p.color || null,
+        });
+      const b = byKind.get(k);
+      b.invested += p.invested;
+      b.current += p.current;
+      b.projected += p.projected;
+      if (!b.color && p.color) b.color = p.color;
+    }
+    return { kinds: Array.from(byKind.keys()), byKind, raw: out };
   }
-  return { kinds: Array.from(byKind.keys()), byKind, raw: out };
-}
 
   //====== Fim mini-card: Investimentos==//
   // ---------------- DEMO (fallback) ----------------
@@ -1181,7 +1253,7 @@ async function dashFetchPortfoliosAgg(){
           fixed: Math.round(expense[i] * 0.6),
           variable: Math.round(expense[i] * 0.4),
         },
-      ])
+      ]),
     );
     thisMonthAgg = { fixed: 720, variable: 330 };
     topCatThisMonth = new Map([
@@ -1225,7 +1297,7 @@ async function dashFetchPortfoliosAgg(){
 
     // fallback suave com base no KPI "Despesas" do mês (último monthly)
     const fallbackTotal = Math.abs(
-      (monthly[monthly.length - 1] || {}).expense || 0
+      (monthly[monthly.length - 1] || {}).expense || 0,
     );
     const sigmoid = (d) => 1 / (1 + Math.exp(-0.25 * (d - lastDay / 2)));
     const norm = 1 / (1 + Math.exp(-0.25 * (lastDay - lastDay / 2)));
@@ -1276,7 +1348,7 @@ async function dashFetchPortfoliosAgg(){
     const daysPassed = todayIdx + 1;
     const rate = daysPassed > 0 ? spentSoFar / daysPassed : 0;
     dailyCumForecast = dailyLabels.map((_, i) =>
-      i >= todayIdx ? rate * (i + 1) : null
+      i >= todayIdx ? rate * (i + 1) : null,
     );
   }
   await computeDailySeries();
@@ -1315,12 +1387,12 @@ async function dashFetchPortfoliosAgg(){
   setPill(
     "kpi-expense-trend",
     pct(Math.abs(latest.expense), Math.abs(prev.expense)),
-    false
+    false,
   );
   setPill(
     "kpi-savings-trend",
     pct(Math.abs(latest.savings), Math.abs(prev.savings)),
-    true
+    true,
   );
   setPill("kpi-net-trend", pct(latest.net, prev.net), true);
 
@@ -1362,7 +1434,7 @@ async function dashFetchPortfoliosAgg(){
     (m) =>
       (Number(m.income) || 0) -
       Math.abs(Number(m.expense) || 0) -
-      Math.abs(Number(m.savings) || 0)
+      Math.abs(Number(m.savings) || 0),
   );
   const netCum = [];
   const savCum = [];
@@ -1521,7 +1593,7 @@ async function dashFetchPortfoliosAgg(){
         const { data } = await sb
           .from("transactions")
           .select(
-            "date, amount, category_id, categories(name,parent_id), regularities(name_pt,code)"
+            "date, amount, category_id, categories(name,parent_id), regularities(name_pt,code)",
           )
           .eq("type_id", expId)
           .gte("date", ymd(back))
@@ -1586,44 +1658,93 @@ async function dashFetchPortfoliosAgg(){
       upcoming.sort((a, b) => a.next - b.next);
 
       const box = outlet.querySelector("#upcoming-fixed-list");
-      if (box) {
-        if (!upcoming.length) {
-          box.innerHTML = `<div class="muted">Sem despesas fixas previstas nos próximos 30 dias.</div>`;
-        } else {
-          const statusClass = (days) =>
-            days <= 5 ? "danger" : days <= 15 ? "warn" : "ok";
-          const statusDotColor = (cls) =>
-            cls === "danger"
-              ? "#ef4444"
-              : cls === "warn"
-              ? "#facc15"
-              : "#64748b";
-          box.innerHTML = upcoming
-            .map((u) => {
-              const dateStr = u.next.toLocaleDateString("pt-PT", {
-                day: "2-digit",
-                month: "short",
-              });
-              const cls = statusClass(u.daysLeft);
-              const color = statusDotColor(cls);
-              return `<div class="cat-item ${cls}">
-              <div class="cat-left">
-                <span class="cat-dot" style="background:${color}"></span>
-                <div>
-                  <div class="cat-name">${u.name}</div>
-                  <div class="cat-meta">${u.regLabel} • em ${u.daysLeft} dia${
-                u.daysLeft === 1 ? "" : "s"
-              }</div>
+      if (box && upcoming.length) {
+        const statusClass = (days) =>
+          days <= 5 ? "danger" : days <= 15 ? "warn" : "ok";
+        const statusDotColor = (cls) =>
+          cls === "danger" ? "#ef4444" : cls === "warn" ? "#facc15" : "#64748b";
+
+        // --- CARROUSSEL START ---
+        box.innerHTML = `
+          <div class="carousel-container">
+            <div class="carousel-track" id="upcoming-track"></div>
+            <div class="carousel-dots" id="upcoming-dots"></div>
+          </div>
+        `;
+        const track = box.querySelector("#upcoming-track");
+        const dotsBox = box.querySelector("#upcoming-dots");
+
+        // Render ITEMS
+        track.innerHTML = upcoming
+          .map((u) => {
+            const dateStr = u.next.toLocaleDateString("pt-PT", {
+              day: "2-digit",
+              month: "short",
+            });
+            const cls = statusClass(u.daysLeft);
+            const color = statusDotColor(cls);
+            return `
+            <div class="carousel-item">
+              <div class="cat-item ${cls}">
+                <div class="cat-left">
+                  <span class="cat-dot" style="background:${color}"></span>
+                  <div>
+                    <div class="cat-name">${u.name}</div>
+                    <div class="cat-meta">${u.regLabel} • em ${
+                      u.daysLeft
+                    } dia${u.daysLeft === 1 ? "" : "s"}</div>
+                  </div>
+                </div>
+                <div class="cat-right" style="text-align:right">
+                  <div class="cat-amount">${money(u.amount)}</div>
+                  <div class="cat-avg" style="display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid ${color};">${dateStr}</div>
                 </div>
               </div>
-              <div class="cat-right" style="text-align:right">
-                <div class="cat-amount">${money(u.amount)}</div>
-                <div class="cat-avg" style="display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid ${color};">${dateStr}</div>
-              </div>
             </div>`;
-            })
-            .join("");
-        }
+          })
+          .join("");
+
+        // Render DOTS
+        dotsBox.innerHTML = upcoming
+          .map(
+            (_, i) =>
+              `<div class="carousel-dot ${
+                i === 0 ? "active" : ""
+              }" data-idx="${i}"></div>`,
+          )
+          .join("");
+
+        let currentIdx = 0;
+        const totalSlides = upcoming.length;
+        const allDots = dotsBox.querySelectorAll(".carousel-dot");
+
+        const showSlide = (idx) => {
+          if (idx >= totalSlides) idx = 0;
+          if (idx < 0) idx = totalSlides - 1;
+          currentIdx = idx;
+          track.style.transform = `translateX(-${currentIdx * 100}%)`;
+          allDots.forEach((d) => d.classList.remove("active"));
+          allDots[currentIdx]?.classList.add("active");
+        };
+
+        // Dots click
+        allDots.forEach((d) => {
+          d.addEventListener("click", () => showSlide(Number(d.dataset.idx)));
+        });
+
+        // Auto-play
+        let interval = setInterval(() => showSlide(currentIdx + 1), 4000);
+
+        // Pause on hover
+        box.addEventListener("mouseenter", () => clearInterval(interval));
+        box.addEventListener("mouseleave", () => {
+          clearInterval(interval);
+          interval = setInterval(() => showSlide(currentIdx + 1), 4000);
+        });
+
+        // --- CARROUSSEL END ---
+      } else if (box && !upcoming.length) {
+        box.innerHTML = `<div class="muted">Sem despesas fixas previstas nos próximos 30 dias.</div>`;
       }
     } catch (e) {
       const box = outlet.querySelector("#upcoming-fixed-list");
@@ -1698,7 +1819,7 @@ async function dashFetchPortfoliosAgg(){
           const v = values[i] || 0;
           const p = ((v / total) * 100).toFixed(1);
           return `<div class="rpt-legend__item"><span style="flex:1">${lab}</span><strong>${money(
-            v
+            v,
           )}</strong><span style="color:#64748b">&nbsp;(${p}%)</span></div>`;
         })
         .join("");
@@ -1724,7 +1845,7 @@ async function dashFetchPortfoliosAgg(){
         "#e11d48",
       ];
       const bg = (parentDist.labels || []).map(
-        (_, i) => COLORS[i % COLORS.length]
+        (_, i) => COLORS[i % COLORS.length],
       );
       const totalParents =
         (parentDist.values || []).reduce((a, b) => a + b, 0) || 1;
@@ -1768,7 +1889,7 @@ async function dashFetchPortfoliosAgg(){
 
       const parentDistValuesTotal = (parentDist.values || []).reduce(
         (a, b) => a + b,
-        0
+        0,
       );
       const pal = palette(parentDist.labels.length);
 
@@ -1875,7 +1996,7 @@ async function dashFetchPortfoliosAgg(){
         Array.from((topCatThisMonth || new Map()).entries()).map(([k, v]) => [
           k,
           (v || 0) * 12,
-        ])
+        ]),
       );
       const demoCnt = new Map(Array.from(demoAgg.keys()).map((k) => [k, 1]));
       catAgg12m = demoAgg;
@@ -1883,38 +2004,95 @@ async function dashFetchPortfoliosAgg(){
     }
 
     const arr = Array.from(catAgg12m.entries()).sort((a, b) => b[1] - a[1]);
-    const totalAnual = arr.reduce((s, [, v]) => s + (v || 0), 0) || 1;
+    // const totalAnual = arr.reduce((s, [, v]) => s + (v || 0), 0) || 1; // Removed duplicate
     const monthsCount = 12;
 
-    const pal = palette(arr.length);
-    box.innerHTML = arr
-      .map(([name, totalVal], i) => {
-        const total = Number(totalVal || 0);
-        const pct = (total / totalAnual) * 100;
-        const avgMes = total / monthsCount;
-        const n = Math.max(1, Number(catCount12m.get(name) || 0));
-        // const avgReg = total / n;
+    // === AGRUPAR POR PAI (Accordion) ===
+    const grouped = new Map(); // ParentName -> { total, children: [{name, total, avg, pct}] }
+
+    // Iterar sobre catAgg12m (que já tem totais por "Pai > Filho" ou "Pai")
+    // O nome da categoria vem como "Pai > Filho" ou "Pai"
+    for (const [fullName, val] of catAgg12m.entries()) {
+      const parts = fullName.split(" > ");
+      const parentName = parts[0];
+      const childName = parts.length > 1 ? parts[1] : parentName; // se só tiver 1, é o próprio pai
+
+      if (!grouped.has(parentName)) {
+        grouped.set(parentName, { total: 0, children: [] });
+      }
+      const g = grouped.get(parentName);
+      g.total += Number(val || 0);
+
+      // Se tiver filhos explícitos (parts > 1) ou se quisermos mostrar sempre o item como child
+      // Vamos adicionar à lista de children
+      const count = Math.max(1, Number(catCount12m.get(fullName) || 0));
+      g.children.push({
+        name: childName,
+        fullName: fullName,
+        total: val,
+        avg: val / 12, // assumindo 12m fixo
+        count,
+      });
+    }
+
+    // Converter para array e ordenar por total do PAI
+    const sortedParents = Array.from(grouped.entries())
+      .map(([pName, data]) => ({ name: pName, ...data }))
+      .sort((a, b) => b.total - a.total);
+
+    const totalAnual = sortedParents.reduce((acc, p) => acc + p.total, 0) || 1;
+    const pal = palette(sortedParents.length);
+
+    box.innerHTML = sortedParents
+      .map((p, i) => {
+        const pTotal = p.total;
+        const pPct = (pTotal / totalAnual) * 100;
+        const pAvg = pTotal / 12;
         const color = pal[i % pal.length];
 
-        return `<div class="cat-item">
-      <div class="cat-left">
-        <span class="cat-dot" style="background:${color}"></span>
-        <div>
-          <div class="cat-name">${name}</div>
-          <div class="cat-meta">${pct.toFixed(
-            1
-          )}% do total de despesas (12m)</div>
+        // Ordenar filhos por valor
+        const sortedChildren = p.children.sort((a, b) => b.total - a.total);
+
+        // Renderizar Filhos
+        const childrenHtml = sortedChildren
+          .map((c) => {
+            const cPct = (c.total / pTotal) * 100;
+            return `
+           <div class="cat-child-item">
+             <div style="font-weight:500;">${c.name}</div>
+             <div style="text-align:right">
+               <div>${money(c.total)} <span class="muted" style="font-size:0.85em">(${cPct.toFixed(0)}%)</span></div>
+             </div>
+           </div>
+         `;
+          })
+          .join("");
+
+        return `
+        <!-- PAI -->
+        <div class="cat-group-wrapper">
+          <div class="cat-item cat-group-parent" onclick="this.nextElementSibling.hidden = !this.nextElementSibling.hidden; this.querySelector('.cat-chevron').classList.toggle('is-open')">
+            <div class="cat-left">
+              <span class="cat-dot" style="background:${color}"></span>
+              <div style="flex:1">
+                <div class="cat-name" style="display:flex; align-items:center; gap:6px;">
+                  ${p.name}
+                  <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <div class="cat-meta">${pPct.toFixed(1)}% do total</div>
+              </div>
+            </div>
+            <div class="cat-right" style="text-align:right">
+              <div class="cat-amount">${money(pTotal)}<span class="muted">/ano</span></div>
+              <div class="cat-avg">${money(pAvg)}<span class="muted">/mês</span></div>
+            </div>
+          </div>
+          <!-- FILHOS -->
+          <div class="cat-group-children" hidden>
+            ${childrenHtml}
+          </div>
         </div>
-      </div>
-      <div class="cat-right" style="text-align:right">
-        <div class="cat-amount">${money(
-          total
-        )}<span class="muted">/ano</span></div>
-        <div class="cat-avg">
-          ${money(avgMes)}<span class="muted">/mês</span>
-        </div>
-      </div>
-    </div>`;
+      `;
       })
       .join("");
   })();
@@ -1956,9 +2134,7 @@ async function dashFetchPortfoliosAgg(){
 
         const parentsMap = new Map();
         try {
-          const { data: cats } = await sb
-            .from("categories")
-            .select("id,name");
+          const { data: cats } = await sb.from("categories").select("id,name");
           (cats || []).forEach((c) => parentsMap.set(c.id, c.name));
         } catch {}
 
@@ -2105,12 +2281,17 @@ async function dashFetchPortfoliosAgg(){
       btn.onclick = (e) => {
         e.stopPropagation();
         e.preventDefault();
-        if (confirm("Ocultar cartão do dashboard?")) {
-          const title =
-            card.querySelector(".mini-card__title")?.textContent || key;
-          hide(key, title);
-          card.style.display = "none";
-        }
+        // REMOVIDO: confirm("Ocultar cartão do dashboard?")
+        const title =
+          card.querySelector(".mini-card__title")?.textContent || key;
+        hide(key, title);
+        card.style.display = "none";
+        // Dispara evento para o Settings atualizar prateleira
+        window.dispatchEvent(
+          new CustomEvent("wb:minicard:changed", {
+            detail: { action: "hide", key, title },
+          }),
+        );
       };
       card.style.position = "relative";
       card.appendChild(btn);
@@ -2164,7 +2345,7 @@ async function dashFetchPortfoliosAgg(){
       .querySelectorAll("section.card[data-collapsible]")
       .forEach((card, idx) => {
         const titleEl = card.querySelector(
-          ":scope > .section-title, :scope > h2.section-title"
+          ":scope > .section-title, :scope > h2.section-title",
         );
         if (!titleEl) return;
 
@@ -2207,7 +2388,7 @@ async function dashFetchPortfoliosAgg(){
         btn.setAttribute("aria-expanded", String(!collapsed));
         btn.setAttribute(
           "aria-label",
-          collapsed ? "Abrir secção" : "Fechar secção"
+          collapsed ? "Abrir secção" : "Fechar secção",
         );
         btn.innerHTML = collapsed ? btn.dataset.iconDown : btn.dataset.iconUp;
 
@@ -2217,7 +2398,7 @@ async function dashFetchPortfoliosAgg(){
           btn.setAttribute("aria-expanded", String(!isCollapsed));
           btn.setAttribute(
             "aria-label",
-            isCollapsed ? "Abrir secção" : "Fechar secção"
+            isCollapsed ? "Abrir secção" : "Fechar secção",
           );
           btn.innerHTML = isCollapsed
             ? btn.dataset.iconDown
@@ -2234,10 +2415,10 @@ async function dashFetchPortfoliosAgg(){
   try {
     if (document.querySelector(".dash-mini")) {
       const fixed12m = monthly.map(
-        (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0
+        (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0,
       );
       const variable12m = monthly.map(
-        (m) => fixedVarByMonth.get(m.key || m.label)?.variable || 0
+        (m) => fixedVarByMonth.get(m.key || m.label)?.variable || 0,
       );
 
       const dsMini = {
@@ -2248,10 +2429,10 @@ async function dashFetchPortfoliosAgg(){
         saldo12m: monthly.map((m) => m.net),
 
         fixed12m: monthly.map(
-          (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0
+          (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0,
         ),
         variable12m: monthly.map(
-          (m) => fixedVarByMonth.get(m.key || m.label)?.variable || 0
+          (m) => fixedVarByMonth.get(m.key || m.label)?.variable || 0,
         ),
 
         catLabelsMes: Array.from(topCatThisMonth.keys()),
