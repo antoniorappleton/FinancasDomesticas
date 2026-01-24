@@ -210,7 +210,19 @@ function onSignedOut() {
         }
         if (saved.card) root.style.setProperty("--surface", saved.card);
         if (saved.text) root.style.setProperty("--text", saved.text);
-        if (saved.dark) document.body.classList.add("dark-mode");
+
+        if (saved.muted) root.style.setProperty("--muted", saved.muted);
+        if (saved.border) root.style.setProperty("--border", saved.border);
+        if (saved.income) root.style.setProperty("--income", saved.income);
+        if (saved.expense) root.style.setProperty("--expense", saved.expense);
+        if (saved.savings) root.style.setProperty("--savings", saved.savings);
+        if (saved.balance) root.style.setProperty("--balance", saved.balance);
+
+        if (saved.dark) {
+          document.body.classList.add("dark-mode");
+          if (!saved.muted) root.style.setProperty("--muted", "#9ca3af");
+          if (!saved.border) root.style.setProperty("--border", "#374151");
+        }
       }
     } catch {}
 

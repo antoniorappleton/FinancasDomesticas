@@ -1896,6 +1896,7 @@ export async function init({ sb, outlet } = {}) {
   $("#bud-cancel")?.addEventListener("click", () =>
     budOverlay?.classList.add("hidden"),
   );
+  /* ===== THEME SETTINGS == */
   const themeOverlay = $("#theme-overlay");
   const btnThemeOpen = $("#btn-theme-open");
   const btnThemeClose = $("#theme-close");
@@ -1908,6 +1909,12 @@ export async function init({ sb, outlet } = {}) {
     fab: $("#thm-fab"),
     card: $("#thm-card"),
     text: $("#thm-text"),
+    muted: $("#thm-muted"),
+    border: $("#thm-border"),
+    income: $("#thm-income"),
+    expense: $("#thm-expense"),
+    savings: $("#thm-savings"),
+    balance: $("#thm-balance"),
     dark: $("#thm-dark"),
   };
 
@@ -1917,6 +1924,12 @@ export async function init({ sb, outlet } = {}) {
     fab: "#0f766e",
     card: "#ffffff",
     text: "#1e293b",
+    muted: "#64748b",
+    border: "#e2e8f0",
+    income: "#16a34a",
+    expense: "#ef4444",
+    savings: "#2563eb",
+    balance: "#065f46",
     dark: false,
   };
 
@@ -1943,35 +1956,28 @@ export async function init({ sb, outlet } = {}) {
         "--footer-grad",
         `linear-gradient(180deg, ${theme.header}, ${theme.header})`,
       );
-      // Update header transparency if needed?
-      // For now, let's just assume overrides work.
     }
     if (theme.fab) {
       root.style.setProperty("--primary", theme.fab);
-      root.style.setProperty("--fab-bg", theme.fab); // Explicitly set FAB background
+      root.style.setProperty("--fab-bg", theme.fab);
+    }
+    if (theme.card) root.style.setProperty("--surface", theme.card);
+    if (theme.text) root.style.setProperty("--text", theme.text);
 
-      // Since FAB uses --footer-grad or specific colors, we might need to force it.
-      // But we just updated .fab-nav to use var(--footer-grad) in previous steps?
-      // Actually let's check styles.css. FAB background was set to use var(--footer-grad).
-      // If user wants FAB different from Header/Footer, we need a separate var.
-      // Let's set --fab-bg variable if we want.
-      // For now, let's stick to simple:
-
-      // Update custom property if we add it to CSS, otherwise we might need direct style injection or assume linked.
-      // Let's try to set --primary and see if it propagates or if we need more specific vars.
-    }
-    if (theme.card) {
-      root.style.setProperty("--surface", theme.card);
-    }
-    if (theme.text) {
-      root.style.setProperty("--text", theme.text);
-    }
+    if (theme.muted) root.style.setProperty("--muted", theme.muted);
+    if (theme.border) root.style.setProperty("--border", theme.border);
+    if (theme.income) root.style.setProperty("--income", theme.income);
+    if (theme.expense) root.style.setProperty("--expense", theme.expense);
+    if (theme.savings) root.style.setProperty("--savings", theme.savings);
+    if (theme.balance) root.style.setProperty("--balance", theme.balance);
 
     if (theme.dark) {
       document.body.classList.add("dark-mode");
       if (!theme.bg) root.style.setProperty("--bg", "#111827");
       if (!theme.card) root.style.setProperty("--surface", "#1f2937");
       if (!theme.text) root.style.setProperty("--text", "#f3f4f6");
+      if (!theme.muted) root.style.setProperty("--muted", "#9ca3af");
+      if (!theme.border) root.style.setProperty("--border", "#374151");
     } else {
       document.body.classList.remove("dark-mode");
     }
@@ -1981,6 +1987,17 @@ export async function init({ sb, outlet } = {}) {
     if (inputs.fab) inputs.fab.value = theme.fab || DEFAULTS.fab;
     if (inputs.card) inputs.card.value = theme.card || DEFAULTS.card;
     if (inputs.text) inputs.text.value = theme.text || DEFAULTS.text;
+
+    if (inputs.muted) inputs.muted.value = theme.muted || DEFAULTS.muted;
+    if (inputs.border) inputs.border.value = theme.border || DEFAULTS.border;
+    if (inputs.income) inputs.income.value = theme.income || DEFAULTS.income;
+    if (inputs.expense)
+      inputs.expense.value = theme.expense || DEFAULTS.expense;
+    if (inputs.savings)
+      inputs.savings.value = theme.savings || DEFAULTS.savings;
+    if (inputs.balance)
+      inputs.balance.value = theme.balance || DEFAULTS.balance;
+
     if (inputs.dark) inputs.dark.checked = !!theme.dark;
   }
 
@@ -1991,6 +2008,12 @@ export async function init({ sb, outlet } = {}) {
       fab: inputs.fab.value,
       card: inputs.card.value,
       text: inputs.text.value,
+      muted: inputs.muted.value,
+      border: inputs.border.value,
+      income: inputs.income.value,
+      expense: inputs.expense.value,
+      savings: inputs.savings.value,
+      balance: inputs.balance.value,
       dark: inputs.dark.checked,
     };
     applyTheme(theme);
@@ -1999,13 +2022,20 @@ export async function init({ sb, outlet } = {}) {
 
   Object.values(inputs).forEach((el) => {
     el?.addEventListener("input", () => {
+      // Live preview: build object from current inputs
       const theme = {
-        bg: inputs.bg.value,
-        header: inputs.header.value,
-        fab: inputs.fab.value,
-        card: inputs.card.value,
-        text: inputs.text.value,
-        dark: inputs.dark.checked,
+        bg: inputs.bg?.value,
+        header: inputs.header?.value,
+        fab: inputs.fab?.value,
+        card: inputs.card?.value,
+        text: inputs.text?.value,
+        muted: inputs.muted?.value,
+        border: inputs.border?.value,
+        income: inputs.income?.value,
+        expense: inputs.expense?.value,
+        savings: inputs.savings?.value,
+        balance: inputs.balance?.value,
+        dark: inputs.dark?.checked,
       };
       applyTheme(theme);
     });

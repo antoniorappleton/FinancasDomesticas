@@ -491,41 +491,127 @@
       <h2 style="font-size:1.2rem;font-weight:700">Personalizar Tema</h2>
       <button id="theme-close" class="rpt-close" aria-label="Fechar">×</button>
     </div>
-    <div class="rep-body" style="padding-top:10px; display:grid; gap:16px">
+    <div class="rep-body" style="padding-top:10px; display:grid; gap:20px">
       
       <p class="row-note">As alterações são guardadas automaticamente no seu dispositivo.</p>
 
-      <div style="display:grid; gap:12px">
-        <label style="display:flex; justify-content:space-between; align-items:center">
-          <span>Fundo (Background)</span>
-          <input type="color" id="thm-bg" value="#f0f2f5" />
-        </label>
-        <label style="display:flex; justify-content:space-between; align-items:center">
-          <span>Cabeçalho (Header/Footer)</span>
-          <input type="color" id="thm-header" value="#0f172a" />
-        </label>
-        <label style="display:flex; justify-content:space-between; align-items:center">
-          <span>Botão Menu (FAB)</span>
-          <input type="color" id="thm-fab" value="#0f766e" />
-        </label>
-        <label style="display:flex; justify-content:space-between; align-items:center">
-          <span>Cor dos Cards</span>
-          <input type="color" id="thm-card" value="#ffffff" />
-        </label>
-        <label style="display:flex; justify-content:space-between; align-items:center">
-          <span>Texto Principal</span>
-          <input type="color" id="thm-text" value="#1e293b" />
-        </label>
+      <!-- Grupo: Interface Base -->
+      <div>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Interface Base</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Fundo (Background)</span>
+            <input type="color" id="thm-bg" value="#f0f2f5" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Surface / Cards</span>
+            <input type="color" id="thm-card" value="#ffffff" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Bordas / Borders</span>
+            <input type="color" id="thm-border" value="#e2e8f0" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+        </div>
       </div>
 
-      <div style="border-top:1px solid #e5e7eb; padding-top:16px; margin-top:8px">
+      <!-- Grupo: Tipografia -->
+      <div>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Tipografia</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Texto Principal</span>
+            <input type="color" id="thm-text" value="#1e293b" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Texto Secundário</span>
+            <input type="color" id="thm-muted" value="#64748b" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Grupo: Marca e Navegação -->
+      <div>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Marca e Navegação</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Cabeçalho (Header)</span>
+            <input type="color" id="thm-header" value="#0f172a" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Botão Menu (FAB)</span>
+            <input type="color" id="thm-fab" value="#0f766e" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Grupo: Status Financeiro -->
+      <div>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Cores de Status</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Receita (Income)</span>
+            <input type="color" id="thm-income" value="#16a34a" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Despesa (Expense)</span>
+            <input type="color" id="thm-expense" value="#ef4444" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Poupança (Savings)</span>
+            <input type="color" id="thm-savings" value="#2563eb" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+           <label style="display:grid; font-size:13px; gap:4px">
+            <span>Saldo (Balance)</span>
+            <input type="color" id="thm-balance" value="#065f46" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- Grupo: Avançado -->
+      <div>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Detalhes / Avançado</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Intensidade Sombra</span>
+            <select id="thm-shadow" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1">
+              <option value="none">Nenhuma</option>
+              <option value="soft" selected>Suave (Padrão)</option>
+              <option value="medium">Média</option>
+              <option value="strong">Forte</option>
+            </select>
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px">
+            <span>Botões Gradiente</span>
+            <select id="thm-btn-style" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1">
+              <option value="flat">Não (Cor Sólida)</option>
+              <option value="gradient">Sim (Gradiente)</option>
+            </select>
+          </label>
+          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
+            <div style="display:flex; justify-content:space-between">
+              <span>Opacidade Cartões (Alpha)</span>
+              <span id="thm-opacity-val" style="color:var(--muted)">0.75</span>
+            </div>
+            <input type="range" id="thm-opacity" min="0.4" max="1" step="0.05" value="0.75" />
+          </label>
+           <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
+            <div style="display:flex; justify-content:space-between">
+              <span>Blur (Glassmorphism)</span>
+              <span id="thm-blur-val" style="color:var(--muted)">12px</span>
+            </div>
+            <input type="range" id="thm-blur" min="0" max="30" step="2" value="12" />
+          </label>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
         <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
           <span style="font-weight:600">Modo Escuro (BETA)</span>
           <input type="checkbox" id="thm-dark" style="width:20px;height:20px" />
         </label>
       </div>
 
-      <div class="actions" style="margin-top:12px; justify-content:flex-end">
+      <div class="actions" style="margin-top:0; justify-content:flex-end">
         <button id="thm-reset" class="btn" style="color:#ef4444">Restaurar Padrão</button>
         <button id="thm-save" class="btn btn--primary">Concluído</button>
       </div>
