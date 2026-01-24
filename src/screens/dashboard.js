@@ -1575,11 +1575,17 @@ export async function init({ sb, outlet } = {}) {
     });
   })();
 
-  // =========== Próximas despesas (30 dias) ===========
+  // =========== Próximas despesas (Smart Prediction) ===========
   (async function () {
     try {
       let rows = [];
       if (HAS_SB) {
+        // Fetch last 18 months to ensure we have history
+        const back = new Date();
+        back.setMonth(back.getMonth() - 18);
+        back.setDate(1);
+
+        // Fetch EXPENSE transactions
         const { data: ttype } = await sb
           .from("transaction_types")
           .select("id,code")
@@ -1587,9 +1593,7 @@ export async function init({ sb, outlet } = {}) {
           .single();
         const expId = ttype?.id || -999;
 
-        const back = new Date();
-        back.setMonth(back.getMonth() - 18);
-        back.setDate(1);
+        // Order by date DESC so we get recent first
         const { data } = await sb
           .from("transactions")
           .select(
@@ -1600,15 +1604,14 @@ export async function init({ sb, outlet } = {}) {
           .order("date", { ascending: false });
         rows = data || [];
       }
-      const byCat = new Map();
+
+      // Pre-fetch Category Names map
       const catParents = new Map();
       if (HAS_SB) {
-        try {
-          const { data: cats } = await sb
-            .from("categories")
-            .select("id,name,parent_id");
-          (cats || []).forEach((c) => catParents.set(c.id, c));
-        } catch {}
+        const { data: cats } = await sb
+          .from("categories")
+          .select("id,name,parent_id");
+        (cats || []).forEach((c) => catParents.set(c.id, c));
       }
       const catPathName = (row) => {
         const child = row.categories?.name;
@@ -1616,55 +1619,110 @@ export async function init({ sb, outlet } = {}) {
         const p = pid ? catParents.get(pid) : null;
         return p?.name ? `${p.name} > ${child}` : child || "(Sem categoria)";
       };
+
       const periodMonths = (reg) => {
         const s = (reg?.code || reg?.name_pt || "").toString().toLowerCase();
-        if (/anual|annual|year/.test(s)) return 12;
+        if (/anual|annual/.test(s)) return 12;
         if (/semestr/.test(s)) return 6;
         if (/trimestr|quarter/.test(s)) return 3;
         if (/bimestr|bi-?mensal/.test(s)) return 2;
         if (/mensal|month/.test(s)) return 1;
         return 0;
       };
-      const today = new Date();
-      const in30 = new Date();
-      in30.setDate(in30.getDate() + 30);
 
-      (rows || []).forEach((r) => {
-        const months = periodMonths(r.regularities);
-        if (!months) return;
-        const key = `${r.category_id}|${months}`;
-        const d = new Date(r.date);
-        const prev = byCat.get(key);
-        if (!prev || d > prev.lastDate) {
-          byCat.set(key, {
-            lastDate: d,
-            amount: Number(r.amount || 0),
+      // Group by Category+Regularity
+      // We want to collect HISTORY (last 3 occurrences)
+      const historyMap = new Map(); // key -> [dates...]
+
+      rows.forEach((r) => {
+        const per = periodMonths(r.regularities);
+        if (!per) return; // ignore non-recurring
+        const key = `${r.category_id}|${per}`;
+
+        if (!historyMap.has(key)) {
+          historyMap.set(key, {
+            dates: [],
+            lastAmount: Number(r.amount),
             name: catPathName(r),
-            regLabel: r.regularities?.name_pt || r.regularities?.code || "Fixa",
-            months,
+            months: per,
           });
         }
+        // Add date if not mostly duplicate (avoid same-day double payments distorting logic slightly, but ok for now)
+        historyMap.get(key).dates.push(new Date(r.date));
       });
 
+      // Analyze each recurring expense
+      const today = new Date();
+      // "Start" of window: Today - 15 days (allow checking overdue)
+      const windowStart = new Date(today);
+      windowStart.setDate(windowStart.getDate() - 15);
+
+      // "End" of window: Today + 35 days (look ahead a bit more)
+      const windowEnd = new Date(today);
+      windowEnd.setDate(windowEnd.getDate() + 35);
+
       const upcoming = [];
-      for (const v of byCat.values()) {
-        const next = new Date(v.lastDate);
-        next.setMonth(next.getMonth() + v.months);
-        if (next >= today && next <= in30) {
-          const daysLeft = Math.ceil((next - today) / (1000 * 60 * 60 * 24));
-          upcoming.push({ ...v, next, daysLeft });
+
+      for (const [key, info] of historyMap.entries()) {
+        const history = info.dates; // sorted DESC
+        if (!history.length) continue;
+
+        // 1. Calculate Average Day of Month (from last up to 3 payments)
+        const recent = history.slice(0, 3);
+        const daySum = recent.reduce((sum, d) => sum + d.getDate(), 0);
+        const avgDay = Math.round(daySum / recent.length);
+
+        // 2. Project Next Date
+        // Start from the very last known payment
+        let cursor = new Date(history[0]); // Last payment date
+
+        // Loop adding 'period' until we are within range or future
+        // Safety break: 24 loops (2 years)
+        for (let i = 0; i < 24; i++) {
+          // Add period
+          cursor.setMonth(cursor.getMonth() + info.months);
+
+          // Adjust to Average Day (smart fix)
+          // But handle shorter months (e.g. Feb)
+          const maxDays = new Date(
+            cursor.getFullYear(),
+            cursor.getMonth() + 1,
+            0,
+          ).getDate();
+          const targetDay = Math.min(avgDay, maxDays);
+          cursor.setDate(targetDay);
+
+          // Validation:
+          // If this projected date is BEFORE windowStart, it's too old (already paid or missed long ago).
+          // But wait, if user MISSED it, we might want to show it?
+          // If manual entry hasn't happened, 'history[0]' is old.
+          // So 'cursor' will jump forward until it is >= windowStart.
+
+          if (cursor >= windowStart) {
+            // Determine if this is the one to show
+            // If it's <= windowEnd, show it!
+            if (cursor <= windowEnd) {
+              const daysLeft = Math.ceil((cursor - today) / 86400000);
+              if (daysLeft >= 0) {
+                upcoming.push({
+                  name: info.name,
+                  amount: info.lastAmount,
+                  next: new Date(cursor),
+                  daysLeft,
+                  avgDay,
+                });
+              }
+            }
+            break; // Found the next immediate relevant payment
+          }
         }
       }
+
       upcoming.sort((a, b) => a.next - b.next);
 
+      // Render
       const box = outlet.querySelector("#upcoming-fixed-list");
       if (box && upcoming.length) {
-        const statusClass = (days) =>
-          days <= 5 ? "danger" : days <= 15 ? "warn" : "ok";
-        const statusDotColor = (cls) =>
-          cls === "danger" ? "#ef4444" : cls === "warn" ? "#facc15" : "#64748b";
-
-        // --- CARROUSSEL START ---
         box.innerHTML = `
           <div class="carousel-container">
             <div class="carousel-track" id="upcoming-track"></div>
@@ -1672,85 +1730,143 @@ export async function init({ sb, outlet } = {}) {
           </div>
         `;
         const track = box.querySelector("#upcoming-track");
-        const dotsBox = box.querySelector("#upcoming-dots");
 
-        // Render ITEMS
         track.innerHTML = upcoming
           .map((u) => {
             const dateStr = u.next.toLocaleDateString("pt-PT", {
-              day: "2-digit",
+              day: "numeric",
               month: "short",
             });
-            const cls = statusClass(u.daysLeft);
-            const color = statusDotColor(cls);
+
+            // Status Colors (Updated Rules)
+            // Red (0-5 days), Yellow (6-10 days), Green (> 10 days)
+            let badgeClass = "badge-ok";
+            let statusText = `${u.daysLeft} dias`;
+
+            if (u.daysLeft === 0) {
+              badgeClass = "badge-danger";
+              statusText = "Hoje";
+            } else if (u.daysLeft <= 5) {
+              badgeClass = "badge-danger";
+            } else if (u.daysLeft <= 10) {
+              badgeClass = "badge-warn";
+            } else {
+              badgeClass = "badge-ok"; // > 10 days
+            }
+
             return `
-            <div class="carousel-item">
-              <div class="cat-item ${cls}">
-                <div class="cat-left">
-                  <span class="cat-dot" style="background:${color}"></span>
-                  <div>
-                    <div class="cat-name">${u.name}</div>
-                    <div class="cat-meta">${u.regLabel} • em ${
-                      u.daysLeft
-                    } dia${u.daysLeft === 1 ? "" : "s"}</div>
+              <div class="carousel-item">
+               <div class="upcoming-card">
+                  <div class="uc-header">
+                    <div class="uc-date">
+                      <span class="uc-day">${u.next.getDate()}</span>
+                      <span class="uc-month">${u.next.toLocaleDateString("pt-PT", { month: "short" })}</span>
+                    </div>
+                    <div class="uc-info">
+                      <div class="uc-cat" title="${u.name}">${u.name}</div>
+                      <div class="uc-amount">${money(u.amount)}</div>
+                    </div>
                   </div>
-                </div>
-                <div class="cat-right" style="text-align:right">
-                  <div class="cat-amount">${money(u.amount)}</div>
-                  <div class="cat-avg" style="display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid ${color};">${dateStr}</div>
-                </div>
+                  <div class="uc-footer">
+                    <span class="badge ${badgeClass}">${statusText}</span>
+                    ${u.avgDay !== u.next.getDate() ? '<span title="Ajustado pela média" class="uc-smart">✨ Smart</span>' : ""}
+                  </div>
+               </div>
               </div>
-            </div>`;
+              `;
           })
           .join("");
 
-        // Render DOTS
-        dotsBox.innerHTML = upcoming
-          .map(
-            (_, i) =>
-              `<div class="carousel-dot ${
-                i === 0 ? "active" : ""
-              }" data-idx="${i}"></div>`,
-          )
-          .join("");
-
+        // Scroll logic
         let currentIdx = 0;
         const totalSlides = upcoming.length;
-        const allDots = dotsBox.querySelectorAll(".carousel-dot");
 
-        const showSlide = (idx) => {
-          if (idx >= totalSlides) idx = 0;
-          if (idx < 0) idx = totalSlides - 1;
-          currentIdx = idx;
-          track.style.transform = `translateX(-${currentIdx * 100}%)`;
-          allDots.forEach((d) => d.classList.remove("active"));
-          allDots[currentIdx]?.classList.add("active");
-        };
+        // Create dots
+        const dotsBox = box.querySelector("#upcoming-dots");
+        if (dotsBox) {
+          dotsBox.innerHTML = upcoming
+            .map(
+              (_, i) =>
+                `<div class="carousel-dot ${i === 0 ? "active" : ""}" data-idx="${i}"></div>`,
+            )
+            .join("");
 
-        // Dots click
-        allDots.forEach((d) => {
-          d.addEventListener("click", () => showSlide(Number(d.dataset.idx)));
-        });
+          const allDots = dotsBox.querySelectorAll(".carousel-dot");
+          const showSlide = (idx) => {
+            if (idx >= totalSlides) idx = 0;
+            if (idx < 0) idx = totalSlides - 1;
+            currentIdx = idx;
+            // Assuming track has 100% width items
+            track.style.transform = `translateX(-${currentIdx * 100}%)`;
 
-        // Auto-play
-        let interval = setInterval(() => showSlide(currentIdx + 1), 4000);
+            allDots.forEach((d) => d.classList.remove("active"));
+            allDots[currentIdx]?.classList.add("active");
+          };
 
-        // Pause on hover
-        box.addEventListener("mouseenter", () => clearInterval(interval));
-        box.addEventListener("mouseleave", () => {
-          clearInterval(interval);
-          interval = setInterval(() => showSlide(currentIdx + 1), 4000);
-        });
+          allDots.forEach((d) => {
+            d.addEventListener("click", () => showSlide(Number(d.dataset.idx)));
+          });
 
-        // --- CARROUSSEL END ---
-      } else if (box && !upcoming.length) {
-        box.innerHTML = `<div class="muted">Sem despesas fixas previstas nos próximos 30 dias.</div>`;
+          // Auto-play
+          let interval = setInterval(() => showSlide(currentIdx + 1), 4000);
+
+          // Pause on hover
+          box.addEventListener("mouseenter", () => clearInterval(interval));
+          box.addEventListener("mouseleave", () => {
+            clearInterval(interval);
+            interval = setInterval(() => showSlide(currentIdx + 1), 4000);
+          });
+        }
+
+        // Verify "Fixed" logic:
+        // We filter by `periodMonths(r.regularities)`. If consistent returns > 0, it is considered recurring/fixed.
+
+        // Simple horizontal scroll styles if not present
+        if (!document.getElementById("uc-styles")) {
+          const s = document.createElement("style");
+          s.id = "uc-styles";
+          s.textContent = `
+               .carousel-container { position: relative; overflow: hidden; width: 100%; border-radius: 12px; }
+               .carousel-track { display: flex; transition: transform 0.5s ease; width: 100%; }
+               .carousel-item { min-width: 100%; padding: 4px; box-sizing: border-box; }
+               
+               .upcoming-card {
+                  background: var(--surface);
+                  border: 1px solid var(--border);
+                  border-radius: 12px;
+                  padding: 12px;
+                  display: flex; flex-direction: column; gap: 8px;
+                  box-shadow: var(--shadow-card);
+               }
+               .uc-header { display: flex; gap: 12px; align-items: center; }
+               .uc-date { 
+                 display: flex; flex-direction: column; align-items: center; 
+                 background: var(--bg); border-radius: 8px; padding: 6px 10px;
+                 min-width: 50px;
+               }
+               .uc-day { font-weight: 800; font-size: 1.25rem; line-height: 1; color: var(--text); }
+               .uc-month { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+               .uc-info { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+               .uc-cat { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+               .uc-amount { font-size: 1rem; font-weight: 700; color: var(--primary); }
+               .uc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+               .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; font-weight: 600; letter-spacing: 0.02em; }
+               .badge-ok { background: #dcfce7; color: #15803d; }
+               .badge-warn { background: #fef08a; color: #854d0e; }
+               .badge-danger { background: #fee2e2; color: #991b1b; }
+               .uc-smart { font-size: 0.75rem; color: #8b5cf6; font-weight: 600; background: #f5f3ff; padding: 2px 6px; border-radius: 4px; }
+               
+               .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; margin-bottom: 4px; }
+               .carousel-dot { width: 8px; height: 8px; background: #cbd5e1; border-radius: 50%; cursor: pointer; transition: background 0.3s; }
+               .carousel-dot.active { background: var(--primary); transform: scale(1.2); }
+             `;
+          document.head.appendChild(s);
+        }
+      } else if (box) {
+        box.innerHTML = `<div class="muted" style="padding:16px;text-align:center">Sem despesas fixas previstas.</div>`;
       }
     } catch (e) {
-      const box = outlet.querySelector("#upcoming-fixed-list");
-      if (box)
-        box.innerHTML = `<div class="muted">Não foi possível carregar as próximas despesas.</div>`;
-      console.warn("upcoming fixed error:", e);
+      console.error("Smart prediction error", e);
     }
   })();
 
