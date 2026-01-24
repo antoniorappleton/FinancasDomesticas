@@ -1588,13 +1588,10 @@ td:nth-child(5) {
   width: clamp(64px, 9.5vw, 76px);
   height: clamp(64px, 9.5vw, 76px);
   border-radius: 999px;
-  display: grid;
   place-items: center;
-  background: #0b7a5d;
+  background: var(--fab-bg, var(--primary, #0b7a5d));
+  /* Customizable */
   color: #fff;
-  border: 0;
-  box-shadow: 0 10px 24px rgba(2, 6, 23, .25);
-  cursor: pointer;
 }
 
 .fab-nav__toggle svg {
@@ -1627,7 +1624,7 @@ td:nth-child(5) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: #0b7a5d;
+  background: var(--fab-bg, var(--primary, #0b7a5d));
   color: #fff;
   border: 0;
   box-shadow: 0 10px 22px rgba(2, 6, 23, .22);

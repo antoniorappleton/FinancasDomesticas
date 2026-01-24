@@ -102,9 +102,9 @@ async function loadScreen(route) {
   try {
     // carrega HTML (sem cache-buster aleatório, usa versão da app)
     const htmlURL = `${resolveUrl(r.file)}?v=${APPV}`;
-    const res = await fetch(htmlURL); 
+    const res = await fetch(htmlURL);
     // Nota: removemos cache: "no-store" para permitir que o SW sirva a versão cacheada se existir
-    
+
     if (!res.ok)
       throw new Error(`Não encontrei ${r.file} (HTTP ${res.status})`);
     outlet.innerHTML = await res.text();
@@ -186,6 +186,34 @@ function onSignedOut() {
 /* ===================== Arranque ===================== */
 (async function boot() {
   try {
+    // Carregar tema guardado
+    try {
+      const saved = JSON.parse(localStorage.getItem("wb:theme") || "null");
+      if (saved) {
+        const root = document.documentElement;
+        if (saved.bg) {
+          root.style.setProperty("--bg", saved.bg);
+          root.style.setProperty(
+            "--bg-grad",
+            `linear-gradient(135deg, ${saved.bg} 0%, ${saved.bg} 100%)`,
+          );
+        }
+        if (saved.header) {
+          root.style.setProperty(
+            "--footer-grad",
+            `linear-gradient(180deg, ${saved.header}, ${saved.header})`,
+          );
+        }
+        if (saved.fab) {
+          root.style.setProperty("--primary", saved.fab);
+          root.style.setProperty("--fab-bg", saved.fab);
+        }
+        if (saved.card) root.style.setProperty("--surface", saved.card);
+        if (saved.text) root.style.setProperty("--text", saved.text);
+        if (saved.dark) document.body.classList.add("dark-mode");
+      }
+    } catch {}
+
     await waitForSupabase();
     initAuth({ onSignedIn, onSignedOut });
     window.addEventListener("hashchange", handleRoute);

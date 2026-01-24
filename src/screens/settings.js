@@ -5,7 +5,6 @@ import { exportImportTemplate } from "./export-template.js";
 
 export async function init({ sb, outlet } = {}) {
   // Import do gerador de template
-  
 
   sb ||= window.sb;
   outlet ||= document.getElementById("outlet");
@@ -57,14 +56,14 @@ export async function init({ sb, outlet } = {}) {
   async function ensureChartStack() {
     if (!window.Chart) {
       await loadScript(
-        "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+        "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
       );
     }
     if (!window.ChartDataLabels && !window.__loadingCDL__) {
       window.__loadingCDL__ = true;
       try {
         await loadScript(
-          "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"
+          "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js",
         );
       } finally {
         window.__loadingCDL__ = false;
@@ -79,13 +78,12 @@ export async function init({ sb, outlet } = {}) {
   async function getJsPDF() {
     if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
     try {
-      const mod = await import(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js"
-      );
+      const mod =
+        await import("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js");
       return mod.jsPDF || window.jspdf?.jsPDF;
     } catch {
       await loadScript(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
       );
       return window.jspdf?.jsPDF;
     }
@@ -123,11 +121,11 @@ export async function init({ sb, outlet } = {}) {
         ${
           typeof it.pct === "number"
             ? `<span style="color:#64748b">&nbsp;(${(it.pct * 100).toFixed(
-                1
+                1,
               )}%)</span>`
             : ""
         }
-      </div>`
+      </div>`,
       )
       .join("");
   }
@@ -146,35 +144,49 @@ export async function init({ sb, outlet } = {}) {
 
   //==== Mini cards ocultos na dashboard =====//
   // ===== MINI-CARDS SHELF (sincroniza com localStorage que a Dashboard usa) =====
-const HIDDEN_KEY = "wb:hiddenMiniCards";
-function getHiddenCards() {
-  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]"); } catch { return []; }
-}
-function setHiddenCards(arr) { localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr || [])); }
-function unhideCard(key) {
-  setHiddenCards(getHiddenCards().filter(x => x.key !== key));
-  // notificar outras páginas/ecrãs
-  window.dispatchEvent(new CustomEvent("wb:minicard:changed", { detail: { action: "unhide", key } }));
-}
-function renderMiniShelf(root=document) {
-  const shelf = root.querySelector("#mini-shelf");
-  if (!shelf) return;
-  const data = getHiddenCards();
-  shelf.innerHTML = data.length ? "" : "<div class='muted'>Nenhum mini-card oculto.</div>";
-  data.forEach(({key, title}) => {
-    const chip = document.createElement("div");
-    chip.className = "mini-shelf__chip";
-    chip.innerHTML = `<span>${title || key}</span>`;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "Mostrar";
-    btn.title = "Voltar a mostrar na Dashboard";
-    btn.addEventListener("click", () => { unhideCard(key); renderMiniShelf(root); });
-    chip.appendChild(btn);
-    shelf.appendChild(chip);
-  });
-}
-
+  const HIDDEN_KEY = "wb:hiddenMiniCards";
+  function getHiddenCards() {
+    try {
+      return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  }
+  function setHiddenCards(arr) {
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr || []));
+  }
+  function unhideCard(key) {
+    setHiddenCards(getHiddenCards().filter((x) => x.key !== key));
+    // notificar outras páginas/ecrãs
+    window.dispatchEvent(
+      new CustomEvent("wb:minicard:changed", {
+        detail: { action: "unhide", key },
+      }),
+    );
+  }
+  function renderMiniShelf(root = document) {
+    const shelf = root.querySelector("#mini-shelf");
+    if (!shelf) return;
+    const data = getHiddenCards();
+    shelf.innerHTML = data.length
+      ? ""
+      : "<div class='muted'>Nenhum mini-card oculto.</div>";
+    data.forEach(({ key, title }) => {
+      const chip = document.createElement("div");
+      chip.className = "mini-shelf__chip";
+      chip.innerHTML = `<span>${title || key}</span>`;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "Mostrar";
+      btn.title = "Voltar a mostrar na Dashboard";
+      btn.addEventListener("click", () => {
+        unhideCard(key);
+        renderMiniShelf(root);
+      });
+      chip.appendChild(btn);
+      shelf.appendChild(chip);
+    });
+  }
 
   // ================= Regularidades ======================
   const { data: regs } = await sb
@@ -212,7 +224,7 @@ function renderMiniShelf(root=document) {
     const s = `${area || ""} > ${cat || ""}`.toLowerCase();
     if (
       /(renda|mensalidad|seguro|tv|internet|nos|telem[óo]vel|empregada|pilates|gin[aá]sio)/.test(
-        s
+        s,
       )
     )
       return REG_BY_LABEL.get("monthly");
@@ -246,7 +258,7 @@ function renderMiniShelf(root=document) {
         (
           sample.match(new RegExp(`\\${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`, "g")) ||
           []
-        ).length
+        ).length,
     );
     return cand[scores.indexOf(Math.max(...scores))] || ",";
   };
@@ -430,7 +442,7 @@ function renderMiniShelf(root=document) {
     tbody.innerHTML = rows
       .slice(0, 200)
       .map(
-        (r) => `<tr>${cols.map((c) => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`
+        (r) => `<tr>${cols.map((c) => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`,
       )
       .join("");
     wrap.style.display = "block";
@@ -461,9 +473,8 @@ function renderMiniShelf(root=document) {
     }));
     renderPreviewTable(previewRows);
     $("#imp-info") &&
-      ($(
-        "#imp-info"
-      ).textContent = `Pré-visualização: ${previewRows.length} linhas.`);
+      ($("#imp-info").textContent =
+        `Pré-visualização: ${previewRows.length} linhas.`);
   });
   $("#imp-import")?.addEventListener("click", async () => {
     try {
@@ -497,7 +508,7 @@ function renderMiniShelf(root=document) {
       const area = row["Área"] ?? row.area;
       const cat = row.Categoria ?? row.categoria;
       const amount = normalizeMoney(
-        row.Montante ?? row.montante ?? row.Valor ?? row.valor
+        row.Montante ?? row.montante ?? row.Valor ?? row.valor,
       );
       if (!amount) continue;
 
@@ -507,7 +518,7 @@ function renderMiniShelf(root=document) {
       const category_id = await ensureCategoryPath(
         area || null,
         cat || area || "Outros",
-        tipo
+        tipo,
       );
 
       const kind = mapKind(tipo); // 'income' | 'savings' | 'expense'
@@ -515,8 +526,8 @@ function renderMiniShelf(root=document) {
         kind === "income"
           ? INCOME_ID
           : kind === "savings"
-          ? SAVINGS_ID
-          : EXPENSE_ID;
+            ? SAVINGS_ID
+            : EXPENSE_ID;
 
       txs.push({
         user_id: uid,
@@ -556,16 +567,15 @@ function renderMiniShelf(root=document) {
       inserted += chunk.length;
     }
     $("#imp-info") &&
-      ($(
-        "#imp-info"
-      ).textContent = `✅ Importação concluída: ${inserted} registos.`);
+      ($("#imp-info").textContent =
+        `✅ Importação concluída: ${inserted} registos.`);
     alert("Importação concluída!");
   });
 
   document
     .querySelector("#imp-export-template")
     ?.addEventListener("click", () => exportImportTemplate());
-  
+
   // ================== RELATÓRIOS ========================
   const overlay = $("#report-overlay");
   const closeBtn = $("#rpt-close");
@@ -909,7 +919,7 @@ function renderMiniShelf(root=document) {
         (!x.expense_nature && x.category?.nature === "fixed");
       const fixedAmt = sum(expRows.filter(isFixed).map((x) => x.amount));
       const variableAmt = sum(
-        expRows.filter((x) => !isFixed(x)).map((x) => x.amount)
+        expRows.filter((x) => !isFixed(x)).map((x) => x.amount),
       );
       const totFV = fixedAmt + variableAmt;
 
@@ -1030,7 +1040,7 @@ function renderMiniShelf(root=document) {
         const tb = `<tbody>${rows
           .map(
             (r) =>
-              `<tr>${cols.map((c) => `<td>${c.cell(r)}</td>`).join("")}</tr>`
+              `<tr>${cols.map((c) => `<td>${c.cell(r)}</td>`).join("")}</tr>`,
           )
           .join("")}</tbody>`;
         const tf = footer
@@ -1049,7 +1059,7 @@ function renderMiniShelf(root=document) {
           { header: "%", cell: (r) => fmtPct(r[1] / (incTot || 1)) },
         ],
         incCat,
-        ["Total", money(incTot), "100%"]
+        ["Total", money(incTot), "100%"],
       );
 
       renderTable(
@@ -1060,7 +1070,7 @@ function renderMiniShelf(root=document) {
           { header: "%", cell: (r) => fmtPct(r[1] / (expTot || 1)) },
         ],
         expCat,
-        ["Total", money(expTot), "100%"]
+        ["Total", money(expTot), "100%"],
       );
 
       running = 0;
@@ -1083,7 +1093,7 @@ function renderMiniShelf(root=document) {
           { header: "Saldo", cell: (r) => money(r.net) },
           { header: "Liquidez", cell: (r) => money(r.liq) },
         ],
-        monthlyRows
+        monthlyRows,
       );
 
       // ===== 5) Despesas por regularidade (agg) =====
@@ -1216,22 +1226,22 @@ function renderMiniShelf(root=document) {
           (effortTot > 50
             ? " <span style='color:#b91c1c'>(elevada)</span>"
             : effortTot > 35
-            ? " <span style='color:#f59e0b'>(moderada)</span>"
-            : " <span style='color:#15803d'>(saudável)</span>")
+              ? " <span style='color:#f59e0b'>(moderada)</span>"
+              : " <span style='color:#15803d'>(saudável)</span>"),
       );
       insights.push(
         `Taxa de poupança: <strong>${savRateTot.toFixed(
-          1
-        )}%</strong> das receitas.`
+          1,
+        )}%</strong> das receitas.`,
       );
       if (negMonths > 0)
         insights.push(
-          `Alerta: <strong>${negMonths}</strong> mes(es) com saldo mensal negativo.`
+          `Alerta: <strong>${negMonths}</strong> mes(es) com saldo mensal negativo.`,
         );
       insights.push(
-        `Liquidez no fim do período: <strong>${money(lastLiq)}</strong>.`
+        `Liquidez no fim do período: <strong>${money(lastLiq)}</strong>.`,
       );
-      
+
       $("#rpt-insights") &&
         ($("#rpt-insights").innerHTML = insights
           .map((x) => `<li>${x}</li>`)
@@ -1319,7 +1329,7 @@ function renderMiniShelf(root=document) {
           REPORT_CFG.logoSize.w,
           REPORT_CFG.logoSize.h,
           undefined,
-          "FAST"
+          "FAST",
         );
         doc.setFont("helvetica", "bold");
         doc.setFontSize(16);
@@ -1391,8 +1401,8 @@ function renderMiniShelf(root=document) {
       if (!c) return y2;
       // Auto-height baseada no aspect ratio para evitar distorção
       const ratio = c.height / c.width;
-      const h = fixedH || (w * ratio);
-      
+      const h = fixedH || w * ratio;
+
       const img = c.toDataURL("image/png", 1.0);
       doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
       return y2 + h;
@@ -1415,7 +1425,7 @@ function renderMiniShelf(root=document) {
           })} (${pct}%)`,
           x + 14,
           y2 + 9,
-          { maxWidth: maxW - 14 }
+          { maxWidth: maxW - 14 },
         );
         y2 += lh;
       }
@@ -1426,9 +1436,10 @@ function renderMiniShelf(root=document) {
     ensureSpace(240);
     const row1Y = y;
     const halfW = (W - 2 * M - 20) / 2;
-    
+
     // Coluna Esq: Categorias
-    doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
     doc.text("Despesas por categoria", M, row1Y);
     let yL = row1Y + 14;
     yL = canvasToPage("#rpt-cat-pie", M, yL, halfW); // Auto-ratio
@@ -1476,7 +1487,7 @@ function renderMiniShelf(root=document) {
     y = M;
     header(
       "Detalhe — Categorias & Resumo",
-      new Date().toLocaleDateString("pt-PT")
+      new Date().toLocaleDateString("pt-PT"),
     );
 
     // tabela util (c/ cabeçalho colorido)
@@ -1519,7 +1530,7 @@ function renderMiniShelf(root=document) {
             y,
             {
               align,
-            }
+            },
           );
           xi += widths[i];
         });
@@ -1537,10 +1548,10 @@ function renderMiniShelf(root=document) {
         money(r.value),
         fmtPct(
           r.value /
-            ((_incomeCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
+            ((_incomeCatPDF || []).reduce((a, x) => a + x.value, 0) || 1),
         ),
       ]),
-      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
+      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W)),
     );
 
     // categorias despesas
@@ -1552,10 +1563,10 @@ function renderMiniShelf(root=document) {
         money(r.value),
         fmtPct(
           r.value /
-            ((_expenseCatPDF || []).reduce((a, x) => a + x.value, 0) || 1)
+            ((_expenseCatPDF || []).reduce((a, x) => a + x.value, 0) || 1),
         ),
       ]),
-      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W))
+      [W * 0.45, W * 0.25, W * 0.15].map((w) => w * (1 - (2 * M) / W)),
     );
 
     // resumo mensal
@@ -1570,7 +1581,7 @@ function renderMiniShelf(root=document) {
         money(r.net),
         money(r.liq),
       ]),
-      [80, 80, 80, 80, 80, 90]
+      [80, 80, 80, 80, 80, 90],
     );
 
     // regularidade (somatório)
@@ -1578,7 +1589,7 @@ function renderMiniShelf(root=document) {
       "Despesas por regularidade",
       ["Regularidade", "Total"],
       (_regularityAggPDF || []).map((r) => [r.label, money(r.value)]),
-      [W * 0.55, W * 0.25].map((w) => w * (1 - (2 * M) / W))
+      [W * 0.55, W * 0.25].map((w) => w * (1 - (2 * M) / W)),
     );
 
     // numeração & rodapé
@@ -1678,8 +1689,8 @@ function renderMiniShelf(root=document) {
 
   // ===== LOGO no modal: tamanho via CSS ou JS opcional =====
   // (mantemos simples; se precisares de ajustar dinamicamente, usa CSS .rep-logo)
-// ... resto do init de settings (importação CSV, relatórios, etc.) 
-renderMiniShelf(outlet);
+  // ... resto do init de settings (importação CSV, relatórios, etc.)
+  renderMiniShelf(outlet);
 
   // ========= ORÇAMENTO DE ESTADO =========
   const budOverlay = $("#budget-overlay");
@@ -1690,7 +1701,9 @@ renderMiniShelf(outlet);
   if (budTargetYear) budTargetYear.value = new Date().getFullYear() + 1;
 
   async function calculateBudget() {
-    const targetY = Number(budTargetYear?.value || new Date().getFullYear() + 1);
+    const targetY = Number(
+      budTargetYear?.value || new Date().getFullYear() + 1,
+    );
     const baseY = targetY - 1;
     const titleEl = $("#bud-title");
     if (titleEl) titleEl.textContent = `Orçamento de Estado ${targetY}`;
@@ -1742,9 +1755,11 @@ renderMiniShelf(outlet);
     if (!tbody) return;
     tbody.innerHTML = "";
 
-    rows.sort((a, b) => b.base - a.base).forEach((r) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
+    rows
+      .sort((a, b) => b.base - a.base)
+      .forEach((r) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
             <td style="padding:8px">${r.name}</td>
             <td style="padding:8px;text-align:right">${money(r.base)}</td>
             <td style="padding:8px;text-align:right">
@@ -1760,21 +1775,21 @@ renderMiniShelf(outlet);
             </td>
         `;
 
-      const input = tr.querySelector("input[type=number]");
-      const lock = tr.querySelector("input[type=checkbox]");
+        const input = tr.querySelector("input[type=number]");
+        const lock = tr.querySelector("input[type=checkbox]");
 
-      input.addEventListener("change", (e) => {
-        r.prop = Number(e.target.value);
-        updateBudgetSummary(rows, baseTotal);
+        input.addEventListener("change", (e) => {
+          r.prop = Number(e.target.value);
+          updateBudgetSummary(rows, baseTotal);
+        });
+
+        lock.addEventListener("change", (e) => {
+          r.locked = e.target.checked;
+          input.disabled = r.locked;
+        });
+
+        tbody.appendChild(tr);
       });
-
-      lock.addEventListener("change", (e) => {
-        r.locked = e.target.checked;
-        input.disabled = r.locked;
-      });
-
-      tbody.appendChild(tr);
-    });
 
     updateBudgetSummary(rows, baseTotal);
   }
@@ -1795,8 +1810,8 @@ renderMiniShelf(outlet);
           $("#bud-target-year").value
         })</div><strong>${money(propTotal)}</strong></div>
         <div class="rpt-kpi"><div>Variação</div><strong style="color:${color}">${
-        diff >= 0 ? "+" : ""
-      }${diffPct.toFixed(1)}% (${money(diff)})</strong></div>
+          diff >= 0 ? "+" : ""
+        }${diffPct.toFixed(1)}% (${money(diff)})</strong></div>
       `;
     }
 
@@ -1805,15 +1820,18 @@ renderMiniShelf(outlet);
       saveBtn.onclick = async () => {
         if (
           !confirm(
-            "Isto irá criar/atualizar objetivos (tetos mensais) para estas categorias. Continuar?"
+            "Isto irá criar/atualizar objetivos (tetos mensais) para estas categorias. Continuar?",
           )
         )
           return;
         try {
           const uid = await getUserId();
-          
+
           // Calcular totais globais
-          const totalProp = rows.reduce((acc, r) => acc + (r.id === "uncat" ? 0 : (Number(r.prop) || 0)), 0);
+          const totalProp = rows.reduce(
+            (acc, r) => acc + (r.id === "uncat" ? 0 : Number(r.prop) || 0),
+            0,
+          );
           const monthlyProp = totalProp / 12;
 
           // 1. Orçamento Mensal (Usando budget_cap + monthly_cap)
@@ -1873,10 +1891,151 @@ renderMiniShelf(outlet);
 
   budOpenBtn?.addEventListener("click", calculateBudget);
   budClose?.addEventListener("click", () =>
-    budOverlay?.classList.add("hidden")
+    budOverlay?.classList.add("hidden"),
   );
   $("#bud-cancel")?.addEventListener("click", () =>
-    budOverlay?.classList.add("hidden")
+    budOverlay?.classList.add("hidden"),
   );
-}
+  const themeOverlay = $("#theme-overlay");
+  const btnThemeOpen = $("#btn-theme-open");
+  const btnThemeClose = $("#theme-close");
+  const btnThemeSave = $("#thm-save");
+  const btnThemeReset = $("#thm-reset");
 
+  const inputs = {
+    bg: $("#thm-bg"),
+    header: $("#thm-header"),
+    fab: $("#thm-fab"),
+    card: $("#thm-card"),
+    text: $("#thm-text"),
+    dark: $("#thm-dark"),
+  };
+
+  const DEFAULTS = {
+    bg: "#f0f2f5",
+    header: "#0f172a",
+    fab: "#0f766e",
+    card: "#ffffff",
+    text: "#1e293b",
+    dark: false,
+  };
+
+  function loadTheme() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("wb:theme") || "null");
+      if (saved) applyTheme(saved);
+    } catch (e) {
+      console.warn("Theme load error", e);
+    }
+  }
+
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme.bg) {
+      root.style.setProperty("--bg", theme.bg);
+      root.style.setProperty(
+        "--bg-grad",
+        `linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg} 100%)`,
+      );
+    }
+    if (theme.header) {
+      root.style.setProperty(
+        "--footer-grad",
+        `linear-gradient(180deg, ${theme.header}, ${theme.header})`,
+      );
+      // Update header transparency if needed?
+      // For now, let's just assume overrides work.
+    }
+    if (theme.fab) {
+      root.style.setProperty("--primary", theme.fab);
+      root.style.setProperty("--fab-bg", theme.fab); // Explicitly set FAB background
+
+      // Since FAB uses --footer-grad or specific colors, we might need to force it.
+      // But we just updated .fab-nav to use var(--footer-grad) in previous steps?
+      // Actually let's check styles.css. FAB background was set to use var(--footer-grad).
+      // If user wants FAB different from Header/Footer, we need a separate var.
+      // Let's set --fab-bg variable if we want.
+      // For now, let's stick to simple:
+
+      // Update custom property if we add it to CSS, otherwise we might need direct style injection or assume linked.
+      // Let's try to set --primary and see if it propagates or if we need more specific vars.
+    }
+    if (theme.card) {
+      root.style.setProperty("--surface", theme.card);
+    }
+    if (theme.text) {
+      root.style.setProperty("--text", theme.text);
+    }
+
+    if (theme.dark) {
+      document.body.classList.add("dark-mode");
+      if (!theme.bg) root.style.setProperty("--bg", "#111827");
+      if (!theme.card) root.style.setProperty("--surface", "#1f2937");
+      if (!theme.text) root.style.setProperty("--text", "#f3f4f6");
+    } else {
+      document.body.classList.remove("dark-mode");
+    }
+
+    if (inputs.bg) inputs.bg.value = theme.bg || DEFAULTS.bg;
+    if (inputs.header) inputs.header.value = theme.header || DEFAULTS.header;
+    if (inputs.fab) inputs.fab.value = theme.fab || DEFAULTS.fab;
+    if (inputs.card) inputs.card.value = theme.card || DEFAULTS.card;
+    if (inputs.text) inputs.text.value = theme.text || DEFAULTS.text;
+    if (inputs.dark) inputs.dark.checked = !!theme.dark;
+  }
+
+  function saveFromInputs() {
+    const theme = {
+      bg: inputs.bg.value,
+      header: inputs.header.value,
+      fab: inputs.fab.value,
+      card: inputs.card.value,
+      text: inputs.text.value,
+      dark: inputs.dark.checked,
+    };
+    applyTheme(theme);
+    localStorage.setItem("wb:theme", JSON.stringify(theme));
+  }
+
+  Object.values(inputs).forEach((el) => {
+    el?.addEventListener("input", () => {
+      const theme = {
+        bg: inputs.bg.value,
+        header: inputs.header.value,
+        fab: inputs.fab.value,
+        card: inputs.card.value,
+        text: inputs.text.value,
+        dark: inputs.dark.checked,
+      };
+      applyTheme(theme);
+    });
+  });
+
+  btnThemeOpen?.addEventListener("click", () => {
+    themeOverlay?.classList.remove("hidden");
+    themeOverlay?.removeAttribute("aria-hidden");
+    loadTheme();
+  });
+
+  function closeThemeModal() {
+    themeOverlay?.classList.add("hidden");
+    themeOverlay?.setAttribute("aria-hidden", "true");
+    saveFromInputs();
+  }
+
+  btnThemeClose?.addEventListener("click", closeThemeModal);
+  btnThemeSave?.addEventListener("click", () => {
+    saveFromInputs();
+    closeThemeModal();
+  });
+
+  btnThemeReset?.addEventListener("click", () => {
+    if (!confirm("Restaurar as cores padrão?")) return;
+    applyTheme(DEFAULTS);
+    localStorage.removeItem("wb:theme");
+    closeThemeModal();
+  });
+
+  // Init load
+  loadTheme();
+} // end init

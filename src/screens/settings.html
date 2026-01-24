@@ -344,6 +344,13 @@
   <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
 </section>
 
+<!-- ===== APARÊNCIA ===== -->
+<section class="card">
+  <h2 class="section-title">Aparência</h2>
+  <p>Personalize as cores e o tema da aplicação.</p>
+  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
+</section>
+
 <!-- Sessão -->
 <section class="card" id="card-session" style="margin-top:12px">
   <h2 class="section-title">Sessão</h2>
@@ -472,6 +479,57 @@
       <p class="row-note" style="text-align:right;margin-top:5px">
         Guardar cria metas mensais ("budget_cap") para estas categorias.
       </p>
+    </div>
+  </div>
+  </div>
+</div>
+
+<!-- ===== MODAL TEMA ===== -->
+<div id="theme-overlay" class="hidden rep-overlay" aria-hidden="true" tabindex="-1">
+  <div class="rep-modal" style="width:min(500px,92vw)">
+    <div class="rep-header" style="justify-content:space-between">
+      <h2 style="font-size:1.2rem;font-weight:700">Personalizar Tema</h2>
+      <button id="theme-close" class="rpt-close" aria-label="Fechar">×</button>
+    </div>
+    <div class="rep-body" style="padding-top:10px; display:grid; gap:16px">
+      
+      <p class="row-note">As alterações são guardadas automaticamente no seu dispositivo.</p>
+
+      <div style="display:grid; gap:12px">
+        <label style="display:flex; justify-content:space-between; align-items:center">
+          <span>Fundo (Background)</span>
+          <input type="color" id="thm-bg" value="#f0f2f5" />
+        </label>
+        <label style="display:flex; justify-content:space-between; align-items:center">
+          <span>Cabeçalho (Header/Footer)</span>
+          <input type="color" id="thm-header" value="#0f172a" />
+        </label>
+        <label style="display:flex; justify-content:space-between; align-items:center">
+          <span>Botão Menu (FAB)</span>
+          <input type="color" id="thm-fab" value="#0f766e" />
+        </label>
+        <label style="display:flex; justify-content:space-between; align-items:center">
+          <span>Cor dos Cards</span>
+          <input type="color" id="thm-card" value="#ffffff" />
+        </label>
+        <label style="display:flex; justify-content:space-between; align-items:center">
+          <span>Texto Principal</span>
+          <input type="color" id="thm-text" value="#1e293b" />
+        </label>
+      </div>
+
+      <div style="border-top:1px solid #e5e7eb; padding-top:16px; margin-top:8px">
+        <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
+          <span style="font-weight:600">Modo Escuro (BETA)</span>
+          <input type="checkbox" id="thm-dark" style="width:20px;height:20px" />
+        </label>
+      </div>
+
+      <div class="actions" style="margin-top:12px; justify-content:flex-end">
+        <button id="thm-reset" class="btn" style="color:#ef4444">Restaurar Padrão</button>
+        <button id="thm-save" class="btn btn--primary">Concluído</button>
+      </div>
+
     </div>
   </div>
 </div>
