@@ -2249,3 +2249,148 @@ td:nth-child(5) {
   border-color: #e2e8f0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
+
+/* ===== Bulk Fixed Expenses Modal ===== */
+.bulk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bulk-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bulk-group-header {
+  padding: 10px 12px;
+  background: var(--footer-grad);
+  /* Matching App Header */
+  color: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bulk-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #fff;
+  /* Ensure contrast */
+  font-size: 0.95em;
+}
+
+.bulk-group-total {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  /* Softer white */
+}
+
+.bulk-group-body {
+  padding: 0;
+}
+
+.bulk-item {
+  display: flex;
+  align-items: center;
+  /* Center vertically */
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle, #eee);
+  transition: background 0.15s;
+}
+
+.bulk-item:last-child {
+  border-bottom: none;
+}
+
+.bulk-item:hover {
+  background: var(--bg-hover, #f1f5f9);
+}
+
+.bulk-item-check {
+  display: flex;
+  align-items: center;
+}
+
+.bulk-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /* Text truncation support */
+}
+
+.bulk-item-desc {
+  font-weight: 600;
+  font-size: 0.95em;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulk-item-sub {
+  font-size: 0.8em;
+  color: var(--text-sec);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulk-item-value input {
+  width: 90px;
+  text-align: right;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-input, #fff);
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.bulk-item-value input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+/* FAB Extended (Mobile Friendly) */
+.fab-extended {
+  position: fixed;
+  bottom: calc(var(--footer-h) + 80px);
+  /* Raised to avoid overlap */
+  right: 20px;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 50px;
+  background: var(--footer-grad);
+  /* Consistent with Header */
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: none;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.fab-extended:active {
+  transform: scale(0.96);
+}
+
+.fab-extended svg {
+  fill: currentColor;
+}
+
+/* Ensure hidden works with flex */
+.fab-extended.hidden {
+  display: none !important;
+}

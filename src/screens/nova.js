@@ -1,4 +1,6 @@
 // src/screens/nova.js
+import { repo } from "../lib/repo.js";
+
 export async function init({ outlet } = {}) {
   const sb = window.sb;
   const $ = (id) =>
@@ -39,13 +41,13 @@ export async function init({ outlet } = {}) {
     ttRes.error
   ) {
     console.error(
-      accRes.error || regRes.error || pmRes.error || stRes.error || ttRes.error
+      accRes.error || regRes.error || pmRes.error || stRes.error || ttRes.error,
     );
     toast("Erro a carregar listas", false);
     return;
   }
   const TYPE_ID = Object.fromEntries(
-    (ttRes.data || []).map((t) => [t.code, t.id])
+    (ttRes.data || []).map((t) => [t.code, t.id]),
   );
 
   const fill = (el, rows, label, value = "id") => {
@@ -109,7 +111,7 @@ export async function init({ outlet } = {}) {
       return;
     }
     const parents = new Map(
-      (data || []).filter((c) => !c.parent_id).map((c) => [c.id, c.name])
+      (data || []).filter((c) => !c.parent_id).map((c) => [c.id, c.name]),
     );
     const rows = (data || [])
       .map((c) => ({
@@ -139,7 +141,7 @@ export async function init({ outlet } = {}) {
     }
 
     const pSorted = (parents || []).sort((a, b) =>
-      coll.compare(a.name, b.name)
+      coll.compare(a.name, b.name),
     );
     $("cat-parent").innerHTML =
       `<option value="">Categoria (ex.: Casa)</option>` +
@@ -208,6 +210,8 @@ export async function init({ outlet } = {}) {
     show(rowAccTransfer, false);
     show(rowCategory, true);
     show(rowNature, t === "EXPENSE");
+    // FAB Toggle
+    show($("btn-fixed-bulk"), t === "EXPENSE");
 
     if (t !== "EXPENSE") {
       // Receita / Poupança → select plano (inclui sistema + tuas)
@@ -270,7 +274,7 @@ export async function init({ outlet } = {}) {
         if (error) throw error;
         toast("Transferência registada ✅");
         ["tx-amount", "tx-desc", "tx-notes"].forEach(
-          (id) => $(id) && ($(id).value = "")
+          (id) => $(id) && ($(id).value = ""),
         );
         return;
       }
@@ -329,7 +333,7 @@ export async function init({ outlet } = {}) {
 
       toast("Movimento registado ✅");
       ["tx-amount", "tx-desc", "tx-loc", "tx-notes"].forEach(
-        (id) => $(id) && ($(id).value = "")
+        (id) => $(id) && ($(id).value = ""),
       );
     } catch (e) {
       console.error(e);
@@ -339,7 +343,7 @@ export async function init({ outlet } = {}) {
 
   $("tx-clear")?.addEventListener("click", () => {
     ["tx-amount", "tx-desc", "tx-loc", "tx-notes"].forEach(
-      (id) => $(id) && ($(id).value = "")
+      (id) => $(id) && ($(id).value = ""),
     );
   });
 
@@ -370,7 +374,8 @@ export async function init({ outlet } = {}) {
     pop.innerHTML = `
     <h3>O que mostra este ecrã?</h3>
     <p>· Neste Screen pode adicionar as suas despesas, receitas, poupanças ou transferências. </p>
-    <p>· Para novas categorias, pode criar as suas personalizadas no screen Definições</p>
+    <p>· Para novas categorias, pode criar as suas personalizadas no screen Definições.</p>
+    <p>· Pode user o botão '+ Registar Fixas', para um registo mais rápido das despesas fixas.</p>
     <button class="close" type="button">Fechar</button>
   `;
 
@@ -382,5 +387,373 @@ export async function init({ outlet } = {}) {
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") pop.classList.add("hidden");
     });
+  })();
+  // ===== Despesas Fixas em lote (Redesigned) =====
+  (function mountFixedBulk() {
+    const btn = $("btn-fixed-bulk");
+    const modal = document.getElementById("fixed-bulk-modal");
+    const listContainer = document.getElementById("fixed-bulk-list");
+    const btnCancel = document.getElementById("fixed-bulk-cancel");
+    const btnConfirm = document.getElementById("fixed-bulk-confirm");
+    const btnClose = modal?.querySelector(".modal__close");
+    const totalEl = document.getElementById("fixed-bulk-total");
+
+    if (!btn || !modal || !listContainer || !btnConfirm || !btnCancel) return;
+
+    let groups = [];
+    let monthlyId = null;
+
+    function open() {
+      modal.hidden = false;
+    }
+    function close() {
+      modal.hidden = true;
+    }
+
+    btnCancel.onclick = close;
+    btnClose && (btnClose.onclick = close);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") close();
+    });
+
+    async function ensureMonthlyId() {
+      if (monthlyId) return monthlyId;
+      const { data } = await sb
+        .from("regularities")
+        .select("id")
+        .eq("code", "MONTHLY")
+        .limit(1);
+      if (data && data.length > 0) monthlyId = data[0].id;
+      return monthlyId;
+    }
+
+    btn.onclick = async () => {
+      try {
+        const t = (
+          document.querySelector('input[name="tx-type"]:checked')?.value ||
+          "INCOME"
+        ).toUpperCase();
+        if (t !== "EXPENSE") {
+          toast("Esta ação é apenas para Despesas.", false);
+          return;
+        }
+
+        // Logic: Target Month derived from Main Form Date
+        const mainDateVal =
+          $("tx-date")?.value || new Date().toISOString().slice(0, 10);
+
+        // 1. Fetch Data
+        groups = await fetchGroupedExpenses(mainDateVal); // Pass main date to calc suggestions
+
+        if (!groups.length) {
+          toast("Não encontrei despesas fixas recentes.", false);
+          return;
+        }
+
+        // 2. Render
+        renderGroups();
+        updateTotal();
+        open();
+      } catch (e) {
+        console.error(e);
+        toast("Erro: " + (e.message || e), false);
+      }
+    };
+
+    function renderGroups() {
+      listContainer.innerHTML = groups
+        .map(
+          (g, gIdx) => `
+        <div class="bulk-group" data-gidx="${gIdx}">
+          <div class="bulk-group-header">
+             <div class="bulk-group-title">
+                <input type="checkbox" class="grp-check" checked>
+                <span>${escapeHtml(g.parentName)}</span>
+             </div>
+             <span class="bulk-group-total">${money(g.total)}</span>
+          </div>
+          <div class="bulk-group-body">
+             ${g.items
+               .map(
+                 (item, iIdx) => `
+               <div class="bulk-item" data-iidx="${iIdx}">
+                 <div class="bulk-item-check">
+                    <input type="checkbox" class="itm-check" checked>
+                 </div>
+                 <div class="bulk-item-info">
+                    <div class="bulk-item-desc">${escapeHtml(item.description)}</div>
+                    <div class="bulk-item-sub">${escapeHtml(item.subName)}</div>
+                 </div>
+                 <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end">
+                    <div class="bulk-item-value">
+                        <input type="number" class="itm-val" step="0.01" value="${item.suggestedAmount.toFixed(2)}">
+                    </div>
+                    <div class="bulk-item-date">
+                        <input type="date" class="itm-date" value="${item.suggestedDate}" style="width:110px; font-size:0.8em; padding:2px; border:1px solid #ddd; border-radius:4px; text-align:right">
+                    </div>
+                 </div>
+               </div>
+             `,
+               )
+               .join("")}
+          </div>
+        </div>
+      `,
+        )
+        .join("");
+
+      // Bind Events
+      listContainer.querySelectorAll(".bulk-group").forEach((gEl) => {
+        const gIdx = gEl.dataset.gidx;
+        const group = groups[gIdx];
+        const grpCheck = gEl.querySelector(".grp-check");
+        const grpTotalEl = gEl.querySelector(".bulk-group-total");
+
+        // Group checkbox toggle
+        grpCheck.addEventListener("change", () => {
+          const checked = grpCheck.checked;
+          group.items.forEach((i) => (i.selected = checked));
+          gEl
+            .querySelectorAll(".itm-check")
+            .forEach((c) => (c.checked = checked));
+          recalcGroup(group, grpTotalEl);
+          updateTotal();
+        });
+
+        // Items events
+        gEl.querySelectorAll(".bulk-item").forEach((iEl) => {
+          const iIdx = iEl.dataset.iidx;
+          const item = group.items[iIdx];
+          const itmCheck = iEl.querySelector(".itm-check");
+          const itmVal = iEl.querySelector(".itm-val");
+          const itmDate = iEl.querySelector(".itm-date");
+
+          itmCheck.addEventListener("change", () => {
+            item.selected = itmCheck.checked;
+            // Update group checkbox state (indeterminate logic optional, keep simple)
+            recalcGroup(group, grpTotalEl);
+            updateTotal();
+          });
+
+          itmVal.addEventListener("input", () => {
+            item.suggestedAmount = Number(itmVal.value || 0);
+            if (item.selected) {
+              recalcGroup(group, grpTotalEl);
+              updateTotal();
+            }
+          });
+
+          itmDate.addEventListener("change", () => {
+            item.suggestedDate = itmDate.value;
+          });
+        });
+      });
+    }
+
+    function recalcGroup(group, labelEl) {
+      const sum = group.items.reduce(
+        (s, i) => s + (i.selected ? i.suggestedAmount : 0),
+        0,
+      );
+      group.total = sum;
+      labelEl.textContent = money(sum);
+    }
+
+    function updateTotal() {
+      const fullSum = groups.reduce((s, g) => s + g.total, 0);
+      const count = groups.reduce(
+        (c, g) => c + g.items.filter((i) => i.selected).length,
+        0,
+      );
+
+      // Update footer
+      totalEl.innerHTML = `${money(fullSum)} <small style='color:var(--text-sec); font-weight:400'>(${count} itens)</small>`;
+    }
+
+    async function fetchGroupedExpenses(targetDateStr) {
+      // 1. Fetch Categories for robust naming
+      const allCats = await repo.refs.allCategories();
+      const catMap = new Map();
+      allCats.forEach((c) => catMap.set(c.id, c));
+
+      // 2. Fetch Transactions
+      const mid = await ensureMonthlyId();
+      const to = new Date();
+      const from = new Date(to.getFullYear(), to.getMonth() - 12, 1);
+
+      const { data: tExpData } = await sb
+        .from("transaction_types")
+        .select("id")
+        .eq("code", "EXPENSE")
+        .limit(1);
+      const expTypeId = tExpData?.[0]?.id;
+      if (!expTypeId) throw new Error("Tipo Despesa não encontrado.");
+
+      const { data } = await sb
+        .from("transactions")
+        .select("amount,description,category_id,date") // Need date!
+        .eq("type_id", expTypeId)
+        .eq("expense_nature", "fixed")
+        .gte("date", from.toISOString().slice(0, 10))
+        .lte("date", to.toISOString().slice(0, 10))
+        .order("date", { ascending: true }); // Most recent last
+
+      // 3. Aggregate
+      const aggMap = new Map(); // key -> { desc, cid, count, sum, lastDate }
+
+      (data || []).forEach((x) => {
+        const desc = (x.description || "").trim();
+        const cid = x.category_id;
+        const key = `${cid}::${desc.toLowerCase()}`;
+
+        if (!aggMap.has(key))
+          aggMap.set(key, { desc, cid, count: 0, sum: 0, lastDate: null });
+        const r = aggMap.get(key);
+        r.count++;
+        r.sum += Number(x.amount || 0);
+        r.lastDate = x.date; // Because ordered, this ends up being the latest
+      });
+
+      // Target Year/Month for Suggestions
+      const tDate = new Date(targetDateStr);
+      const tYear = tDate.getFullYear();
+      const tMonth = tDate.getMonth(); // 0-11
+
+      // 4. Build Item List
+      const items = Array.from(aggMap.values())
+        .filter((r) => r.count >= 1)
+        .map((r) => {
+          const avg = r.sum / r.count;
+
+          // Suggested Date Calculation
+          let sDate = targetDateStr; // Fallback
+          if (r.lastDate) {
+            const ld = new Date(r.lastDate);
+            const day = ld.getDate();
+            // Construct new date in Target Month with same Day
+            // Safe Set: Clamps to last day of month if overflow
+            const safeDay = Math.min(
+              day,
+              new Date(tYear, tMonth + 1, 0).getDate(),
+            );
+            const sd = new Date(tYear, tMonth, safeDay);
+            // Fix Timezone offset for YYYY-MM-DD string
+            const z = new Date(sd.getTime() - sd.getTimezoneOffset() * 60000);
+            sDate = z.toISOString().slice(0, 10);
+          }
+
+          // Resolve names
+          let parentName = "Outros";
+          let subName = "(Sem categoria)";
+
+          if (r.cid) {
+            const c = catMap.get(r.cid);
+            if (c) {
+              subName = c.name;
+              if (c.parent_id) {
+                const p = catMap.get(c.parent_id);
+                if (p) parentName = p.name;
+              } else {
+                parentName = c.name;
+                subName = "(Geral)";
+              }
+            }
+          }
+
+          return {
+            description: r.desc || "(Sem descrição)",
+            parentName,
+            subName,
+            suggestedAmount: avg,
+            suggestedDate: sDate,
+            category_id: r.cid,
+            selected: true,
+          };
+        });
+
+      // 5. Group by Parent
+      const groupsMap = new Map();
+      items.forEach((item) => {
+        if (!groupsMap.has(item.parentName)) {
+          groupsMap.set(item.parentName, {
+            parentName: item.parentName,
+            items: [],
+            total: 0,
+          });
+        }
+        const g = groupsMap.get(item.parentName);
+        g.items.push(item);
+        g.total += item.suggestedAmount;
+      });
+
+      return Array.from(groupsMap.values()).sort((a, b) =>
+        a.parentName.localeCompare(b.parentName),
+      );
+    }
+
+    btnConfirm.onclick = async () => {
+      try {
+        const account_id = $("tx-account")?.value;
+        if (!account_id || account_id === "__none__")
+          throw new Error("Escolhe a conta.");
+
+        const mid = await ensureMonthlyId();
+        const {
+          data: { user },
+        } = await sb.auth.getUser();
+
+        const payloads = [];
+
+        groups.forEach((g) => {
+          g.items.forEach((i) => {
+            if (i.selected && i.suggestedAmount > 0) {
+              payloads.push({
+                user_id: user.id,
+                type_id: TYPE_ID.EXPENSE,
+                account_id,
+                category_id: i.category_id || null,
+                date: i.suggestedDate, // Use Specific Date
+                amount: i.suggestedAmount,
+                description: i.description || null,
+                expense_nature: "fixed",
+                regularity_id: mid || null,
+                currency: "EUR",
+              });
+            }
+          });
+        });
+
+        if (!payloads.length) {
+          toast("Nada selecionado para registar.", false);
+          return;
+        }
+
+        const { error } = await sb.from("transactions").insert(payloads);
+        if (error) throw error;
+
+        toast(`Registadas ${payloads.length} despesas fixas (Mensais) ✅`);
+        close();
+
+        // Reset form
+        ["tx-amount", "tx-desc", "tx-loc", "tx-notes"].forEach(
+          (id) => $(id) && ($(id).value = ""),
+        );
+      } catch (e) {
+        console.error(e);
+        toast("Erro: " + (e.message || e), false);
+      }
+    };
+
+    function escapeHtml(s) {
+      return String(s || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function money(v) {
+      return "€ " + (Number(v) || 0).toFixed(2).replace(".", ",");
+    }
   })();
 }
