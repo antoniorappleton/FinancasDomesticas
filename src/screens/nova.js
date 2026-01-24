@@ -375,7 +375,7 @@ export async function init({ outlet } = {}) {
     <h3>O que mostra este ecrã?</h3>
     <p>· Neste Screen pode adicionar as suas despesas, receitas, poupanças ou transferências. </p>
     <p>· Para novas categorias, pode criar as suas personalizadas no screen Definições.</p>
-    <p>· Pode user o botão '+ Registar Fixas', para um registo mais rápido das despesas fixas.</p>
+    <p>· Pode usar o botão '+ Registar Fixas', para um registo mais rápido das despesas fixas.</p>
     <button class="close" type="button">Fechar</button>
   `;
 
