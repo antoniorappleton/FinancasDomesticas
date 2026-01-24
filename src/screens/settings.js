@@ -826,17 +826,29 @@ export async function init({ sb, outlet } = {}) {
           allCats.forEach((c) => catMap.set(c.id, c));
         }
 
-        // 2. Fetch Transactions
+        // 2. Fetch Transactions (With Pagination Loop)
         const selCols =
           "date,amount,signed_amount,type_id,expense_nature,regularity_id,category_id";
-        const r = await sb
-          .from("transactions")
-          .select(selCols)
-          .gte("date", from)
-          .lt("date", to)
-          .order("date", { ascending: true });
-        if (r.error) throw r.error;
-        rows = r.data || [];
+
+        let fetchedRows = [];
+        let page = 0;
+        const size = 1000;
+        while (true) {
+          const { data, error } = await sb
+            .from("transactions")
+            .select(selCols)
+            .gte("date", from)
+            .lt("date", to)
+            .range(page * size, (page + 1) * size - 1)
+            .order("date", { ascending: true });
+
+          if (error) throw error;
+          if (!data || !data.length) break;
+          fetchedRows = fetchedRows.concat(data);
+          if (data.length < size) break;
+          page++;
+        }
+        rows = fetchedRows;
       } catch (e) {
         console.error(e);
         rows = [];
@@ -867,7 +879,8 @@ export async function init({ sb, outlet } = {}) {
       await ensureChartStack();
       const byCatExp = new Map();
       expRows.forEach((x) => {
-        const name = x.category?.name || "Sem categoria";
+        const cat = x.category_id ? catMap.get(x.category_id) : null;
+        const name = cat?.name || "Sem categoria";
         byCatExp.set(name, (byCatExp.get(name) || 0) + Number(x.amount || 0));
       });
       const catEntries = [...byCatExp.entries()]
@@ -1021,7 +1034,7 @@ export async function init({ sb, outlet } = {}) {
         },
       });
 
-      // ===== 4) Tabelas: por categoria (Hierárquica) =====
+      // ===== 4) Tabelas: por categoria (Hierárquica Robust) =====
       const buildHierarchy = (txRows) => {
         const parents = new Map(); // Name -> Total
 
@@ -1029,14 +1042,15 @@ export async function init({ sb, outlet } = {}) {
           const cid = r.category_id;
           const cat = catMap.get(cid);
           const val = Number(r.amount || 0);
-          const sign = r.type_id === tInc.id ? 1 : -1; // Keep positive for chart?
 
           let pName = "Sem categoria";
 
           if (cat) {
             if (cat.parent_id) {
               const p = catMap.get(cat.parent_id);
-              pName = p ? p.name : "ParentMissing:" + cat.parent_id;
+              // Fallback: If parent missing, use Child Name.
+              // If parent exists, use Parent Name (grouping by Parent).
+              pName = p ? p.name : cat.name;
             } else {
               pName = cat.name;
             }

@@ -100,12 +100,23 @@ export const refs = {
     }));
   },
   async allCategories() {
-    const { data, error } = await window.sb
-      .from("categories")
-      .select("id,name,parent_id")
-      .order("name");
-    if (error) throw error;
-    return data || [];
+    let all = [];
+    let page = 0;
+    const size = 1000;
+    while (true) {
+      const { data, error } = await window.sb
+        .from("categories")
+        .select("id,name,parent_id")
+        .order("id") // Stable sort
+        .range(page * size, (page + 1) * size - 1);
+
+      if (error) throw error;
+      if (!data || !data.length) break;
+      all = all.concat(data);
+      if (data.length < size) break;
+      page++;
+    }
+    return all;
   },
 
   // --- NEW LOGIC (Refactor) ---

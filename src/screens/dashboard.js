@@ -849,18 +849,33 @@ export async function init({ sb, outlet } = {}) {
         .filter(Boolean)
         .join(",");
 
-      const { data } = await sb
-        .from("transactions")
-        .select(cols)
-        .eq("type_id", expTypeId)
-        .gte("date", from12Local)
-        .order("date", { ascending: true });
+      // Fetch all expense transactions (paginated)
+      let data = [];
+      {
+        let page = 0;
+        const size = 1000;
+        while (true) {
+          const { data: chunk, error } = await sb
+            .from("transactions")
+            .select(cols)
+            .eq("type_id", expTypeId)
+            .gte("date", from12Local)
+            .range(page * size, (page + 1) * size - 1)
+            .order("date", { ascending: true });
+          if (error || !chunk || !chunk.length) break;
+          data = data.concat(chunk);
+          if (chunk.length < size) break;
+          page++;
+        }
+      }
 
       const parentsMap = new Map();
       try {
+        // Fetch all categories (assuming < 1000, but safer to order)
         const { data: cats } = await sb
           .from("categories")
-          .select("id,name,parent_id");
+          .select("id,name,parent_id")
+          .order("id");
         (cats || []).forEach((c) =>
           parentsMap.set(c.id, { name: c.name, parent_id: c.parent_id }),
         );
@@ -868,11 +883,18 @@ export async function init({ sb, outlet } = {}) {
 
       const catPath = (id, rowCat = null) => {
         if (!id && !rowCat) return "(Sem categoria)";
-        if (rowCat?.parent_id && rowCat?.name) {
-          const p = parentsMap.get(rowCat.parent_id);
-          return (p?.name ? p.name + " > " : "") + rowCat.name;
+        // Try rowCat first (joined data)
+        if (rowCat) {
+          if (rowCat.parent_id) {
+            const p = parentsMap.get(rowCat.parent_id);
+            if (p) return `${p.name} > ${rowCat.name}`;
+            // Fallback if parent missing
+            return rowCat.name;
+          }
+          return rowCat.name;
         }
-        if (rowCat?.name) return rowCat.name;
+
+        // Try ID lookup
         const c = parentsMap.get(id);
         if (!c) return "(Sem categoria)";
         if (!c.parent_id) return c.name;
@@ -882,11 +904,14 @@ export async function init({ sb, outlet } = {}) {
 
       const parentNameOf = (row) => {
         const rc = row.categories;
-        if (rc?.parent_id) {
-          const p = parentsMap.get(rc.parent_id);
-          return p?.name || "(Sem categoria)";
+        if (rc) {
+          if (rc.parent_id) {
+            const p = parentsMap.get(rc.parent_id);
+            return p?.name || rc.name; // Fallback to child name if parent map fails
+          }
+          return rc.name;
         }
-        return rc?.name || "(Sem categoria)";
+        return "(Sem categoria)";
       };
 
       const FIXED_HINTS = [
