@@ -815,9 +815,20 @@ export async function init({ sb, outlet } = {}) {
 
       // dados
       let rows = [];
+      let catMap = new Map(); // id -> {name, parent_id}
+
       try {
+        // 1. Fetch categories for name resolution (Parent Name)
+        const { data: allCats } = await sb
+          .from("categories")
+          .select("id,name,parent_id");
+        if (allCats) {
+          allCats.forEach((c) => catMap.set(c.id, c));
+        }
+
+        // 2. Fetch Transactions
         const selCols =
-          "date,amount,signed_amount,type_id,expense_nature,regularity_id,category:categories(name,parent_id,nature)";
+          "date,amount,signed_amount,type_id,expense_nature,regularity_id,category_id";
         const r = await sb
           .from("transactions")
           .select(selCols)
@@ -826,14 +837,9 @@ export async function init({ sb, outlet } = {}) {
           .order("date", { ascending: true });
         if (r.error) throw r.error;
         rows = r.data || [];
-      } catch {
-        const r2 = await sb
-          .from("transactions")
-          .select("date,amount,type_id,regularity_id")
-          .gte("date", from)
-          .lt("date", to)
-          .order("date", { ascending: true });
-        rows = r2.data || [];
+      } catch (e) {
+        console.error(e);
+        rows = [];
       }
 
       const incRows = rows.filter((r) => r.type_id === tInc.id);
@@ -1015,17 +1021,35 @@ export async function init({ sb, outlet } = {}) {
         },
       });
 
-      // ===== 4) Tabelas: por categoria & resumo mensal =====
-      const sumMap = (rows, nameFn) => {
-        const map = new Map();
-        for (const r of rows) {
-          const name = nameFn(r) || "Sem categoria";
-          map.set(name, (map.get(name) || 0) + Number(r.amount || 0));
+      // ===== 4) Tabelas: por categoria (Hierárquica) =====
+      const buildHierarchy = (txRows) => {
+        const parents = new Map(); // Name -> Total
+
+        for (const r of txRows) {
+          const cid = r.category_id;
+          const cat = catMap.get(cid);
+          const val = Number(r.amount || 0);
+          const sign = r.type_id === tInc.id ? 1 : -1; // Keep positive for chart?
+
+          let pName = "Sem categoria";
+
+          if (cat) {
+            if (cat.parent_id) {
+              const p = catMap.get(cat.parent_id);
+              pName = p ? p.name : "ParentMissing:" + cat.parent_id;
+            } else {
+              pName = cat.name;
+            }
+          }
+
+          parents.set(pName, (parents.get(pName) || 0) + val);
         }
-        return [...map.entries()].sort((a, b) => b[1] - a[1]);
+
+        return [...parents.entries()].sort((a, b) => b[1] - a[1]);
       };
-      const incCat = sumMap(incRows, (r) => r.category?.name);
-      const expCat = sumMap(expRows, (r) => r.category?.name);
+
+      const incCat = buildHierarchy(incRows);
+      const expCat = buildHierarchy(expRows);
       const incTot = incCat.reduce((a, [, v]) => a + v, 0);
       const expTot = expCat.reduce((a, [, v]) => a + v, 0);
 

@@ -2065,12 +2065,24 @@ export async function init({ sb, outlet } = {}) {
           .single();
         const expId = ttype?.id ?? -999;
 
-        const { data: rows } = await sb
-          .from("transactions")
-          .select("amount, category_id, categories(name,parent_id)")
-          .eq("type_id", expId)
-          .gte("date", from12Local)
-          .order("date", { ascending: true });
+        // Fetch all expenses 12m (paginado)
+        let rows = [];
+        let page = 0;
+        const size = 1000;
+        while (true) {
+          const { data, error } = await sb
+            .from("transactions")
+            .select("amount, category_id, categories(name,parent_id)")
+            .eq("type_id", expId)
+            .gte("date", from12Local)
+            .range(page * size, (page + 1) * size - 1)
+            .order("date", { ascending: true });
+
+          if (error || !data || !data.length) break;
+          rows = rows.concat(data);
+          if (data.length < size) break;
+          page++;
+        }
 
         const parentsMap = new Map();
         try {

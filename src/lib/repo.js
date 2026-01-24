@@ -8,7 +8,7 @@ const cache = {
 async function requireUser() {
   const sb = window.sb;
   if (!sb) throw new Error("Supabase client (window.sb) não inicializado.");
-  
+
   const {
     data: { user },
   } = await sb.auth.getUser();
@@ -100,13 +100,75 @@ export const refs = {
     }));
   },
   async allCategories() {
-    // Retorna todas para mapeamento (id -> nome/pai)
     const { data, error } = await window.sb
       .from("categories")
       .select("id,name,parent_id")
       .order("name");
     if (error) throw error;
     return data || [];
+  },
+
+  // --- NEW LOGIC (Refactor) ---
+  async getTree({ kind = null } = {}) {
+    const u = await requireUser();
+    let q = window.sb
+      .from("categories")
+      .select("id,name,parent_id,kind,user_id")
+      .or(`user_id.is.null,user_id.eq.${u.id}`)
+      .order("name", { ascending: true });
+
+    if (kind) q = q.eq("kind", kind);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const parents = [];
+    const childrenMap = new Map();
+
+    data.forEach((c) => {
+      c.isSystem = !c.user_id;
+      if (!c.parent_id) {
+        parents.push(c);
+      } else {
+        const arr = childrenMap.get(c.parent_id) || [];
+        arr.push(c);
+        childrenMap.set(c.parent_id, arr);
+      }
+    });
+
+    // Bind children to parents
+    return parents.map((p) => ({
+      ...p,
+      children: childrenMap.get(p.id) || [],
+    }));
+  },
+
+  async getOptions(kind) {
+    // Returns flat list sorted: Parent A, Child A1, Child A2, Parent B...
+    const tree = await this.getTree({ kind });
+    const options = [];
+
+    for (const p of tree) {
+      options.push({
+        id: p.id,
+        name: p.name,
+        level: 0,
+        isSystem: p.isSystem,
+        label: p.name,
+      });
+      if (p.children?.length) {
+        for (const c of p.children) {
+          options.push({
+            id: c.id,
+            name: c.name,
+            level: 1,
+            isSystem: c.isSystem,
+            label: `— ${c.name}`,
+          });
+        }
+      }
+    }
+    return options;
   },
 };
 
@@ -133,7 +195,14 @@ export const accounts = {
 
 // ========= Transações / Relatórios =========
 export const transactions = {
-  async list({ page = 0, pageSize = 30, search = "", type = "all", status = "all", month = null }) {
+  async list({
+    page = 0,
+    pageSize = 30,
+    search = "",
+    type = "all",
+    status = "all",
+    month = null,
+  }) {
     const from = page * pageSize;
     const to = from + pageSize - 1;
 
@@ -146,7 +215,7 @@ export const transactions = {
         accounts(name),
         transaction_types(code,name_pt),
         statuses(name_pt)
-      `
+      `,
       )
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
@@ -159,19 +228,19 @@ export const transactions = {
       q = q.gte("date", start).lt("date", end);
     }
 
-    const { data, error, count } = await q; 
+    const { data, error, count } = await q;
     if (error) throw error;
-    return data || []; 
+    return data || [];
   },
 
   async getById(id) {
-     const { data, error } = await window.sb
-        .from("transactions")
-        .select("*, transaction_types(code), categories(kind)")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      return data;
+    const { data, error } = await window.sb
+      .from("transactions")
+      .select("*, transaction_types(code), categories(kind)")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async createIncome({
@@ -254,12 +323,12 @@ export const transactions = {
   },
 
   async update(id, tableUpdates) {
-      // Generic update for transactions
-      const { error } = await window.sb
-            .from("transactions")
-            .update(tableUpdates)
-            .eq("id", id);
-      if (error) throw error;
+    // Generic update for transactions
+    const { error } = await window.sb
+      .from("transactions")
+      .update(tableUpdates)
+      .eq("id", id);
+    if (error) throw error;
   },
 
   async ledger({
@@ -285,7 +354,10 @@ export const transactions = {
   },
 
   async delete(id) {
-    const { error } = await window.sb.from("transactions").delete().eq("id", id);
+    const { error } = await window.sb
+      .from("transactions")
+      .delete()
+      .eq("id", id);
     if (error) throw error;
   },
 
@@ -296,11 +368,13 @@ export const transactions = {
 
     const { data, error } = await window.sb
       .from("transactions")
-      .select(`
+      .select(
+        `
         id, date, amount, category_id, description, expense_nature, regularity_id,
         categories(name),
         regularities(code)
-      `)
+      `,
+      )
       .eq("type_id", type_id)
       .gte("date", start)
       .lte("date", end);
@@ -315,7 +389,7 @@ export const transactions = {
         t.regularities.code !== "ONCE";
       return isFixed || isRecurring;
     });
-  }
+  },
 };
 
 export const dashboard = {
@@ -338,136 +412,150 @@ export const dashboard = {
   },
 };
 
-
 // ========= Portfolios =========
 export const portfolios = {
-    async aggregate() {
-        const sb = window.sb;
-        const uid = (await sb.auth.getUser()).data?.user?.id;
-        const { data: pf } = await sb
-          .from("portfolios")
-          .select("*")
-          .eq("user_id", uid);
-        if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
-    
-        const { data: ttype } = await sb
-          .from("transaction_types")
-          .select("id,code");
-        const SAV = ttype?.find((t) => t.code === "SAVINGS")?.id;
-    
-        function buildSeries(
-          { aprPct, compounding = "monthly", initial_amount = 0, start_date = null },
-          txs,
-          fromISO,
-          toISO
-        ) {
-          const r = Number(aprPct || 0) / 100;
-          const months = monthKeysBetween(fromISO.slice(0, 7), toISO.slice(0, 7));
-          const byMonth = new Map(
-            months.map((k) => [k, { contrib: 0, interest: 0, balance: 0 }])
-          );
-          for (const t of txs) {
-            const k = String(t.date).slice(0, 7);
-            if (!byMonth.has(k))
-              byMonth.set(k, { contrib: 0, interest: 0, balance: 0 });
-            byMonth.get(k).contrib += Number(t.amount || 0);
-          }
-          let balance = Number(initial_amount || 0);
-          const annivMonth = start_date
-            ? Number(String(start_date).slice(5, 7))
-            : Number(fromISO.slice(5, 7));
-          const out = [];
-          for (const k of months) {
-            const row = byMonth.get(k) || { contrib: 0, interest: 0, balance: 0 };
-            balance += row.contrib;
-            let i = 0;
-            if (compounding === "monthly") i = balance > 0 ? balance * (r / 12) : 0;
-            else {
-              const m = Number(k.slice(5, 7));
-              if (balance > 0 && m === annivMonth) i = balance * r;
-            }
-            balance += i;
-            row.interest = i;
-            row.balance = balance;
-            out.push({ key: k, ...row });
-          }
-          return out;
-        }
-    
-        const today = new Date();
-        const toISO = ymd(today);
-        const out = [];
-    
-        for (const p of pf) {
-          const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(
-            0,
-            10
-          );
-          const { data: tx } = await sb
-            .from("transactions")
-            .select("date,amount")
-            .eq("type_id", SAV)
-            .eq("portfolio_id", p.id)
-            .gte("date", fromISO)
-            .lte("date", toISO)
-            .order("date", { ascending: true });
-    
-          const series = buildSeries(
-            {
-              aprPct: p.apr,
-              compounding: p.compounding,
-              initial_amount: Number(p.initial_amount || 0),
-              start_date: p.start_date,
-            },
-            tx || [],
-            fromISO,
-            toISO
-          );
-          const aportes = (tx || []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-          const invested = Number(p.initial_amount || 0) + aportes;
-          const current = series.length ? series.at(-1).balance : invested;
-    
-          // projeção
-          const projTo = new Date(today);
-          projTo.setMonth(projTo.getMonth() + 12);
-          const projSeries = buildSeries(
-            {
-              aprPct: p.apr,
-              compounding: p.compounding,
-              initial_amount: current,
-              start_date: p.start_date,
-            },
-            [],
-            ymd(today),
-            ymd(projTo)
-          );
-          const projected = projSeries.length ? projSeries.at(-1).balance : current;
-    
-          out.push({ ...p, invested, current, projected });
-        }
-    
-        const byKind = new Map();
-        for (const p of out) {
-          const k = p.kind || "Outro";
-          if (!byKind.has(k))
-            byKind.set(k, {
-              invested: 0,
-              current: 0,
-              projected: 0,
-              color: p.color || null,
-            });
-          const b = byKind.get(k);
-          b.invested += p.invested;
-          b.current += p.current;
-          b.projected += p.projected;
-          if (!b.color && p.color) b.color = p.color;
-        }
-        return { kinds: Array.from(byKind.keys()), byKind, raw: out };
+  async aggregate() {
+    const sb = window.sb;
+    const uid = (await sb.auth.getUser()).data?.user?.id;
+    const { data: pf } = await sb
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", uid);
+    if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
+
+    const { data: ttype } = await sb
+      .from("transaction_types")
+      .select("id,code");
+    const SAV = ttype?.find((t) => t.code === "SAVINGS")?.id;
+
+    function buildSeries(
+      {
+        aprPct,
+        compounding = "monthly",
+        initial_amount = 0,
+        start_date = null,
+      },
+      txs,
+      fromISO,
+      toISO,
+    ) {
+      const r = Number(aprPct || 0) / 100;
+      const months = monthKeysBetween(fromISO.slice(0, 7), toISO.slice(0, 7));
+      const byMonth = new Map(
+        months.map((k) => [k, { contrib: 0, interest: 0, balance: 0 }]),
+      );
+      for (const t of txs) {
+        const k = String(t.date).slice(0, 7);
+        if (!byMonth.has(k))
+          byMonth.set(k, { contrib: 0, interest: 0, balance: 0 });
+        byMonth.get(k).contrib += Number(t.amount || 0);
       }
+      let balance = Number(initial_amount || 0);
+      const annivMonth = start_date
+        ? Number(String(start_date).slice(5, 7))
+        : Number(fromISO.slice(5, 7));
+      const out = [];
+      for (const k of months) {
+        const row = byMonth.get(k) || { contrib: 0, interest: 0, balance: 0 };
+        balance += row.contrib;
+        let i = 0;
+        if (compounding === "monthly") i = balance > 0 ? balance * (r / 12) : 0;
+        else {
+          const m = Number(k.slice(5, 7));
+          if (balance > 0 && m === annivMonth) i = balance * r;
+        }
+        balance += i;
+        row.interest = i;
+        row.balance = balance;
+        out.push({ key: k, ...row });
+      }
+      return out;
+    }
+
+    const today = new Date();
+    const toISO = ymd(today);
+    const out = [];
+
+    for (const p of pf) {
+      const fromISO = (p.start_date || p.created_at || "1970-01-01").slice(
+        0,
+        10,
+      );
+      const { data: tx } = await sb
+        .from("transactions")
+        .select("date,amount")
+        .eq("type_id", SAV)
+        .eq("portfolio_id", p.id)
+        .gte("date", fromISO)
+        .lte("date", toISO)
+        .order("date", { ascending: true });
+
+      const series = buildSeries(
+        {
+          aprPct: p.apr,
+          compounding: p.compounding,
+          initial_amount: Number(p.initial_amount || 0),
+          start_date: p.start_date,
+        },
+        tx || [],
+        fromISO,
+        toISO,
+      );
+      const aportes = (tx || []).reduce(
+        (s, r) => s + (Number(r.amount) || 0),
+        0,
+      );
+      const invested = Number(p.initial_amount || 0) + aportes;
+      const current = series.length ? series.at(-1).balance : invested;
+
+      // projeção
+      const projTo = new Date(today);
+      projTo.setMonth(projTo.getMonth() + 12);
+      const projSeries = buildSeries(
+        {
+          aprPct: p.apr,
+          compounding: p.compounding,
+          initial_amount: current,
+          start_date: p.start_date,
+        },
+        [],
+        ymd(today),
+        ymd(projTo),
+      );
+      const projected = projSeries.length ? projSeries.at(-1).balance : current;
+
+      out.push({ ...p, invested, current, projected });
+    }
+
+    const byKind = new Map();
+    for (const p of out) {
+      const k = p.kind || "Outro";
+      if (!byKind.has(k))
+        byKind.set(k, {
+          invested: 0,
+          current: 0,
+          projected: 0,
+          color: p.color || null,
+        });
+      const b = byKind.get(k);
+      b.invested += p.invested;
+      b.current += p.current;
+      b.projected += p.projected;
+      if (!b.color && p.color) b.color = p.color;
+    }
+    return { kinds: Array.from(byKind.keys()), byKind, raw: out };
+  },
 };
 
-export const repo = { refs, accounts, transactions, dashboard, portfolios, idByCode, accountCurrency };
+export const repo = {
+  refs,
+  accounts,
+  transactions,
+  dashboard,
+  portfolios,
+  idByCode,
+  accountCurrency,
+};
 
 // Globals for legacy compatibility
 window.repo = repo;
-
