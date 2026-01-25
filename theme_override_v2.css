@@ -1,0 +1,35 @@
+/* === FIX: Theme Modal TEXT IS ALWAYS BLACK === */
+#theme-overlay,
+#theme-overlay .rep-modal,
+#theme-overlay .modal__card {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    --text: #000000 !important;
+    --muted: #444444 !important;
+}
+
+#theme-overlay *,
+#theme-overlay h2,
+#theme-overlay h3,
+#theme-overlay label,
+#theme-overlay span,
+#theme-overlay div,
+#theme-overlay p,
+#theme-overlay .row-note,
+#theme-overlay .badge-muted,
+#theme-overlay button {
+    color: #000000 !important;
+}
+
+#theme-overlay input,
+#theme-overlay select {
+    color: #000000 !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+#theme-overlay .btn--primary {
+    background-color: #0f172a !important;
+    /* Keep primary button distinct but readable */
+    color: #ffffff !important;
+}

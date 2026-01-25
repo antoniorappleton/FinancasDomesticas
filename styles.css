@@ -24,6 +24,23 @@
   --balance: #065f46;
   --footer-grad: linear-gradient(180deg, var(--green-900), #0b7a5d);
 
+  /* === Custom Visuals Globals === */
+  --app-bg-image: none;
+  /* URL(...) */
+  --app-overlay-bg: rgba(0, 0, 0, 0);
+  /* Cor da película */
+  --app-overlay-opacity: 0;
+  /* Opacidade da película */
+  --app-overlay-blur: 0px;
+  /* Blur da película */
+
+  --card-bg: var(--surface);
+  /* Fundo do cartão */
+  --card-border: var(--border);
+  /* Cor da borda */
+  --card-blur: 0px;
+  /* Backdrop blur do cartão */
+
   /* Fonts */
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
   --font-head: "Outfit", system-ui, -apple-system, sans-serif;
@@ -47,12 +64,44 @@ body {
 body {
   margin: 0;
   background: var(--bg);
+  /* Fallback se imagem falhar ou não existir */
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
   /* base um pouco maior que 14px */
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+  /* Contexto de pilha */
+  min-height: 100vh;
+}
+
+/* Camada 1: Imagem de Fundo */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background-image: var(--app-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  pointer-events: none;
+}
+
+/* Camada 2: Película (Overlay) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--app-overlay-bg);
+  /* Opacity handled in RGBA above, keep element opaque for blur */
+  opacity: 1;
+  backdrop-filter: blur(var(--app-overlay-blur));
+  -webkit-backdrop-filter: blur(var(--app-overlay-blur));
+  pointer-events: none;
 }
 
 h1,
@@ -201,8 +250,10 @@ a {
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(var(--card-blur));
+  -webkit-backdrop-filter: blur(var(--card-blur));
   border-radius: var(--radius);
   padding: clamp(16px, 4vw, 24px);
   box-shadow: var(--shadow-card);
@@ -411,7 +462,8 @@ a {
 }
 
 .auth-card {
-  background: #fff;
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--card-blur));
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .12);
@@ -430,7 +482,7 @@ label {
   margin-bottom: 10px;
   font-weight: 500;
   font-size: 14px;
-  color: var(--muted)
+  color: var(--text)
 }
 
 input,
@@ -573,7 +625,9 @@ textarea {
   position: sticky;
   bottom: 0;
   z-index: 5;
-  background: var(--surface);
+  z-index: 5;
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--card-blur));
   border-top: 1px solid var(--border);
   padding: 10px 12px
 }
@@ -589,8 +643,8 @@ textarea {
   width: min(92vw, 640px);
   max-height: 90vh;
   overflow: auto;
-  background: #fff;
-  color: #0f172a;
+  background: var(--card-bg);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 14px;
   box-shadow: 0 24px 60px rgba(2, 6, 23, .25);
@@ -620,12 +674,12 @@ textarea {
 
 .badge-muted {
   font-size: 12px;
-  color: #475569
+  color: var(--text)
 }
 
 .row-note {
   font-size: 12px;
-  color: #64748b
+  color: var(--text);
 }
 
 /* =========================
@@ -646,7 +700,7 @@ textarea {
 #tx-edit-modal .modal__card {
   width: min(1100px, 92vw);
   max-height: 92vh;
-  background: #fff;
+  background: var(--card-bg);
   color: #111;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
@@ -661,7 +715,9 @@ textarea {
   gap: 12px;
   padding: 14px 16px;
   border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: var(--card-bg);
   color: #111;
 }
 
@@ -724,7 +780,9 @@ textarea {
 #tx-edit-modal .actions {
   padding: 0 16px 16px;
   border-top: 1px solid #e5e7eb;
-  background: #fff
+  padding: 0 16px 16px;
+  border-top: 1px solid #e5e7eb;
+  background: var(--card-bg);
 }
 
 #tx-edit-modal .modal__card::-webkit-scrollbar {
@@ -951,7 +1009,7 @@ textarea {
   height: 260px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #0a1220
+  background: var(--card-bg);
 }
 
 .chart-wrap canvas {
@@ -969,7 +1027,10 @@ textarea {
   width: min(980px, 96vw);
   max-height: 92vh;
   overflow: auto;
-  padding: 16px
+  padding: 16px;
+  background: var(--card-bg);
+  /* modal glass */
+  backdrop-filter: blur(20px);
 }
 
 #rpt-grid {
@@ -1083,9 +1144,10 @@ td:nth-child(5) {
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--bg);
+  background: var(--card-bg);
   transition: box-shadow .15s ease, border-color .15s ease, transform .05s ease;
 }
 
@@ -1159,7 +1221,7 @@ td:nth-child(5) {
   justify-content: space-between;
   padding: 14px 16px;
   border: 1px solid var(--card-border, #e5e7eb);
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 14px;
 }
 
@@ -1296,7 +1358,7 @@ td:nth-child(5) {
 
 .sugg-card {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 14px;
   padding: 14px;
   box-shadow: var(--shadow-card);
@@ -1391,12 +1453,15 @@ td:nth-child(5) {
   width: min(92vw, 420px);
   max-height: 60vh;
   overflow: auto;
-  background: #fff;
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--card-bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow-card);
   padding: 12px;
+  backdrop-filter: blur(var(--card-blur));
 }
 
 .help-pop h3 {
@@ -2436,4 +2501,79 @@ td:nth-child(5) {
 
 .chevron-anim.rotated {
   transform: rotate(180deg);
+}
+
+/* Botão flutuante estendido (ex: Registar fixa) */
+.fab-extended {
+  position: fixed;
+  bottom: calc(var(--footer-h, 64px) + 80px) !important;
+  /* Force high z position */
+  right: 16px !important;
+  left: auto !important;
+  transform: none !important;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  background: var(--blue-500);
+  color: #fff;
+  border: none;
+  font-size: 0.8rem;
+  /* Smaller text */
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform .2s ease;
+  width: max-content !important;
+  /* Ensure it wraps text only */
+  max-width: 200px;
+}
+
+.fab-extended:active {
+  transform: scale(0.96) !important;
+}
+
+.fab-extended svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fab-extended.hidden {
+  display: none !important;
+}
+
+/* === FIX: Theme Modal TEXT IS ALWAYS BLACK === */
+#theme-overlay .rep-modal,
+#theme-overlay .modal__card {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  --text: #000000 !important;
+  --muted: #444444 !important;
+}
+
+#theme-overlay *,
+#theme-overlay h2,
+#theme-overlay h3,
+#theme-overlay label,
+#theme-overlay span,
+#theme-overlay div,
+#theme-overlay p,
+#theme-overlay .row-note,
+#theme-overlay .badge-muted,
+#theme-overlay button {
+  color: #000000 !important;
+}
+
+#theme-overlay input,
+#theme-overlay select {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#theme-overlay .btn--primary {
+  background-color: #0f172a !important;
+  /* Keep primary button distinct but readable */
+  color: #ffffff !important;
 }

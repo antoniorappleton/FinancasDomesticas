@@ -1,0 +1,36 @@
+/* Botão flutuante estendido (ex: Registar fixa) */
+.fab-extended {
+    position: fixed;
+    bottom: 110px;
+    /* Acima do FAB principal (~80px) */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1100;
+    /* abaixo do menu FAB aberto (1200) mas acima do resto */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: var(--blue-500);
+    /* Destacar do verde principal */
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: transform .2s ease;
+}
+
+.fab-extended:active {
+    transform: translateX(-50%) scale(0.96);
+}
+
+.fab-extended svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* esconde se tiver a classe hidden */
+.fab-extended.hidden {
+    display: none;
+}

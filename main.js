@@ -1,5 +1,6 @@
 // main.js — Router SPA com base path dinâmico (localhost + GitHub Pages)
 import { initAuth } from "./src/lib/auth.js";
+import { loadTheme, applyTheme } from "./src/lib/theme.js";
 
 /* ===================== Base path ===================== */
 // Ex.: / -> "" ; /REPO -> "/REPO" ; /REPO/index.html -> "/REPO"
@@ -171,6 +172,10 @@ function onSignedIn() {
   if (footer) footer.hidden = false;
   const login = document.getElementById("screen-login");
   if (login) login.classList.add("hidden");
+
+  // Carregar tema visual do utilizador
+  if (window.sb) loadTheme(window.sb);
+
   handleRoute();
 }
 function onSignedOut() {
@@ -224,6 +229,14 @@ function onSignedOut() {
           if (!saved.border) root.style.setProperty("--border", "#374151");
         }
       }
+    } catch {}
+
+    // Pré-carregar tema visual global (novo sistema)
+    try {
+      const visualSaved = JSON.parse(
+        localStorage.getItem("wb:visuals") || "null",
+      );
+      if (visualSaved) applyTheme(visualSaved);
     } catch {}
 
     await waitForSupabase();

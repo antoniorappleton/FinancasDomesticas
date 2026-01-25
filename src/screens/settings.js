@@ -2,6 +2,7 @@
 
 import { repo } from "../lib/repo.js";
 import { exportImportTemplate } from "./export-template.js";
+import { saveTheme as saveGlobalTheme } from "../lib/theme.js";
 
 export async function init({ sb, outlet } = {}) {
   // Import do gerador de template
@@ -1992,6 +1993,14 @@ export async function init({ sb, outlet } = {}) {
     savings: $("#thm-savings"),
     balance: $("#thm-balance"),
     dark: $("#thm-dark"),
+    // Novos globais
+    bgUrl: $("#thm-bg-url"),
+    overlayCol: $("#thm-overlay-col"),
+    overlayOp: $("#thm-overlay-op"),
+    overlayBlur: $("#thm-overlay-blur"),
+    cardBgText: $("#thm-card-bg-text"),
+    cardBlur: $("#thm-blur"), // remap existing
+    opacity: $("#thm-opacity"),
   };
 
   const DEFAULTS = {
@@ -2012,7 +2021,8 @@ export async function init({ sb, outlet } = {}) {
   function loadTheme() {
     try {
       const saved = JSON.parse(localStorage.getItem("wb:theme") || "null");
-      if (saved) applyTheme(saved);
+      const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "{}");
+      if (saved || visuals) applyTheme({ ...saved, ...visuals });
     } catch (e) {
       console.warn("Theme load error", e);
     }
@@ -2075,6 +2085,74 @@ export async function init({ sb, outlet } = {}) {
       inputs.balance.value = theme.balance || DEFAULTS.balance;
 
     if (inputs.dark) inputs.dark.checked = !!theme.dark;
+
+    // === Novos Globais ===
+    if (theme.bg_image_url) {
+      root.style.setProperty("--app-bg-image", `url('${theme.bg_image_url}')`);
+      if (inputs.bgUrl) inputs.bgUrl.value = theme.bg_image_url;
+    } else {
+      root.style.setProperty("--app-bg-image", "none");
+      if (inputs.bgUrl) inputs.bgUrl.value = "";
+    }
+
+    if (theme.bg_overlay_color || theme.bg_overlay_opacity !== undefined) {
+      const col = theme.bg_overlay_color || "#000000";
+      const op =
+        theme.bg_overlay_opacity !== undefined
+          ? theme.bg_overlay_opacity
+          : 0.35;
+
+      // Convert hex to rgb
+      let r = 0,
+        g = 0,
+        b = 0;
+      if (col.length === 7) {
+        r = parseInt(col.substring(1, 3), 16);
+        g = parseInt(col.substring(3, 5), 16);
+        b = parseInt(col.substring(5, 7), 16);
+      }
+      root.style.setProperty("--app-overlay-bg", `rgba(${r},${g},${b},${op})`);
+
+      if (inputs.overlayCol) inputs.overlayCol.value = col;
+      if (inputs.overlayOp) inputs.overlayOp.value = op;
+      if ($("#thm-overlay-op-val")) $("#thm-overlay-op-val").textContent = op;
+    }
+
+    // REMOVE --app-overlay-opacity usage as we merged it into bg color
+    // This allows backdrop-filter to work at 100% visibility
+    root.style.setProperty("--app-overlay-opacity", "1");
+
+    if (theme.bg_overlay_blur !== undefined) {
+      root.style.setProperty(
+        "--app-overlay-blur",
+        `${theme.bg_overlay_blur}px`,
+      );
+      if (inputs.overlayBlur) inputs.overlayBlur.value = theme.bg_overlay_blur;
+      if ($("#thm-overlay-blur-val"))
+        $("#thm-overlay-blur-val").textContent = `${theme.bg_overlay_blur}px`;
+    }
+
+    if (theme.card_bg_color) {
+      root.style.setProperty("--card-bg", theme.card_bg_color);
+      if (inputs.cardBgText) inputs.cardBgText.value = theme.card_bg_color;
+
+      // Parse alpha for slider sync
+      const match = theme.card_bg_color.match(/,\s*([\d.]+)\)/);
+      if (match && match[1] && inputs.opacity) {
+        inputs.opacity.value = match[1];
+        const span = document.getElementById("thm-opacity-val");
+        if (span) span.textContent = match[1];
+      }
+    }
+
+    // Existing card blur used as "glassmorphism" -> card_backdrop_blur
+    if (theme.card_backdrop_blur !== undefined) {
+      // from DB
+      root.style.setProperty("--card-blur", `${theme.card_backdrop_blur}px`);
+      if (inputs.cardBlur) inputs.cardBlur.value = theme.card_backdrop_blur;
+    }
+    // also check legacy "blur" property from wb:theme if present?
+    // We prioritize the new naming.
   }
 
   function saveFromInputs() {
@@ -2092,13 +2170,54 @@ export async function init({ sb, outlet } = {}) {
       balance: inputs.balance.value,
       dark: inputs.dark.checked,
     };
-    applyTheme(theme);
+
+    // Novos globais
+    const visuals = {
+      bg_image_url: inputs.bgUrl?.value?.trim(),
+      bg_overlay_color: inputs.overlayCol?.value,
+      bg_overlay_opacity: inputs.overlayOp?.value,
+      bg_overlay_blur: inputs.overlayBlur?.value,
+      card_bg_color: inputs.cardBgText?.value?.trim(), // takes precedence over theme.card if set?
+      card_backdrop_blur: inputs.cardBlur?.value,
+    };
+
+    const combined = { ...theme, ...visuals };
+    applyTheme(combined);
+
     localStorage.setItem("wb:theme", JSON.stringify(theme));
+    // wb:visuals is saved by saveGlobalTheme -> which updates localstorage too
+
+    // Guardar no Supabase
+    saveGlobalTheme(sb, visuals).catch((err) =>
+      console.error("Falha a guardar tema global:", err),
+    );
   }
 
   Object.values(inputs).forEach((el) => {
-    el?.addEventListener("input", () => {
-      // Live preview: build object from current inputs
+    el?.addEventListener("input", (e) => {
+      // 1. SYNC CARD TRANSPARENCY (Color + Opacity -> RGBA)
+      if (e.target === inputs.opacity || e.target === inputs.card) {
+        let hex = inputs.card?.value || "#ffffff";
+        let alpha = inputs.opacity?.value || "1";
+
+        // Helper: Hex to RGB
+        let r = 255,
+          g = 255,
+          b = 255;
+        if (hex.length === 7) {
+          r = parseInt(hex.substring(1, 3), 16);
+          g = parseInt(hex.substring(3, 5), 16);
+          b = parseInt(hex.substring(5, 7), 16);
+        }
+
+        const newRgba = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        if (inputs.cardBgText) inputs.cardBgText.value = newRgba;
+
+        const span = document.getElementById("thm-opacity-val");
+        if (span) span.textContent = alpha;
+      }
+
+      // Live preview object
       const theme = {
         bg: inputs.bg?.value,
         header: inputs.header?.value,
@@ -2112,7 +2231,16 @@ export async function init({ sb, outlet } = {}) {
         savings: inputs.savings?.value,
         balance: inputs.balance?.value,
         dark: inputs.dark?.checked,
+
+        // Novos
+        bg_image_url: inputs.bgUrl?.value,
+        bg_overlay_color: inputs.overlayCol?.value,
+        bg_overlay_opacity: inputs.overlayOp?.value,
+        bg_overlay_blur: inputs.overlayBlur?.value,
+        card_bg_color: inputs.cardBgText?.value,
+        card_backdrop_blur: inputs.cardBlur?.value,
       };
+
       applyTheme(theme);
     });
   });
