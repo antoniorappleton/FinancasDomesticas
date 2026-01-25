@@ -1,9 +1,14 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-PT">
   <head>
-    <script>window.APP_VERSION = "v22";</script>
+    <script>
+      window.APP_VERSION = "v22";
+    </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -11,16 +16,16 @@
 
     <!-- Protocol Check & Loader -->
     <script>
-      (function() {
+      (function () {
         if (window.location.protocol === "file:") {
           // =========================
           // MODO FICHEIRO (Bloqueio UI)
           // =========================
           // Não carregamos main.js nem manifest.
           // Apenas mostramos o aviso quando o corpo estiver pronto.
-          
+
           window.addEventListener("DOMContentLoaded", () => {
-             document.body.innerHTML = `
+            document.body.innerHTML = `
               <div style="
                 position:fixed;top:0;left:0;right:0;bottom:0;
                 background:#111;color:#fff;z-index:99999;
@@ -38,15 +43,16 @@
               </div>
             `;
           });
-          
+
           // Aviso na consola (sem throw Error para não parar o parsing do body)
-          console.warn("Aplicação em modo de ficheiro. Scripts principais não foram carregados.");
-          
+          console.warn(
+            "Aplicação em modo de ficheiro. Scripts principais não foram carregados.",
+          );
         } else {
           // =========================
           // MODO SERVIDOR (Normal)
           // =========================
-          
+
           // 1. Injeta Manifest
           const link = document.createElement("link");
           link.rel = "manifest";
@@ -62,7 +68,7 @@
         }
       })();
     </script>
-    
+
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
     <script>
       (function () {
@@ -83,9 +89,12 @@
         })();
       })();
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
     <!-- Manifest inserido dinamicamente via JS acima -->
   </head>
@@ -98,49 +107,110 @@
       </div>
     </div>
 
-<!-- Sprite de ícones essenciais -->
-<svg aria-hidden="true" focusable="false" width="0" height="0" style="position:absolute;left:-9999px;top:-9999px">
-    <symbol id="i-home" viewBox="0 0 24 24"><path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"/></symbol>
-    <symbol id="i-list" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z"/></symbol>
-    <symbol id="i-plus" viewBox="0 0 24 24"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></symbol>
-    <symbol id="i-cog" viewBox="0 0 24 24"><path fill="currentColor" d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"/></symbol>
-    <symbol id="i-target" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
-      <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none"/>
-      <circle cx="12" cy="12" r="1.8" fill="currentColor"/>
-    </symbol>
-    <symbol id="i-info" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z" />
-    </symbol>
-    <symbol id="i-receipt" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M5 2h14a1 1 0 0 1 1 1v19l-3-2-3 2-3-2-3 2-3-2V3a1 1 0 0 1 1-1Zm2 5h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z"/>
-    </symbol>
-    <symbol id="i-register" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M4 6h2v2H4V6Zm0 5h2v2H4v-2Zm0 5h2v2H4v-2Zm4-10h12v2H8V6Zm0 5h12v2H8v-2Zm0 5h12v2H8v-2Z"/>
-    </symbol>
-    <!-- NOVOS: olho aberto / olho fechado -->
-    <symbol id="i-eye" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M12 5c5.5 0 10 4.5 11 7-1 2.5-5.5 7-11 7S2 14.5 1 12c1-2.5 5.5-7 11-7Zm0 3.5A3.5 3.5 0 1 0 15.5 12 3.5 3.5 0 0 0 12 8.5Z"/>
-    </symbol>
-    <symbol id="i-eye-off" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M3 4.3 4.3 3 21 19.7 19.7 21l-3.1-3.1A12.6 12.6 0 0 1 12 19c-6 0-10.4-4.8-11-7 .5-1.2 2-3.4 4.4-5.1L3 4.3Zm18.9 7.7c-.4 1-1.6 2.7-3.5 4.2L7.8 5.6C9.2 5 10.6 4.7 12 4.7c6 0 10.4 4.8 11 7Z"/>
-    </symbol>
-    <symbol id="i-chevron-up" viewBox="0 0 24 24">
-  <path fill="currentColor" d="M6.7 15.3 12 10l5.3 5.3 1.4-1.4L12 7.2 5.3 13.9z"/>
-    </symbol>
-    <symbol id="i-chevron-down" viewBox="0 0 24 24">
-      <path fill="currentColor" d="M6.7 8.7 12 14l5.3-5.3 1.4 1.4L12 16.8 5.3 10.1z"/>
-    </symbol>
-</svg>
-
+    <!-- Sprite de ícones essenciais -->
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="0"
+      height="0"
+      style="position: absolute; left: -9999px; top: -9999px"
+    >
+      <symbol id="i-home" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"
+        />
+      </symbol>
+      <symbol id="i-list" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
+      </symbol>
+      <symbol id="i-cog" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"
+        />
+      </symbol>
+      <symbol id="i-target" viewBox="0 0 24 24">
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="5"
+          stroke="currentColor"
+          stroke-width="2"
+          fill="none"
+        />
+        <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+      </symbol>
+      <symbol id="i-info" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z"
+        />
+      </symbol>
+      <symbol id="i-receipt" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M5 2h14a1 1 0 0 1 1 1v19l-3-2-3 2-3-2-3 2-3-2V3a1 1 0 0 1 1-1Zm2 5h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z"
+        />
+      </symbol>
+      <symbol id="i-register" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M4 6h2v2H4V6Zm0 5h2v2H4v-2Zm0 5h2v2H4v-2Zm4-10h12v2H8V6Zm0 5h12v2H8v-2Zm0 5h12v2H8v-2Z"
+        />
+      </symbol>
+      <!-- NOVOS: olho aberto / olho fechado -->
+      <symbol id="i-eye" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M12 5c5.5 0 10 4.5 11 7-1 2.5-5.5 7-11 7S2 14.5 1 12c1-2.5 5.5-7 11-7Zm0 3.5A3.5 3.5 0 1 0 15.5 12 3.5 3.5 0 0 0 12 8.5Z"
+        />
+      </symbol>
+      <symbol id="i-eye-off" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M3 4.3 4.3 3 21 19.7 19.7 21l-3.1-3.1A12.6 12.6 0 0 1 12 19c-6 0-10.4-4.8-11-7 .5-1.2 2-3.4 4.4-5.1L3 4.3Zm18.9 7.7c-.4 1-1.6 2.7-3.5 4.2L7.8 5.6C9.2 5 10.6 4.7 12 4.7c6 0 10.4 4.8 11 7Z"
+        />
+      </symbol>
+      <symbol id="i-chevron-up" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M6.7 15.3 12 10l5.3 5.3 1.4-1.4L12 7.2 5.3 13.9z"
+        />
+      </symbol>
+      <symbol id="i-chevron-down" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          d="M6.7 8.7 12 14l5.3-5.3 1.4 1.4L12 16.8 5.3 10.1z"
+        />
+      </symbol>
+    </svg>
 
     <header class="app-header">
       <div class="app-header__inner">
         <a class="brand" href="#/" aria-label="Ir para o dashboard">
-          <img src="./WiSEBUDGET.png" alt="" class="brand__logo" aria-hidden="true" />
+          <img
+            src="./WiSEBUDGET.png"
+            alt=""
+            class="brand__logo"
+            aria-hidden="true"
+          />
           <span class="brand__text">
             <span class="brand__title">Wisebudget®</span>
-            <span class="brand__subtitle">A sua aplicação de Finanças pessoais.</span>
+            <span class="brand__subtitle"
+              >A sua aplicação de Finanças pessoais.</span
+            >
           </span>
         </a>
         <nav class="top-nav" aria-label="Navegação principal"></nav>
@@ -151,39 +221,76 @@
       <div id="outlet" class="outlet"></div>
     </main>
 
-
     <!-- Overlay de Autenticação -->
-    <section id="screen-login" class="auth-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="auth-title">
+    <section
+      id="screen-login"
+      class="auth-overlay hidden"
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="auth-title"
+    >
       <div class="auth-card">
         <h2 id="auth-title">Entrar</h2>
 
         <form id="auth-form" autocomplete="on">
-          <label>Email
-            <input id="auth-email" type="email" autocomplete="username" required />
+          <label
+            >Email
+            <input
+              id="auth-email"
+              type="email"
+              autocomplete="username"
+              required
+            />
           </label>
-          <label>Palavra-passe
-            <input id="auth-password" type="password" autocomplete="current-password" required />
+          <label
+            >Palavra-passe
+            <input
+              id="auth-password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
           </label>
-          <button id="auth-submit" type="submit" class="btn btn--primary">Entrar</button>
-          <p class="row-note" style="margin-top:10px">
-            <button id="auth-forgot" type="button" class="link">Esqueci-me da palavra-passe</button>
+          <button id="auth-submit" type="submit" class="btn btn--primary">
+            Entrar
+          </button>
+          <p class="row-note" style="margin-top: 10px">
+            <button id="auth-forgot" type="button" class="link">
+              Esqueci-me da palavra-passe
+            </button>
           </p>
         </form>
 
         <form id="reset-form" class="hidden" autocomplete="on">
-          <label>Email
-            <input id="reset-email" type="email" inputmode="email" placeholder="o.teu@email.com" required />
+          <label
+            >Email
+            <input
+              id="reset-email"
+              type="email"
+              inputmode="email"
+              placeholder="o.teu@email.com"
+              required
+            />
           </label>
-          <button id="reset-submit" type="submit" class="btn btn--primary">Enviar link de recuperação</button>
-          <p class="row-note" style="margin-top:8px">Enviaremos um email com um link para definires uma nova palavra-passe.</p>
-          <p class="row-note" style="margin-top:8px">
-            <button id="reset-back" type="button" class="link">Voltar ao login</button>
+          <button id="reset-submit" type="submit" class="btn btn--primary">
+            Enviar link de recuperação
+          </button>
+          <p class="row-note" style="margin-top: 8px">
+            Enviaremos um email com um link para definires uma nova
+            palavra-passe.
+          </p>
+          <p class="row-note" style="margin-top: 8px">
+            <button id="reset-back" type="button" class="link">
+              Voltar ao login
+            </button>
           </p>
         </form>
 
         <p class="auth-switch">
           <span id="auth-help">Ainda não tens conta?</span>
-          <button id="auth-toggle" class="link" type="button">Criar conta</button>
+          <button id="auth-toggle" class="link" type="button">
+            Criar conta
+          </button>
         </p>
       </div>
     </section>
@@ -201,7 +308,9 @@
         authForm?.classList.add("hidden");
         resetForm?.classList.remove("hidden");
         authTitle.textContent = "Recuperar palavra-passe";
-        const loginEmail = (document.getElementById("auth-email")?.value || "").trim();
+        const loginEmail = (
+          document.getElementById("auth-email")?.value || ""
+        ).trim();
         if (loginEmail) resetEmailEl.value = loginEmail;
         resetEmailEl?.focus();
       });
@@ -224,7 +333,9 @@
           alert("✅ Enviámos um email com o link de recuperação.");
           resetBack?.click();
         } catch (err) {
-          alert(err?.message || "Não foi possível enviar o email de recuperação.");
+          alert(
+            err?.message || "Não foi possível enviar o email de recuperação.",
+          );
         }
       });
     </script>
@@ -234,14 +345,21 @@
     <script>
       window.sb = supabase.createClient(
         window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
-        window.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA"
+        window.SUPABASE_ANON_KEY ||
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA",
       );
     </script>
 
     <!-- Service Worker -->
     <script>
-      if ("serviceWorker" in navigator && !window.location.protocol.includes("file")) {
-        navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(console.error);
+      if (
+        "serviceWorker" in navigator &&
+        location.hostname !== "127.0.0.1" &&
+        location.hostname !== "localhost"
+      ) {
+        navigator.serviceWorker
+          .register("./sw.js", { scope: "./" })
+          .catch(console.error);
       }
     </script>
 
@@ -251,7 +369,8 @@
     <!-- Splash: esconder após app pronta ou timeout -->
     <script>
       (function () {
-        const MIN = 3000, MAX = 7000;
+        const MIN = 3000,
+          MAX = 7000;
         const start = performance.now();
         const splash = document.getElementById("wb-splash");
         const hide = () => {
@@ -260,7 +379,10 @@
           const wait = Math.max(0, MIN - elapsed);
           setTimeout(() => {
             splash.classList.add("is-hiding");
-            setTimeout(() => { splash.style.display = "none"; splash.dataset.done = "1"; }, 500);
+            setTimeout(() => {
+              splash.style.display = "none";
+              splash.dataset.done = "1";
+            }, 500);
           }, wait);
         };
         window.addEventListener("load", hide, { once: true });
@@ -271,19 +393,37 @@
 
     <!-- FAB (opcional; podes remover se usares só o footer) -->
     <div class="fab-nav" aria-live="polite">
-      <button id="fabToggle" class="fab-nav__toggle" aria-label="Abrir menu" aria-expanded="false">
+      <button
+        id="fabToggle"
+        class="fab-nav__toggle"
+        aria-label="Abrir menu"
+        aria-expanded="false"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4"/>
+          <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4" />
         </svg>
       </button>
       <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
-        <button class="fab-item" data-to="#/" aria-label="Dashboard"><svg><use href="#i-home"/></svg><span class="fab-label">Dashboard</span></button>
-        <button class="fab-item" data-to="#/metas" aria-label="Metas"><svg><use href="#i-target"/></svg><span class="fab-label">Metas</span></button>
-        <button class="fab-item" data-to="#/movimentos" aria-label="Movimentos"><svg><use href="#i-receipt"/></svg><span class="fab-label">Movimentos</span></button>
-        <button class="fab-item" data-to="#/new" aria-label="Nova"><svg><use href="#i-plus"/></svg><span class="fab-label">Nova</span></button>
-        <button class="fab-item" data-to="#/settings" aria-label="Definições"><svg><use href="#i-cog"/></svg><span class="fab-label">Definições</span></button>
+        <button class="fab-item" data-to="#/" aria-label="Dashboard">
+          <svg><use href="#i-home" /></svg
+          ><span class="fab-label">Dashboard</span>
+        </button>
+        <button class="fab-item" data-to="#/metas" aria-label="Metas">
+          <svg><use href="#i-target" /></svg
+          ><span class="fab-label">Metas</span>
+        </button>
+        <button class="fab-item" data-to="#/movimentos" aria-label="Movimentos">
+          <svg><use href="#i-receipt" /></svg
+          ><span class="fab-label">Movimentos</span>
+        </button>
+        <button class="fab-item" data-to="#/new" aria-label="Nova">
+          <svg><use href="#i-plus" /></svg><span class="fab-label">Nova</span>
+        </button>
+        <button class="fab-item" data-to="#/settings" aria-label="Definições">
+          <svg><use href="#i-cog" /></svg
+          ><span class="fab-label">Definições</span>
+        </button>
       </div>
     </div>
-    
   </body>
 </html>

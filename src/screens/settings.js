@@ -987,7 +987,7 @@ export async function init({ sb, outlet } = {}) {
       const months = {};
       (rows || []).forEach((r) => {
         const m = String(r.date).slice(0, 7);
-        months[m] ||= { inc: 0, exp: 0, sav: 0, net: 0 };
+        months[m] ||= { inc: 0, exp: 0, sav: 0, net: 0, fixed: 0 };
         if (r.type_id === tInc.id) {
           months[m].inc += +r.amount;
           months[m].net += +r.amount;
@@ -995,6 +995,7 @@ export async function init({ sb, outlet } = {}) {
         if (r.type_id === tExp.id) {
           months[m].exp += +r.amount;
           months[m].net -= +r.amount;
+          if (isFixed(r)) months[m].fixed += +r.amount;
         }
         if (r.type_id === tSav.id) {
           months[m].sav += +r.amount;
@@ -1199,22 +1200,48 @@ export async function init({ sb, outlet } = {}) {
       });
 
       // ===== 7) Linhas: esforço e taxa de poupança =====
-      const eff = mlabels.map((m) => {
+      // ===== 7) Linhas: esforço (Fixa vs Total) e taxa de poupança =====
+      const effFixed = mlabels.map((m) => {
+        const inc = months[m].inc || 0;
+        const fix = months[m].fixed || 0;
+        return inc ? (fix / inc) * 100 : 0;
+      });
+      const effTotal = mlabels.map((m) => {
         const inc = months[m].inc || 0;
         const ex = months[m].exp || 0;
-        return inc ? (ex / inc) * 100 : 0;
+        const sv = months[m].sav || 0;
+        // Total effort = (Desired + Savings) / Income ? No, user said: (Expense + Savings) / Income
+        // "effort_total = (expense + savings) / income * 100"
+        return inc ? ((ex + sv) / inc) * 100 : 0;
       });
+
       const savRate = mlabels.map((m) => {
         const inc = months[m].inc || 0;
         const sv = months[m].sav || 0;
         return inc ? (sv / inc) * 100 : 0;
       });
+
       _rptEffort = makeChart($("#rpt-effort"), {
         type: "line",
         data: {
           labels: mlabels,
           datasets: [
-            { label: "Esforço %", data: eff, borderWidth: 2, tension: 0.25 },
+            {
+              label: "Esforço Fixo",
+              data: effFixed,
+              borderColor: "#16a34a", // Green
+              backgroundColor: "#16a34a",
+              borderWidth: 2,
+              tension: 0.25,
+            },
+            {
+              label: "Esforço Total",
+              data: effTotal,
+              borderColor: "#ea580c", // Orange
+              backgroundColor: "#ea580c",
+              borderWidth: 2,
+              tension: 0.25,
+            },
           ],
         },
         options: {
@@ -1223,6 +1250,11 @@ export async function init({ sb, outlet } = {}) {
           animation: false,
           plugins: {
             legend: { position: "top" },
+            tooltip: {
+              callbacks: {
+                label: (c) => `${c.dataset.label}: ${c.formattedValue}%`,
+              },
+            },
             datalabels: { display: false },
           },
           scales: { y: { beginAtZero: true } },
@@ -1254,18 +1286,24 @@ export async function init({ sb, outlet } = {}) {
       });
 
       // ===== 8) Insights / Alertas =====
-      const effortTot = income ? (expense / income) * 100 : 0;
+      // ===== 8) Insights / Alertas =====
+      const effortFixedRate = income ? (fixedAmt / income) * 100 : 0;
+      const effortTotalRate = income ? ((expense + savings) / income) * 100 : 0;
       const savRateTot = income ? (savings / income) * 100 : 0;
       const negMonths = monthlyRows.filter((r) => r.net < 0).length;
       const lastLiq = monthlyRows.at(-1)?.liq || 0;
       const insights = [];
+
       insights.push(
-        `Taxa de esforço: <strong>${effortTot.toFixed(1)}%</strong>` +
-          (effortTot > 50
-            ? " <span style='color:#b91c1c'>(elevada)</span>"
-            : effortTot > 35
-              ? " <span style='color:#f59e0b'>(moderada)</span>"
+        `Esforço Fixo: <strong>${effortFixedRate.toFixed(1)}%</strong>` +
+          (effortFixedRate > 50
+            ? " <span style='color:#b91c1c'>(crítico)</span>"
+            : effortFixedRate > 35
+              ? " <span style='color:#f59e0b'>(atenção)</span>"
               : " <span style='color:#15803d'>(saudável)</span>"),
+      );
+      insights.push(
+        `Esforço Total: <strong>${effortTotalRate.toFixed(1)}%</strong> (incl. poupança)`,
       );
       insights.push(
         `Taxa de poupança: <strong>${savRateTot.toFixed(
@@ -1513,9 +1551,9 @@ export async function init({ sb, outlet } = {}) {
     y += 12;
     y = canvasToPage("#rpt-regularity", M, y, W - 2 * M) + 24;
 
-    // === LINHA 5: Taxa de esforço ===
+    // === LINHA 5: Taxa de esforço (Fixed vs Total) ===
     ensureSpace(220);
-    doc.text("Taxa de esforço mensal", M, y);
+    doc.text("Taxa de esforço mensal (Fixa vs Total)", M, y);
     y += 12;
     y = canvasToPage("#rpt-effort", M, y, W - 2 * M) + 24;
 

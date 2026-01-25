@@ -983,32 +983,75 @@ export async function init({ sb, outlet } = {}) {
   })();
 
   // === Inicializar Toggles de Secções ===
-  const outletEl = document.getElementById("outlet"); // Use global outlet if local var not avail, but here we can just attach to document or scoped root
-  const root = outlet || document;
+  const outletEl = document.getElementById("outlet");
+  const rootContext = outlet || outletEl || document;
 
-  // Usa delegação de eventos para apanhar cliques nos headers das secções
-  if (!root._metasToggleInit) {
-    root.addEventListener("click", (e) => {
-      // Procura o header clicável
-      const header = e.target.closest(".section-toggle-header");
-      if (!header) return;
+  const headers = rootContext.querySelectorAll(".section-toggle-header");
+  headers.forEach((header) => {
+    if (header._toggleAttached) return;
 
-      // Evita disparar se clicou num botão dentro do header (ex: refresh)
-      if (e.target.closest("button") && e.target.closest("button") !== header)
-        return;
+    header.addEventListener("click", (e) => {
+      // 1) Evita disparar se clicou num elemento interativo dentro do header
+      if (e.target.closest("button, a, input, select, textarea")) return;
 
-      // Encontra o card pai
       const card = header.closest(".section-toggle-card");
       if (!card) return;
 
       const body = card.querySelector(".card-body");
       const chev = header.querySelector(".chevron-anim");
 
-      if (body) body.classList.toggle("collapsed");
-      if (chev) chev.classList.toggle("rotated");
+      if (body) {
+        // Toggle da classe collapsed
+        const isCollapsed = body.classList.toggle("collapsed");
+        // Força visibilidade explícita (robustez)
+        body.style.display = isCollapsed ? "none" : ""; // vazia volta ao normal (block)
+
+        // Sincroniza ícone
+        if (chev) {
+          chev.classList.toggle("rotated", !isCollapsed);
+        }
+      }
     });
-    root._metasToggleInit = true;
+
+    header._toggleAttached = true;
+  });
+
+  // 2) Sincronização inicial (garante que ícones batem certo com estado inicial)
+  rootContext.querySelectorAll(".section-toggle-card").forEach((card) => {
+    const body = card.querySelector(".card-body");
+    const chev = card.querySelector(".chevron-anim");
+    if (!body || !chev) return;
+
+    const isCollapsed = body.classList.contains("collapsed");
+    // Se estiver colapsado no HTML, garante visual
+    if (isCollapsed) body.style.display = "none";
+
+    // Ícone: se NÃO colapsado -> rotated (seta p/ cima), se colapsado -> normal
+    chev.classList.toggle("rotated", !isCollapsed);
+  });
+
+  // 3) Blind Fix: garantir que Carteiras não fica preso invisível
+  // 3) Blind Fix: garantir que Carteiras não fica preso invisível
+  const pfCard =
+    rootContext.querySelector("#pf-card") || document.getElementById("pf-card");
+  if (pfCard) {
+    console.log("Metas.js: Carteiras card found, forcing visibility.");
+    const pfBody = pfCard.querySelector(".card-body");
+    const pfChev = pfCard.querySelector(".chevron-anim");
+
+    // remove classe collapsed se existir
+    pfBody?.classList.remove("collapsed");
+
+    // FORÇA display block (não apenas vazio)
+    if (pfBody) pfBody.style.display = "block";
+
+    // garante seta para baixo
+    pfChev?.classList.add("rotated");
+  } else {
+    console.error("Metas.js: Carteiras card (#pf-card) NOT found in DOM.");
   }
+
+  await renderPortfolios();
 
   await renderPortfolios();
 }

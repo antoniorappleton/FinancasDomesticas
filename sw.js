@@ -1,5 +1,5 @@
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v12";
+const VERSION = "v13";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -41,7 +41,7 @@ const APP_SHELL = [
   withBase("/src/lib/repo.js"),
   withBase("/src/lib/helpers.js"),
   withBase("/src/lib/categories-crud.js"),
-  withBase("/src/lib/validators.js")
+  withBase("/src/lib/validators.js"),
 ];
 
 // Helpers
@@ -56,7 +56,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_STATIC)
-      .then((cache) => cache.addAll(APP_SHELL).catch(() => {}))
+      .then((cache) => cache.addAll(APP_SHELL).catch(() => {})),
   );
 });
 
@@ -68,10 +68,10 @@ self.addEventListener("activate", (event) => {
       await Promise.all(
         keys
           .filter((k) => ![CACHE_STATIC, CACHE_DYNAMIC].includes(k))
-          .map((k) => caches.delete(k))
+          .map((k) => caches.delete(k)),
       );
       await self.clients.claim();
-    })()
+    })(),
   );
 });
 
@@ -81,14 +81,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   if (!isHttp(req.url)) return;
-  if (url.searchParams.has("sw") && url.searchParams.get("sw") === "off") return;
+  if (url.searchParams.has("sw") && url.searchParams.get("sw") === "off")
+    return;
   if (isRealtime(req.url) || req.headers.has("range")) return;
 
   // corrige typo /scr/ → /src/
   if (url.pathname.startsWith(`${BASE_PATH}/scr/`)) {
     url.pathname = url.pathname.replace(
       `${BASE_PATH}/scr/`,
-      `${BASE_PATH}/src/`
+      `${BASE_PATH}/src/`,
     );
     req = new Request(url.toString(), {
       method: req.method,
@@ -116,7 +117,7 @@ self.addEventListener("fetch", (event) => {
             })
           );
         }
-      })()
+      })(),
     );
     return;
   }
@@ -140,7 +141,12 @@ self.addEventListener("fetch", (event) => {
         if (cachedNoQuery) {
           fetch(req)
             .then((res) => {
-              if (res && res.ok) cache.put(req, res.clone());
+              if (res && res.ok) {
+                // atualiza o request com query…
+                cache.put(req, res.clone());
+                // …e MAIS IMPORTANTE: atualiza o request sem query (o que tu devolves!)
+                cache.put(noQueryReq, res.clone());
+              }
             })
             .catch(() => {});
           return cachedNoQuery;
@@ -164,6 +170,6 @@ self.addEventListener("fetch", (event) => {
       } catch {
         return new Response("", { status: 504, statusText: "Offline" });
       }
-    })()
+    })(),
   );
 });
