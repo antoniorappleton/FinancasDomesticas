@@ -576,10 +576,10 @@ export async function init({ outlet } = {}) {
       const catMap = new Map();
       allCats.forEach((c) => catMap.set(c.id, c));
 
-      // 2. Fetch Transactions
+      // 2. Fetch Transactions (Last 6 Months)
       const mid = await ensureMonthlyId();
       const to = new Date();
-      const from = new Date(to.getFullYear(), to.getMonth() - 12, 1);
+      const from = new Date(to.getFullYear(), to.getMonth() - 6, 1);
 
       const { data: tExpData } = await sb
         .from("transaction_types")
@@ -591,27 +591,70 @@ export async function init({ outlet } = {}) {
 
       const { data } = await sb
         .from("transactions")
-        .select("amount,description,category_id,date") // Need date!
+        .select("amount,description,category_id,date")
         .eq("type_id", expTypeId)
         .eq("expense_nature", "fixed")
         .gte("date", from.toISOString().slice(0, 10))
         .lte("date", to.toISOString().slice(0, 10))
         .order("date", { ascending: true }); // Most recent last
 
+      // Helper: Normalize Description (for uncategorized fallback)
+      const normalize = (s) => {
+        let n = String(s || "").toLowerCase();
+        n = n.replace(
+          /\b(janeiro|fevereiro|março|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/g,
+          "",
+        );
+        n = n.replace(
+          /\b(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b/g,
+          "",
+        );
+        n = n.replace(/\b20\d{2}\b/g, "");
+        n = n.replace(/\b\d{1,2}[/-]\d{1,2}\b/g, "");
+        n = n.replace(/[\(\)\-\/\.#]/g, " ");
+        return n.replace(/\s+/g, " ").trim();
+      };
+
+      const toTitleCase = (str) =>
+        str.replace(
+          /\w\S*/g,
+          (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase(),
+        );
+
       // 3. Aggregate
       const aggMap = new Map(); // key -> { desc, cid, count, sum, lastDate }
 
       (data || []).forEach((x) => {
-        const desc = (x.description || "").trim();
+        const rawDesc = (x.description || "").trim();
         const cid = x.category_id;
-        const key = `${cid}::${desc.toLowerCase()}`;
+        let key, name;
+
+        // Group by Category if exists, otherwise by Description
+        if (cid) {
+          key = `cat::${cid}`;
+          const c = catMap.get(cid);
+          name = c ? c.name : "(Categoria Desconhecida)";
+        } else {
+          const normDesc = normalize(rawDesc);
+          const finalDesc =
+            normDesc.length > 2 ? toTitleCase(normDesc) : rawDesc;
+          key = `desc::${finalDesc.toLowerCase()}`;
+          name = finalDesc;
+        }
 
         if (!aggMap.has(key))
-          aggMap.set(key, { desc, cid, count: 0, sum: 0, lastDate: null });
+          aggMap.set(key, {
+            desc: name,
+            cid: cid || null,
+            count: 0,
+            sum: 0,
+            lastDate: null,
+          });
+
         const r = aggMap.get(key);
         r.count++;
         r.sum += Number(x.amount || 0);
-        r.lastDate = x.date; // Because ordered, this ends up being the latest
+        r.lastDate = x.date;
       });
 
       // Target Year/Month for Suggestions
@@ -620,56 +663,52 @@ export async function init({ outlet } = {}) {
       const tMonth = tDate.getMonth(); // 0-11
 
       // 4. Build Item List
-      const items = Array.from(aggMap.values())
-        .filter((r) => r.count >= 1)
-        .map((r) => {
-          const avg = r.sum / r.count;
+      const items = Array.from(aggMap.values()).map((r) => {
+        const avg = r.sum / r.count; // Average amount
 
-          // Suggested Date Calculation
-          let sDate = targetDateStr; // Fallback
-          if (r.lastDate) {
-            const ld = new Date(r.lastDate);
-            const day = ld.getDate();
-            // Construct new date in Target Month with same Day
-            // Safe Set: Clamps to last day of month if overflow
-            const safeDay = Math.min(
-              day,
-              new Date(tYear, tMonth + 1, 0).getDate(),
-            );
-            const sd = new Date(tYear, tMonth, safeDay);
-            // Fix Timezone offset for YYYY-MM-DD string
-            const z = new Date(sd.getTime() - sd.getTimezoneOffset() * 60000);
-            sDate = z.toISOString().slice(0, 10);
-          }
+        // Suggested Date Calculation
+        let sDate = targetDateStr;
+        if (r.lastDate) {
+          const ld = new Date(r.lastDate);
+          const day = ld.getDate();
+          const safeDay = Math.min(day, new Date(tYear, tMonth + 1, 0).getDate());
+          const sd = new Date(tYear, tMonth, safeDay);
+          const z = new Date(sd.getTime() - sd.getTimezoneOffset() * 60000);
+          sDate = z.toISOString().slice(0, 10);
+        }
 
-          // Resolve names
-          let parentName = "Outros";
-          let subName = "(Sem categoria)";
+        // Resolve names
+        let parentName = "Outros";
+        let subName = r.desc; // Default to the aggregated name (Category Name or Desc)
 
-          if (r.cid) {
-            const c = catMap.get(r.cid);
-            if (c) {
-              subName = c.name;
-              if (c.parent_id) {
-                const p = catMap.get(c.parent_id);
-                if (p) parentName = p.name;
-              } else {
-                parentName = c.name;
-                subName = "(Geral)";
-              }
+        if (r.cid) {
+          const c = catMap.get(r.cid);
+          if (c) {
+            subName = c.name;
+            if (c.parent_id) {
+              const p = catMap.get(c.parent_id);
+              if (p) parentName = p.name;
+            } else {
+              parentName = c.name;
+              subName = "(Geral)";
             }
           }
+        } else {
+          // If no category, it goes to "Outros" (already set)
+          // subName is already set to r.desc
+        }
 
-          return {
-            description: r.desc || "(Sem descrição)",
-            parentName,
-            subName,
-            suggestedAmount: avg,
-            suggestedDate: sDate,
-            category_id: r.cid,
-            selected: true,
-          };
-        });
+        return {
+          description: r.desc || "(Sem descrição)", // Use the Category Name or Clean Desc
+          parentName,
+          subName,
+          suggestedAmount: avg,
+          suggestedDate: sDate,
+          category_id: r.cid,
+          selected: true,
+          occurrences: r.count,
+        };
+      });
 
       // 5. Group by Parent
       const groupsMap = new Map();
