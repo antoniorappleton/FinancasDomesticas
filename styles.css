@@ -2,6 +2,9 @@
    Design tokens
    ========================= */
 :root {
+  /* =========================
+     Design tokens (Base)
+     ========================= */
   --bg: #f7f9fb;
   --surface: #fff;
   --text: #0f172a;
@@ -24,22 +27,21 @@
   --balance: #065f46;
   --footer-grad: linear-gradient(180deg, var(--green-900), #0b7a5d);
 
-  /* === Custom Visuals Globals === */
+  /* === Custom Visuals Globals (Requested Schema) === */
   --app-bg-image: none;
-  /* URL(...) */
-  --app-overlay-bg: rgba(0, 0, 0, 0);
-  /* Cor da película */
-  --app-overlay-opacity: 0;
-  /* Opacidade da película */
-  --app-overlay-blur: 0px;
-  /* Blur da película */
+  --app-bg-color: #0b1220; 
+  --app-bg-blur: 0px;
 
-  --card-bg: var(--surface);
-  /* Fundo do cartão */
-  --card-border: var(--border);
-  /* Cor da borda */
-  --card-blur: 0px;
-  /* Backdrop blur do cartão */
+  --app-overlay-color: rgba(0,0,0,0.35); /* Película */
+
+  /* Structural UI Vars */
+  --ui-card-bg: rgba(255,255,255,0.92);
+  --ui-card-border: rgba(255,255,255,0.12);
+  --ui-card-blur: 0px;
+
+  --ui-header-bg: rgba(15,23,42,0.85);
+  --ui-menu-bg: rgba(15,23,42,0.90);
+  --ui-fab-bg: #0ea5e9;
 
   /* Fonts */
   --font-body: "Inter", system-ui, -apple-system, sans-serif;
@@ -63,30 +65,29 @@ body {
 
 body {
   margin: 0;
-  background: var(--bg);
-  /* Fallback se imagem falhar ou não existir */
+  background: transparent; /* Permite ver body::before (-z-index) */
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
-  /* base um pouco maior que 14px */
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   position: relative;
-  /* Contexto de pilha */
   min-height: 100vh;
 }
 
-/* Camada 1: Imagem de Fundo */
+/* Camada 1: Imagem de Fundo Global */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -2;
   background-image: var(--app-bg-image);
+  background-color: var(--app-bg-color);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  filter: blur(var(--app-bg-blur));
   pointer-events: none;
 }
 
@@ -96,11 +97,7 @@ body::after {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--app-overlay-bg);
-  /* Opacity handled in RGBA above, keep element opaque for blur */
-  opacity: 1;
-  backdrop-filter: blur(var(--app-overlay-blur));
-  -webkit-backdrop-filter: blur(var(--app-overlay-blur));
+  background: var(--app-overlay-color);
   pointer-events: none;
 }
 
@@ -162,7 +159,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--footer-grad);
+  background: var(--ui-header-bg); /* Theme */
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, .08)
 }
@@ -250,14 +247,20 @@ a {
 }
 
 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  backdrop-filter: blur(var(--card-blur));
-  -webkit-backdrop-filter: blur(var(--card-blur));
+  background: var(--ui-card-bg); /* Theme */
+  border: 1px solid var(--ui-card-border); /* Theme */
+  backdrop-filter: blur(var(--ui-card-blur)); /* Theme */
+  -webkit-backdrop-filter: blur(var(--ui-card-blur));
   border-radius: var(--radius);
   padding: clamp(16px, 4vw, 24px);
   box-shadow: var(--shadow-card);
   margin-bottom: 14px
+}
+
+/* SAFE INPUT LOCK for Transparent Cards */
+.card:not(.no-input-lock) :where(input, select, textarea) {
+  background: #fff;
+  color: #111;
 }
 
 .card-header {
@@ -344,7 +347,7 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   gap: 6px;
   padding: 6px 8px calc(max(6px, env(safe-area-inset-bottom)));
-  background: var(--footer-grad);
+  background: var(--ui-menu-bg); /* Theme */
   color: #fff;
   border-top: 1px solid rgba(255, 255, 255, .08);
   box-shadow: 0 -6px 16px rgba(2, 6, 23, .15);
@@ -449,6 +452,9 @@ a {
 /* =========================
    Auth overlay (único)
    ========================= */
+/* =========================
+   Auth overlay (único)
+   ========================= */
 .auth-overlay {
   position: fixed;
   inset: 0;
@@ -461,15 +467,32 @@ a {
   z-index: 999;
 }
 
+/* STRICT PROTECTION: Login must be white/opaque */
 .auth-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(var(--card-blur));
+  background: #ffffff !important;
+  color: #111827 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+  /* Original structure props */
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, .12);
   padding: 20px;
   width: min(92vw, 420px);
   margin-top: 6vh;
+}
+
+/* STRICT PROTECTION: Help Containers */
+#help-pop,
+.help-box,
+.screen-help,
+.help-container {
+  background: #fff7cc !important;
+  color: #000000 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
 }
 
 /* =========================
@@ -1674,8 +1697,7 @@ td:nth-child(5) {
   height: clamp(64px, 9.5vw, 76px);
   border-radius: 999px;
   place-items: center;
-  background: var(--fab-bg, var(--primary, #0b7a5d));
-  /* Customizable */
+  background: var(--ui-fab-bg); /* Theme */
   color: #fff;
 }
 
@@ -1709,7 +1731,7 @@ td:nth-child(5) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--fab-bg, var(--primary, #0b7a5d));
+  background: var(--ui-fab-bg); /* Theme */
   color: #fff;
   border: 0;
   box-shadow: 0 10px 22px rgba(2, 6, 23, .22);
@@ -1974,6 +1996,18 @@ td:nth-child(5) {
 /* -------- Modal base -------- */
 .modal[hidden] {
   display: none !important;
+}
+
+/* STRICT PROTECTION: Force CONTENT to be White/Opaque */
+/* Modais Funcionais (Popup) devem ter fundo branco e texto escuro */
+.modal__card,
+.rpt-modal,
+#obj-edit-modal .modal__card {
+  background: #ffffff !important;
+  color: #111827 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
 }
 
 /* Escopa este estilo para o(s) modais que realmente queres em “sheet” */

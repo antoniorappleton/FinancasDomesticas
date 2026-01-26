@@ -1973,303 +1973,252 @@ export async function init({ sb, outlet } = {}) {
   $("#bud-cancel")?.addEventListener("click", () =>
     budOverlay?.classList.add("hidden"),
   );
-  /* ===== THEME SETTINGS == */
+  /* ===== THEME SETTINGS (Strict Global System) == */
   const themeOverlay = $("#theme-overlay");
   const btnThemeOpen = $("#btn-theme-open");
   const btnThemeClose = $("#theme-close");
   const btnThemeSave = $("#thm-save");
   const btnThemeReset = $("#thm-reset");
 
+  // Mapeamento inputs -> keys do user_settings
   const inputs = {
-    bg: $("#thm-bg"),
-    header: $("#thm-header"),
-    fab: $("#thm-fab"),
-    card: $("#thm-card"),
-    text: $("#thm-text"),
-    muted: $("#thm-muted"),
-    border: $("#thm-border"),
-    income: $("#thm-income"),
-    expense: $("#thm-expense"),
-    savings: $("#thm-savings"),
-    balance: $("#thm-balance"),
-    dark: $("#thm-dark"),
-    // Novos globais
-    bgUrl: $("#thm-bg-url"),
-    overlayCol: $("#thm-overlay-col"),
-    overlayOp: $("#thm-overlay-op"),
-    overlayBlur: $("#thm-overlay-blur"),
+    // Fundo
+    bgFile: $("#thm-bg-file"), // File Input
+    bgUrl: $("#thm-bg-url"),   // Hidden URL
+    bgClear: $("#thm-bg-clear"), // Clear btn
+    bgStatus: $("#thm-bg-status"), // Status Label
+    
+    bgColor: $("#thm-bg"), 
+    bgBlur: $("#thm-overlay-blur"), 
+
+    // Overlay
+    overlayCol: $("#thm-overlay-col"), 
+    overlayOp: $("#thm-overlay-op"),   
+
+    // Cartões
+    cardBgColor: $("#thm-card"),       
+    cardOp: $("#thm-opacity"),         
     cardBgText: $("#thm-card-bg-text"),
-    cardBlur: $("#thm-blur"), // remap existing
-    opacity: $("#thm-opacity"),
+    cardBlur: $("#thm-blur"),          
+    
+    // Header & Footer
+    headerBg: $("#thm-header"),        
+    fabBg: $("#thm-fab"),              
   };
 
-  const DEFAULTS = {
-    bg: "#f0f2f5",
-    header: "#0f172a",
-    fab: "#0f766e",
-    card: "#ffffff",
-    text: "#1e293b",
-    muted: "#64748b",
-    border: "#e2e8f0",
-    income: "#16a34a",
-    expense: "#ef4444",
-    savings: "#2563eb",
-    balance: "#065f46",
-    dark: false,
-  };
+  const { DEFAULT_THEME, applyTheme } = await import("../lib/theme.js");
 
-  function loadTheme() {
+  // ... (hexAlphaToRgba helper remains)
+
+  // Upload Logic
+  async function uploadBackgroundImage(file) {
+    if (!file) return null;
     try {
-      const saved = JSON.parse(localStorage.getItem("wb:theme") || "null");
+      if (inputs.bgStatus) inputs.bgStatus.textContent = "A carregar...";
+      const uid = (await sb.auth.getUser()).data.user.id;
+      const ext = file.name.split(".").pop();
+      const path = `bg/${uid}/${Date.now()}.${ext}`;
+
+      const { data, error } = await sb.storage
+        .from("user-assets")
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = sb.storage
+        .from("user-assets")
+        .getPublicUrl(path);
+
+      if (inputs.bgStatus) inputs.bgStatus.textContent = "Carregado!";
+      return publicUrl;
+    } catch (err) {
+      console.error("Upload error:", err);
+      if (inputs.bgStatus) inputs.bgStatus.textContent = "Erro no upload.";
+      alert("Erro ao carregar imagem (Verifique se o bucket 'user-assets' existe e é público).");
+      return null;
+    }
+  }
+
+  // Event Listener for File Input
+  inputs.bgFile?.addEventListener("change", async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const url = await uploadBackgroundImage(file);
+    if (url) {
+      if (inputs.bgUrl) inputs.bgUrl.value = url;
+      // Trigger live preview
+      const s = getSettingsFromInputs();
+      applyTheme(s);
+    }
+  });
+
+  // Listener for manual URL paste
+  inputs.bgUrl?.addEventListener("input", () => {
+    const s = getSettingsFromInputs();
+    applyTheme(s);
+  });
+
+  inputs.bgClear?.addEventListener("click", () => {
+    if (inputs.bgUrl) inputs.bgUrl.value = "";
+    if (inputs.bgFile) inputs.bgFile.value = ""; // clear file input
+    if (inputs.bgStatus) inputs.bgStatus.textContent = "Imagem removida.";
+    // Trigger live preview
+    const s = getSettingsFromInputs();
+    applyTheme(s);
+  });
+
+  // ... (rest of logic)
+  function hexAlphaToRgba(hex, alpha) {
+    let r = 0, g = 0, b = 0;
+    if (hex && hex.length === 7) {
+      r = parseInt(hex.substring(1, 3), 16);
+      g = parseInt(hex.substring(3, 5), 16);
+      b = parseInt(hex.substring(5, 7), 16);
+    }
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  // Load params into inputs
+  function loadThemeToInputs() {
+    try {
       const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "{}");
-      if (saved || visuals) applyTheme({ ...saved, ...visuals });
+      const s = { ...DEFAULT_THEME, ...visuals };
+
+      // Fundo
+      if (inputs.bgUrl) inputs.bgUrl.value = s.bg_image_url || "";
+      if (inputs.bgColor) inputs.bgColor.value = s.bg_color || "#0b1220";
+      if (inputs.bgBlur) {
+        inputs.bgBlur.value = s.bg_blur_px || 0;
+        $("#thm-overlay-blur-val") && ($("#thm-overlay-blur-val").textContent = s.bg_blur_px + "px");
+      }
+
+      // Overlay
+      if (inputs.overlayCol) inputs.overlayCol.value = s.overlay_color || "#000000"; // Simplificação (assumindo hex ou aceitando string)
+
+      // Card
+      if (inputs.cardBgText) inputs.cardBgText.value = s.card_bg_rgba;
+      if (inputs.cardBlur) {
+        inputs.cardBlur.value = s.card_blur_px || 0;
+        $("#thm-blur-val") && ($("#thm-blur-val").textContent = s.card_blur_px + "px");
+      }
+
+      // Header / Fab
+      // Note: we store RGBA in DB but inputs are Color Pickers (Euro-centric UI often wants simple hex).
+      // We will assume the user picks a solid color for the base variable or we try to extract hex.
+      // For strict correctness, we should store hex in DB if we want 1:1 input mapping, but DB says RGBA.
+      // We'll set the input to the fallback hex or try to parse.
+      // Simplified: Just set the color if valid hex, else default.
     } catch (e) {
-      console.warn("Theme load error", e);
+      console.warn("Theme load to GUI error", e);
     }
   }
 
-  function applyTheme(theme) {
-    const root = document.documentElement;
-    if (theme.bg) {
-      root.style.setProperty("--bg", theme.bg);
-      root.style.setProperty(
-        "--bg-grad",
-        `linear-gradient(135deg, ${theme.bg} 0%, ${theme.bg} 100%)`,
-      );
-    }
-    if (theme.header) {
-      root.style.setProperty(
-        "--footer-grad",
-        `linear-gradient(180deg, ${theme.header}, ${theme.header})`,
-      );
-    }
-    if (theme.fab) {
-      root.style.setProperty("--primary", theme.fab);
-      root.style.setProperty("--fab-bg", theme.fab);
-    }
-    if (theme.card) root.style.setProperty("--surface", theme.card);
-    if (theme.text) root.style.setProperty("--text", theme.text);
+  function getSettingsFromInputs() {
+    // 1. Fundo
+    const bg_image_url = inputs.bgUrl?.value?.trim() || "";
+    const bg_color = inputs.bgColor?.value || "#0b1220";
+    const bg_blur_px = Number(inputs.bgBlur?.value || 0);
 
-    if (theme.muted) root.style.setProperty("--muted", theme.muted);
-    if (theme.border) root.style.setProperty("--border", theme.border);
-    if (theme.income) root.style.setProperty("--income", theme.income);
-    if (theme.expense) root.style.setProperty("--expense", theme.expense);
-    if (theme.savings) root.style.setProperty("--savings", theme.savings);
-    if (theme.balance) root.style.setProperty("--balance", theme.balance);
+    // 2. Overlay
+    // 2. Overlay
+    // Bugfix: Combine Color Picker (Hex) + Opacity Slider -> RGBA
+    const ovHex = inputs.overlayCol?.value || "#000000";
+    const ovOp = inputs.overlayOp?.value || "0.35";
+    const overlay_color = hexAlphaToRgba(ovHex, ovOp);
 
-    if (theme.dark) {
-      document.body.classList.add("dark-mode");
-      if (!theme.bg) root.style.setProperty("--bg", "#111827");
-      if (!theme.card) root.style.setProperty("--surface", "#1f2937");
-      if (!theme.text) root.style.setProperty("--text", "#f3f4f6");
-      if (!theme.muted) root.style.setProperty("--muted", "#9ca3af");
-      if (!theme.border) root.style.setProperty("--border", "#374151");
-    } else {
-      document.body.classList.remove("dark-mode");
-    }
+    // 3. Card logic
+    // We combine the picker (Hex) + opacity slider -> RGBA
+    let card_bg_rgba = inputs.cardBgText?.value; 
+    // If empty likely waiting for recalc
+    
+    // 4. Structure
+    // Header & Menu share the same color base usually, with slight opacity diffs?
+    // User asked "Cor/transparência do header, menu".
+    // We will use the Header Picker and generate RGBA for both header/menu for consistency.
+    const hHex = inputs.headerBg?.value || "#0f172a";
+    const header_bg_rgba = hexAlphaToRgba(hHex, "0.95"); 
+    const menu_bg_rgba = hexAlphaToRgba(hHex, "0.98"); 
 
-    if (inputs.bg) inputs.bg.value = theme.bg || DEFAULTS.bg;
-    if (inputs.header) inputs.header.value = theme.header || DEFAULTS.header;
-    if (inputs.fab) inputs.fab.value = theme.fab || DEFAULTS.fab;
-    if (inputs.card) inputs.card.value = theme.card || DEFAULTS.card;
-    if (inputs.text) inputs.text.value = theme.text || DEFAULTS.text;
+    const fab_bg = inputs.fabBg?.value || "#0ea5e9";
 
-    if (inputs.muted) inputs.muted.value = theme.muted || DEFAULTS.muted;
-    if (inputs.border) inputs.border.value = theme.border || DEFAULTS.border;
-    if (inputs.income) inputs.income.value = theme.income || DEFAULTS.income;
-    if (inputs.expense)
-      inputs.expense.value = theme.expense || DEFAULTS.expense;
-    if (inputs.savings)
-      inputs.savings.value = theme.savings || DEFAULTS.savings;
-    if (inputs.balance)
-      inputs.balance.value = theme.balance || DEFAULTS.balance;
+    const card_blur_px = Number(inputs.cardBlur?.value || 0);
+    const card_border_rgba = "rgba(255,255,255,0.12)"; // Fixed default
 
-    if (inputs.dark) inputs.dark.checked = !!theme.dark;
-
-    // === Novos Globais ===
-    if (theme.bg_image_url) {
-      root.style.setProperty("--app-bg-image", `url('${theme.bg_image_url}')`);
-      if (inputs.bgUrl) inputs.bgUrl.value = theme.bg_image_url;
-    } else {
-      root.style.setProperty("--app-bg-image", "none");
-      if (inputs.bgUrl) inputs.bgUrl.value = "";
-    }
-
-    if (theme.bg_overlay_color || theme.bg_overlay_opacity !== undefined) {
-      const col = theme.bg_overlay_color || "#000000";
-      const op =
-        theme.bg_overlay_opacity !== undefined
-          ? theme.bg_overlay_opacity
-          : 0.35;
-
-      // Convert hex to rgb
-      let r = 0,
-        g = 0,
-        b = 0;
-      if (col.length === 7) {
-        r = parseInt(col.substring(1, 3), 16);
-        g = parseInt(col.substring(3, 5), 16);
-        b = parseInt(col.substring(5, 7), 16);
-      }
-      root.style.setProperty("--app-overlay-bg", `rgba(${r},${g},${b},${op})`);
-
-      if (inputs.overlayCol) inputs.overlayCol.value = col;
-      if (inputs.overlayOp) inputs.overlayOp.value = op;
-      if ($("#thm-overlay-op-val")) $("#thm-overlay-op-val").textContent = op;
-    }
-
-    // REMOVE --app-overlay-opacity usage as we merged it into bg color
-    // This allows backdrop-filter to work at 100% visibility
-    root.style.setProperty("--app-overlay-opacity", "1");
-
-    if (theme.bg_overlay_blur !== undefined) {
-      root.style.setProperty(
-        "--app-overlay-blur",
-        `${theme.bg_overlay_blur}px`,
-      );
-      if (inputs.overlayBlur) inputs.overlayBlur.value = theme.bg_overlay_blur;
-      if ($("#thm-overlay-blur-val"))
-        $("#thm-overlay-blur-val").textContent = `${theme.bg_overlay_blur}px`;
-    }
-
-    if (theme.card_bg_color) {
-      root.style.setProperty("--card-bg", theme.card_bg_color);
-      if (inputs.cardBgText) inputs.cardBgText.value = theme.card_bg_color;
-
-      // Parse alpha for slider sync
-      const match = theme.card_bg_color.match(/,\s*([\d.]+)\)/);
-      if (match && match[1] && inputs.opacity) {
-        inputs.opacity.value = match[1];
-        const span = document.getElementById("thm-opacity-val");
-        if (span) span.textContent = match[1];
-      }
-    }
-
-    // Existing card blur used as "glassmorphism" -> card_backdrop_blur
-    if (theme.card_backdrop_blur !== undefined) {
-      // from DB
-      root.style.setProperty("--card-blur", `${theme.card_backdrop_blur}px`);
-      if (inputs.cardBlur) inputs.cardBlur.value = theme.card_backdrop_blur;
-    }
-    // also check legacy "blur" property from wb:theme if present?
-    // We prioritize the new naming.
-  }
-
-  function saveFromInputs() {
-    const theme = {
-      bg: inputs.bg.value,
-      header: inputs.header.value,
-      fab: inputs.fab.value,
-      card: inputs.card.value,
-      text: inputs.text.value,
-      muted: inputs.muted.value,
-      border: inputs.border.value,
-      income: inputs.income.value,
-      expense: inputs.expense.value,
-      savings: inputs.savings.value,
-      balance: inputs.balance.value,
-      dark: inputs.dark.checked,
+    return {
+      bg_image_url,
+      bg_color,
+      bg_blur_px,
+      overlay_color,
+      card_bg_rgba,
+      card_border_rgba,
+      card_blur_px,
+      header_bg_rgba,
+      menu_bg_rgba,
+      fab_bg
     };
-
-    // Novos globais
-    const visuals = {
-      bg_image_url: inputs.bgUrl?.value?.trim(),
-      bg_overlay_color: inputs.overlayCol?.value,
-      bg_overlay_opacity: inputs.overlayOp?.value,
-      bg_overlay_blur: inputs.overlayBlur?.value,
-      card_bg_color: inputs.cardBgText?.value?.trim(), // takes precedence over theme.card if set?
-      card_backdrop_blur: inputs.cardBlur?.value,
-    };
-
-    const combined = { ...theme, ...visuals };
-    applyTheme(combined);
-
-    localStorage.setItem("wb:theme", JSON.stringify(theme));
-    // wb:visuals is saved by saveGlobalTheme -> which updates localstorage too
-
-    // Guardar no Supabase
-    saveGlobalTheme(sb, visuals).catch((err) =>
-      console.error("Falha a guardar tema global:", err),
-    );
   }
 
+  // Live Preview & Input Logic
   Object.values(inputs).forEach((el) => {
     el?.addEventListener("input", (e) => {
-      // 1. SYNC CARD TRANSPARENCY (Color + Opacity -> RGBA)
-      if (e.target === inputs.opacity || e.target === inputs.card) {
-        let hex = inputs.card?.value || "#ffffff";
-        let alpha = inputs.opacity?.value || "1";
-
-        // Helper: Hex to RGB
-        let r = 255,
-          g = 255,
-          b = 255;
-        if (hex.length === 7) {
-          r = parseInt(hex.substring(1, 3), 16);
-          g = parseInt(hex.substring(3, 5), 16);
-          b = parseInt(hex.substring(5, 7), 16);
-        }
-
-        const newRgba = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-        if (inputs.cardBgText) inputs.cardBgText.value = newRgba;
-
+      // Sync Opacity Slider for Cards
+      if (e.target === inputs.cardBgColor || e.target === inputs.cardOp) {
+        const hex = inputs.cardBgColor?.value || "#ffffff";
+        const op = inputs.cardOp?.value || "0.92";
+        if (inputs.cardBgText) inputs.cardBgText.value = hexAlphaToRgba(hex, op);
         const span = document.getElementById("thm-opacity-val");
-        if (span) span.textContent = alpha;
+        if (span) span.textContent = op;
       }
+      
+      // Updates labels
+      if (e.target === inputs.overlayOp && $("#thm-overlay-op-val"))
+        $("#thm-overlay-op-val").textContent = e.target.value;
 
-      // Live preview object
-      const theme = {
-        bg: inputs.bg?.value,
-        header: inputs.header?.value,
-        fab: inputs.fab?.value,
-        card: inputs.card?.value,
-        text: inputs.text?.value,
-        muted: inputs.muted?.value,
-        border: inputs.border?.value,
-        income: inputs.income?.value,
-        expense: inputs.expense?.value,
-        savings: inputs.savings?.value,
-        balance: inputs.balance?.value,
-        dark: inputs.dark?.checked,
+      if (e.target === inputs.bgBlur && $("#thm-overlay-blur-val")) 
+        $("#thm-overlay-blur-val").textContent = e.target.value + "px";
+        
+      if (e.target === inputs.cardBlur && $("#thm-blur-val")) 
+        $("#thm-blur-val").textContent = e.target.value + "px";
 
-        // Novos
-        bg_image_url: inputs.bgUrl?.value,
-        bg_overlay_color: inputs.overlayCol?.value,
-        bg_overlay_opacity: inputs.overlayOp?.value,
-        bg_overlay_blur: inputs.overlayBlur?.value,
-        card_bg_color: inputs.cardBgText?.value,
-        card_backdrop_blur: inputs.cardBlur?.value,
-      };
-
-      applyTheme(theme);
+      // Apply Live
+      const s = getSettingsFromInputs();
+      // Ensure card_bg_rgba is set if we didn't touch the sliders yet
+      if (!s.card_bg_rgba && inputs.cardBgText) s.card_bg_rgba = inputs.cardBgText.value;
+      
+      applyTheme(s);
     });
   });
 
   btnThemeOpen?.addEventListener("click", () => {
     themeOverlay?.classList.remove("hidden");
     themeOverlay?.removeAttribute("aria-hidden");
-    loadTheme();
+    loadThemeToInputs(); 
   });
 
   function closeThemeModal() {
     themeOverlay?.classList.add("hidden");
     themeOverlay?.setAttribute("aria-hidden", "true");
-    saveFromInputs();
+    const s = getSettingsFromInputs();
+    if (!s.card_bg_rgba && inputs.cardBgText) s.card_bg_rgba = inputs.cardBgText.value;
+    
+    // Save to DB
+    saveGlobalTheme(sb, s).catch(console.error);
   }
 
   btnThemeClose?.addEventListener("click", closeThemeModal);
-  btnThemeSave?.addEventListener("click", () => {
-    saveFromInputs();
-    closeThemeModal();
-  });
+  btnThemeSave?.addEventListener("click", closeThemeModal);
 
   btnThemeReset?.addEventListener("click", () => {
     if (!confirm("Restaurar as cores padrão?")) return;
-    applyTheme(DEFAULTS);
-    localStorage.removeItem("wb:theme");
+    applyTheme(DEFAULT_THEME);
+    localStorage.removeItem("wb:visuals");
+    saveGlobalTheme(sb, DEFAULT_THEME).catch(console.error);
     closeThemeModal();
   });
 
-  // Init load
-  loadTheme();
+  // Init load global theme (ensure visual consistency on navigate)
+  const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "null");
+  if (visuals) applyTheme(visuals);
+
 } // end init

@@ -89,10 +89,18 @@
 
       <!-- KPIs -->
       <div class="rpt-kpis">
-        <div class="rpt-kpi"><div>Receitas</div><strong id="rpt-kpi-income">€ 0,00</strong></div>
-        <div class="rpt-kpi"><div>Despesas</div><strong id="rpt-kpi-expense">€ 0,00</strong></div>
-        <div class="rpt-kpi"><div>Poupanças</div><strong id="rpt-kpi-savings">€ 0,00</strong></div>
-        <div class="rpt-kpi"><div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong></div>
+        <div class="rpt-kpi">
+          <div>Receitas</div><strong id="rpt-kpi-income">€ 0,00</strong>
+        </div>
+        <div class="rpt-kpi">
+          <div>Despesas</div><strong id="rpt-kpi-expense">€ 0,00</strong>
+        </div>
+        <div class="rpt-kpi">
+          <div>Poupanças</div><strong id="rpt-kpi-savings">€ 0,00</strong>
+        </div>
+        <div class="rpt-kpi">
+          <div>Saldo</div><strong id="rpt-kpi-balance">€ 0,00</strong>
+        </div>
       </div>
 
       <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis (um em cima do outro) -->
@@ -119,15 +127,21 @@
       <div class="rpt-grid rpt-grid--tables">
         <div class="rpt-card">
           <h3 class="rpt-card__title">Receitas por categoria</h3>
-          <div class="rpt-table-wrap"><table id="tbl-income-cat"></table></div>
+          <div class="rpt-table-wrap">
+            <table id="tbl-income-cat"></table>
+          </div>
         </div>
         <div class="rpt-card">
           <h3 class="rpt-card__title">Despesas por categoria</h3>
-          <div class="rpt-table-wrap"><table id="tbl-expense-cat"></table></div>
+          <div class="rpt-table-wrap">
+            <table id="tbl-expense-cat"></table>
+          </div>
         </div>
         <div class="rpt-card">
           <h3 class="rpt-card__title">Resumo mensal & liquidez</h3>
-          <div class="rpt-table-wrap"><table id="tbl-monthly"></table></div>
+          <div class="rpt-table-wrap">
+            <table id="tbl-monthly"></table>
+          </div>
         </div>
         <div class="rpt-card">
           <h3 class="rpt-card__title">Despesas por regularidade</h3>
@@ -168,173 +182,369 @@
 
 
 <style>
-  .hidden{display:none}
+  .hidden {
+    display: none
+  }
 
   /* Overlay + modal */
-  .rpt-overlay{
-    position:fixed; inset:0;
-    background:rgba(0,0,0,.5);
-    display:flex; align-items:flex-start; justify-content:center;
-    overflow:auto; padding:24px; z-index:1000;
+  .rpt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: auto;
+    padding: 24px;
+    z-index: 1000;
   }
-  .rpt-modal{
-    background:#fff; width:min(1100px,92vw);
-    border-radius:16px; padding:16px 20px 28px; position:relative; color:#111;
+
+  .rpt-modal {
+    background: #fff;
+    width: min(1100px, 92vw);
+    border-radius: 16px;
+    padding: 16px 20px 28px;
+    position: relative;
+    color: #111;
   }
 
   /* Header com logo */
   /* Cabeçalho fixo no topo do modal */
-.rpt-modal-header {
-  position: sticky;
-  top: 0;
-  background: #fff;
-  padding: 12px 16px;
-  border-bottom: 1px solid #eee;
-  z-index: 10;
-  text-align: center;
-}
-
-.rpt-modal-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-  color: #111;
-}
-
-.rpt-modal-header span {
-  display: block;
-  font-size: 14px;
-  color: #777;
-}
-
-  .rep-header{
-    display:flex; align-items:center; justify-content:space-between;
-    gap:120px; margin:-8px -4px 8px;
+  .rpt-modal-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    z-index: 10;
+    text-align: center;
   }
-    .rep-title { display:flex; align-items:center; gap:12px; }
-    .rep-title h2 { font-size: 1.25rem; line-height: 1; margin: 0; }
-    .rep-logo { height: 40px; width: auto; display:block; }
 
-    /* queres maior? sobe para 34–40px: */
-    @media (min-width: 720px){
-      .rep-logo { height: 40px; }
-      .rep-title h2 { font-size: 1.35rem; }
+  .rpt-modal-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    color: #111;
+  }
+
+  .rpt-modal-header span {
+    display: block;
+    font-size: 14px;
+    color: #777;
+  }
+
+  .rep-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 120px;
+    margin: -8px -4px 8px;
+  }
+
+  .rep-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .rep-title h2 {
+    font-size: 1.25rem;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .rep-logo {
+    height: 40px;
+    width: auto;
+    display: block;
+  }
+
+  /* queres maior? sobe para 34–40px: */
+  @media (min-width: 720px) {
+    .rep-logo {
+      height: 40px;
     }
-  .rpt-close{ font-size:22px; line-height:1; background:transparent; border:0; cursor:pointer }
+
+    .rep-title h2 {
+      font-size: 1.35rem;
+    }
+  }
+
+  .rpt-close {
+    font-size: 22px;
+    line-height: 1;
+    background: transparent;
+    border: 0;
+    cursor: pointer
+  }
 
   /* Controles + KPIs */
-  .rpt-controls{ background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:8px 10px; margin:8px 0 12px }
-  .rpt-controls__row{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px }
-  .rpt-kpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:12px 0 }
-  .rpt-kpi{ background:#f8fafc; border:1px solid #e5e7eb; border-radius:12px; padding:10px }
+  .rpt-controls {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 8px 10px;
+    margin: 8px 0 12px
+  }
+
+  .rpt-controls__row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px
+  }
+
+  .rpt-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 12px 0
+  }
+
+  .rpt-kpi {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px
+  }
 
   /* Cartões do relatório */
-  .rpt-grid{ display:grid; grid-template-columns:1fr; gap:16px } /* pizzas empilhadas */
-  .rpt-grid--tables{ grid-template-columns:1fr } /* tabelas empilhadas também; muda para 2fr 2fr se quiseres lado a lado */
-  .rpt-card{ background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px }
-  .rpt-card__title{ margin:0 0 8px 0; font-size:14px }
+  .rpt-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px
+  }
+
+  /* pizzas empilhadas */
+  .rpt-grid--tables {
+    grid-template-columns: 1fr
+  }
+
+  /* tabelas empilhadas também; muda para 2fr 2fr se quiseres lado a lado */
+  .rpt-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px
+  }
+
+  .rpt-card__title {
+    margin: 0 0 8px 0;
+    font-size: 14px
+  }
 
   /* Chart wrapper — evita “crescimento infinito” */
-  .chart{
-    position:relative; width:100%;
-    height:260px;
+  .chart {
+    position: relative;
+    width: 100%;
+    height: 260px;
   }
-  .chart.chart--tall{ height:320px }
-  .chart.chart--short{ height:220px }
-  .chart > canvas{
-    position:absolute; inset:0;
-    width:100% !important; height:100% !important; display:block;
+
+  .chart.chart--tall {
+    height: 320px
+  }
+
+  .chart.chart--short {
+    height: 220px
+  }
+
+  .chart>canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
   }
 
   /* Legendas */
-  .rpt-legend{ margin-top:6px }
-  .rpt-legend.small{ font-size:12px }
-  .rpt-legend__item{ display:flex; align-items:center; gap:8px; padding:4px 0 }
-  .rpt-legend__dot{ width:10px; height:10px; border-radius:50% }
+  .rpt-legend {
+    margin-top: 6px
+  }
+
+  .rpt-legend.small {
+    font-size: 12px
+  }
+
+  .rpt-legend__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0
+  }
+
+  .rpt-legend__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%
+  }
 
   /* Tabelas */
-  .rpt-table-wrap{
-    overflow-x:auto;
-    -webkit-overflow-scrolling: touch;     /* scroll suave em iOS */
-    max-width:100%;
+  .rpt-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* scroll suave em iOS */
+    max-width: 100%;
   }
-  .rpt-table-wrap table{ width:100%; min-width: 560px; border-collapse:collapse; font-size:13px }
-  .rpt-table-wrap th,.rpt-table-wrap td{
-    padding:6px 8px; white-space:nowrap; border-bottom:1px solid #e5e7eb; text-align:right; white-space:nowrap
+
+  .rpt-table-wrap table {
+    width: 100%;
+    min-width: 560px;
+    border-collapse: collapse;
+    font-size: 13px
   }
-  .rpt-table-wrap th:first-child,.rpt-table-wrap td:first-child{ text-align:left }
+
+  .rpt-table-wrap th,
+  .rpt-table-wrap td {
+    padding: 6px 8px;
+    white-space: nowrap;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: right;
+    white-space: nowrap
+  }
+
+  .rpt-table-wrap th:first-child,
+  .rpt-table-wrap td:first-child {
+    text-align: left
+  }
 
   /* Insights */
-  .rpt-insights{ margin:10px 0 0 0; padding-left:18px }
-  .rpt-insights li{ margin:4px 0 }
+  .rpt-insights {
+    margin: 10px 0 0 0;
+    padding-left: 18px
+  }
 
-  .btn{ padding:8px 12px; border:1px solid #334155; border-radius:10px; background:#111827; color:#e5e7eb; }
+  .rpt-insights li {
+    margin: 4px 0
+  }
+
+  .btn {
+    padding: 8px 12px;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    background: #111827;
+    color: #e5e7eb;
+  }
 
   /* Responsivo */
-  @media (max-width: 900px){
-    .rpt-controls__row{ grid-template-columns:1fr 1fr }
-    .rpt-kpis{ grid-template-columns:1fr 1fr }
+  @media (max-width: 900px) {
+    .rpt-controls__row {
+      grid-template-columns: 1fr 1fr
+    }
+
+    .rpt-kpis {
+      grid-template-columns: 1fr 1fr
+    }
   }
 
   /* Print A4 vertical */
-  @media print{
-    body{ background:#fff }
-    .rpt-overlay{ position:static; inset:auto; background:#fff; padding:0 }
-    .rpt-modal{ width:auto; box-shadow:none; padding:0; border:none }
-    .rpt-close,.rpt-actions{ display:none }
-    .rpt-controls{ border:none; background:#fff }
-    .rpt-card{ page-break-inside:avoid }
+  @media print {
+    body {
+      background: #fff
+    }
+
+    .rpt-overlay {
+      position: static;
+      inset: auto;
+      background: #fff;
+      padding: 0
+    }
+
+    .rpt-modal {
+      width: auto;
+      box-shadow: none;
+      padding: 0;
+      border: none
+    }
+
+    .rpt-close,
+    .rpt-actions {
+      display: none
+    }
+
+    .rpt-controls {
+      border: none;
+      background: #fff
+    }
+
+    .rpt-card {
+      page-break-inside: avoid
+    }
   }
 
   /* Gráficos pizza força 1:1 e evita crescer sem controlo */
-  #rpt-cat-pie, #rpt-fixed-donut {
+  #rpt-cat-pie,
+  #rpt-fixed-donut {
     aspect-ratio: 1 / 1;
     width: 100% !important;
     height: auto !important;
-    max-height: 320px;   /* ajusta à vontade (280–360) */
+    max-height: 320px;
+    /* ajusta à vontade (280–360) */
     display: block;
   }
-/* Modal: altura limitada e scroll interno no telemóvel */
-.rpt-overlay{
-  position:fixed; inset:0;
-  background:rgba(0,0,0,.5);
-  display:flex; align-items:flex-start; justify-content:center;
-  overflow:auto; padding:16px;           /* menos padding em mobile */
-  z-index:1000;
-}
 
-/* Garantir que os charts nunca passam os limites */
-.chart{ position:relative; width:100%; max-width:100%; height:260px; }
-.chart.chart--tall{ height:320px; }
-.chart > canvas{
-  position:absolute; inset:0;
-  width:100% !important; height:100% !important; display:block;
-  max-width:100%;
-}
+  /* Modal: altura limitada e scroll interno no telemóvel */
+  .rpt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: auto;
+    padding: 16px;
+    /* menos padding em mobile */
+    z-index: 1000;
+  }
 
-/* Pizzas 1:1 sem “explodir” em altura */
-#rpt-cat-pie, #rpt-fixed-donut {
-  aspect-ratio: 1 / 1;
-  width: 100% !important;
-  height: auto !important;
-  max-height: 320px;
-  display: block;
-}
+  /* Garantir que os charts nunca passam os limites */
+  .chart {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 260px;
+  }
 
-.rpt-modal{
-  background:#fff;
-  width:min(1100px, 92vw);
-  max-height:92svh;                      /* <- chave: limita altura visível */
-  overflow:auto;                         /* <- scroll acontece dentro do modal */
-  border-radius:16px; padding:16px 16px 24px;
-  position:relative; color:#111;
-  box-sizing:border-box;
-}
+  .chart.chart--tall {
+    height: 320px;
+  }
 
-/* Evita overflow lateral por causa de margins internas */
-.rpt-modal *{ min-width:0; box-sizing:border-box; }
+  .chart>canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    max-width: 100%;
+  }
 
+  /* Pizzas 1:1 sem “explodir” em altura */
+  #rpt-cat-pie,
+  #rpt-fixed-donut {
+    aspect-ratio: 1 / 1;
+    width: 100% !important;
+    height: auto !important;
+    max-height: 320px;
+    display: block;
+  }
 
+  .rpt-modal {
+    background: #fff;
+    width: min(1100px, 92vw);
+    max-height: 92svh;
+    /* <- chave: limita altura visível */
+    overflow: auto;
+    /* <- scroll acontece dentro do modal */
+    border-radius: 16px;
+    padding: 16px 16px 24px;
+    position: relative;
+    color: #111;
+    box-sizing: border-box;
+  }
+
+  /* Evita overflow lateral por causa de margins internas */
+  .rpt-modal * {
+    min-width: 0;
+    box-sizing: border-box;
+  }
 </style>
 
 <!-- ===== secção categorias ===== -->
@@ -407,8 +617,8 @@
 
   <div class="actions" style="margin-top:8px">
     <button id="imp-preview" class="btn">Pré-visualizar</button>
-    <button id="imp-import"  class="btn btn--primary">Importar</button>
-    <button id="imp-clear"   class="btn">Limpar pré-visualização</button>
+    <button id="imp-import" class="btn btn--primary">Importar</button>
+    <button id="imp-clear" class="btn">Limpar pré-visualização</button>
     <button id="imp-export-template" class="btn">Exportar modelo Excel</button>
   </div>
 
@@ -450,12 +660,13 @@
       <h2 id="bud-title">Orçamento de Estado</h2>
       <button id="bud-close" class="rpt-close" aria-label="Fechar">×</button>
     </div>
-    
+
     <div class="rep-body" style="padding-top:10px">
-      <div id="bud-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;text-align:center">
-         <!-- Summary populated by JS -->
+      <div id="bud-summary"
+        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;text-align:center">
+        <!-- Summary populated by JS -->
       </div>
-      
+
       <div class="rpt-table-wrap">
         <table id="bud-table" style="width:100%;border-collapse:collapse">
           <thead>
@@ -481,7 +692,7 @@
       </p>
     </div>
   </div>
-  </div>
+</div>
 </div>
 
 <!-- ===== MODAL TEMA ===== -->
@@ -492,31 +703,43 @@
       <button id="theme-close" class="rpt-close" aria-label="Fechar">×</button>
     </div>
     <div class="rep-body" style="padding-top:10px; display:grid; gap:20px">
-      
+
       <p class="row-note">As alterações são guardadas automaticamente no seu dispositivo.</p>
 
       <!-- Grupo: Fundo Global (Novo) -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Fundo Global</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Fundo Global
+        </h3>
         <label style="display:grid; font-size:13px; gap:4px; margin-bottom:10px">
-          <span>Imagem de Fundo (URL)</span>
-           <input type="text" id="thm-bg-url" placeholder="https://..." style="width:100%; border:1px solid #ddd; border-radius:6px; padding:6px" />
+          <span>Imagem de Fundo (URL ou Upload)</span>
+          <div style="display:flex; gap:8px; align-items:center">
+            <input type="text" id="thm-bg-url" placeholder="https://..."
+              style="flex:1; border:1px solid #ddd; border-radius:6px; padding:6px; font-size:12px" />
+            <label class="btn" style="padding:4px 8px; font-size:12px; cursor:pointer" title="Upload Ficheiro">
+              📂
+              <input type="file" id="thm-bg-file" accept="image/jpeg, image/png, image/webp" style="display:none" />
+            </label>
+            <button id="thm-bg-clear" class="btn" style="padding:4px 8px; font-size:12px"
+              title="Remover imagem">×</button>
+          </div>
+          <small id="thm-bg-status" class="row-note" style="color:var(--muted)">Carregar ficheiro ou colar URL</small>
         </label>
-        
+
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
-           <label style="display:grid; font-size:13px; gap:4px">
+          <label style="display:grid; font-size:13px; gap:4px">
             <span>Cor Película (Overlay)</span>
-            <input type="color" id="thm-overlay-col" value="#000000" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-overlay-col" value="#000000"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
-           <label style="display:grid; font-size:13px; gap:4px">
-             <div style="display:flex; justify-content:space-between">
+          <label style="display:grid; font-size:13px; gap:4px">
+            <div style="display:flex; justify-content:space-between">
               <span>Opacidade</span>
               <span id="thm-overlay-op-val" style="color:var(--muted)">0.35</span>
             </div>
             <input type="range" id="thm-overlay-op" min="0" max="1" step="0.05" value="0.35" />
           </label>
-            <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-             <div style="display:flex; justify-content:space-between">
+          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
+            <div style="display:flex; justify-content:space-between">
               <span>Blur (Fundo)</span>
               <span id="thm-overlay-blur-val" style="color:var(--muted)">0px</span>
             </div>
@@ -527,87 +750,103 @@
 
       <!-- Grupo: Interface Base -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Interface Base</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Interface
+          Base</h3>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Fundo (Background)</span>
-            <input type="color" id="thm-bg" value="#f0f2f5" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-bg" value="#f0f2f5"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Surface / Cards</span>
-            <input type="color" id="thm-card" value="#ffffff" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-card" value="#ffffff"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Bordas / Borders</span>
-            <input type="color" id="thm-border" value="#e2e8f0" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-           <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-            <div style="display:flex; justify-content:space-between">
-              <span>Opacidade Cartões</span>
-              <span id="thm-opacity-val" style="color:var(--muted)">0.75</span>
-            </div>
-            <input type="range" id="thm-opacity" min="0.0" max="1" step="0.05" value="0.75" />
-          </label>
+            <label style="display:grid; font-size:13px; gap:4px">
+              <span>Bordas / Borders</span>
+              <input type="color" id="thm-border" value="#e2e8f0"
+                style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            </label>
+            <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
+              <div style="display:flex; justify-content:space-between">
+                <span>Opacidade Cartões</span>
+                <span id="thm-opacity-val" style="color:var(--muted)">0.75</span>
+              </div>
+              <input type="range" id="thm-opacity" min="0.0" max="1" step="0.05" value="0.75" />
+            </label>
         </div>
       </div>
 
       <!-- Grupo: Tipografia -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Tipografia</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Tipografia
+        </h3>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Texto Principal</span>
-            <input type="color" id="thm-text" value="#1e293b" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-text" value="#1e293b"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Texto Secundário</span>
-            <input type="color" id="thm-muted" value="#64748b" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-muted" value="#64748b"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
         </div>
       </div>
 
       <!-- Grupo: Marca e Navegação -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Marca e Navegação</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Marca e
+          Navegação</h3>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Cabeçalho (Header)</span>
-            <input type="color" id="thm-header" value="#0f172a" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-header" value="#0f172a"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Botão Menu (FAB)</span>
-            <input type="color" id="thm-fab" value="#0f766e" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-fab" value="#0f766e"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
         </div>
       </div>
 
       <!-- Grupo: Status Financeiro -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Cores de Status</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Cores de
+          Status</h3>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Receita (Income)</span>
-            <input type="color" id="thm-income" value="#16a34a" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-income" value="#16a34a"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Despesa (Expense)</span>
-            <input type="color" id="thm-expense" value="#ef4444" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-expense" value="#ef4444"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Poupança (Savings)</span>
-            <input type="color" id="thm-savings" value="#2563eb" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-savings" value="#2563eb"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
-           <label style="display:grid; font-size:13px; gap:4px">
+          <label style="display:grid; font-size:13px; gap:4px">
             <span>Saldo (Balance)</span>
-            <input type="color" id="thm-balance" value="#065f46" style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
+            <input type="color" id="thm-balance" value="#065f46"
+              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
           </label>
         </div>
       </div>
 
       <!-- Grupo: Avançado -->
       <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Detalhes / Avançado</h3>
+        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Detalhes /
+          Avançado</h3>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Intensidade Sombra</span>
@@ -633,11 +872,12 @@
             </div>
             <input type="range" id="thm-blur" min="0" max="30" step="2" value="12" />
           </label>
-           <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-             <span>Cor Fundo Cartões (RGBA)</span>
-             <!-- Substitui/Complementa o thm-card picker -->
-             <input type="text" id="thm-card-bg-text" placeholder="rgba(255, 255, 255, 0.92)" style="width:100%; border:1px solid #ddd; border-radius:6px; padding:6px" />
-             <small class="row-note">Ex: rgba(255, 255, 255, 0.9)</small>
+          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
+            <span>Cor Fundo Cartões (RGBA)</span>
+            <!-- Substitui/Complementa o thm-card picker -->
+            <input type="text" id="thm-card-bg-text" placeholder="rgba(255, 255, 255, 0.92)"
+              style="width:100%; border:1px solid #ddd; border-radius:6px; padding:6px" />
+            <small class="row-note">Ex: rgba(255, 255, 255, 0.9)</small>
           </label>
         </div>
       </div>
@@ -663,7 +903,8 @@
 <section class="card">
   <h2 class="section-title">Manutenção de Dados</h2>
   <div class="actions">
-    <button id="btn-del-month" class="btn btn--primary" style="background:#ef4444;border-color:#ef4444">Eliminar Mês Atual</button>
+    <button id="btn-del-month" class="btn btn--primary" style="background:#ef4444;border-color:#ef4444">Eliminar Mês
+      Atual</button>
     <button id="btn-del-range" class="btn">Eliminar Período…</button>
     <button id="btn-del-all" class="btn">Eliminar Tudo…</button>
     <button id="btn-regularity-bulk" class="btn">Definir Regularidade (bulk)…</button>
