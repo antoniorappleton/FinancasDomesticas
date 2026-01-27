@@ -35,7 +35,7 @@
   --app-overlay-color: rgba(0,0,0,0.35); /* Película */
 
   /* Structural UI Vars */
-  --ui-card-bg: rgba(255,255,255,0.92);
+  --ui-card-bg: #ffffff;
   --ui-card-border: rgba(255,255,255,0.12);
   --ui-card-blur: 0px;
 
