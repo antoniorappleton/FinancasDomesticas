@@ -1,0 +1,262 @@
+<!doctype html>
+<html class="dark" lang="pt">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap" rel="stylesheet" />
+
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#0de3f2", // Electric Cyan (requested originally)
+                        secondary: "#10b981", // Wise Green
+                        petroleum: "#0b1220",
+                    },
+                    fontFamily: {
+                        brand: ["Outfit", "sans-serif"],
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'flicker': 'flicker 3s infinite',
+                    },
+                    keyframes: {
+                        flicker: {
+                            '0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100%': { opacity: '1' },
+                            '20%, 21.999%, 63%, 63.999%, 65%, 69.999%': { opacity: '0.4' },
+                        }
+                    }
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            background-color: #0b1220;
+            min-height: 100vh;
+        }
+
+        .glass-card {
+            background: rgba(16, 33, 34, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 0 40px rgba(13, 227, 242, 0.05);
+        }
+
+        /* ELECTRIC NEON EFFECT */
+        .neon-text {
+            color: #fff;
+            text-shadow:
+                0 0 5px rgba(255, 255, 255, 0.8),
+                0 0 10px rgba(13, 227, 242, 0.5),
+                0 0 20px rgba(13, 227, 242, 0.3);
+        }
+
+        .neon-box {
+            box-shadow:
+                0 0 10px rgba(13, 227, 242, 0.2);
+            border: 1px solid rgba(13, 227, 242, 0.3);
+        }
+
+        .gradient-electric {
+            background: linear-gradient(135deg, #fff 0%, #0de3f2 50%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(13, 227, 242, 0.3));
+        }
+
+        /* SVG ANIMATION */
+        .path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 3s ease-in-out forwards, glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes glow {
+            from {
+                filter: drop-shadow(0 0 2px #0de3f2);
+                stroke: #0de3f2;
+            }
+
+            to {
+                filter: drop-shadow(0 0 8px #10b981);
+                stroke: #10b981;
+            }
+        }
+    </style>
+</head>
+
+<body class="font-brand text-white overflow-hidden flex flex-col items-center justify-center">
+
+    <!-- Background Effect -->
+    <div class="absolute inset-0 z-0">
+        <div
+            class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 via-petroleum to-petroleum">
+        </div>
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-pulse-fast">
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 flex flex-col items-center gap-12">
+
+        <!-- THE LOGO: CSS/SVG Construction -->
+        <div class="relative">
+            <!-- Glow behind -->
+            <div class="absolute inset-0 bg-primary/20 blur-2xl rounded-full"></div>
+
+            <div
+                class="glass-card w-56 h-56 rounded-[2rem] flex items-center justify-center relative overflow-hidden neon-box group">
+
+                <!-- CSS LOGO CONSTRUCTION -->
+                <!-- Container for the House Shape -->
+                <div class="relative w-40 h-40 flex items-end justify-between gap-[2px]"
+                    style="clip-path: polygon(50% 0%, 100% 35%, 100% 100%, 0% 100%, 0% 35%);">
+
+                    <!-- 13 Bars for finer resolution -->
+                    <!-- Each slot has: 
+                         1. Thin "House" line (bg-white/10) full height 
+                         2. Wider "Graph" bar (colored) variable height
+                     -->
+
+                    <!-- Rise 1 (Slope +8%) - First Half -->
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-primary h-[12%] animate-pulse-fast shadow-[0_0_8px_#0de3f2]"></div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-primary h-[20%] animate-pulse-fast delay-75 shadow-[0_0_8px_#0de3f2]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-primary h-[28%] animate-pulse-fast delay-100 shadow-[0_0_8px_#0de3f2]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-primary h-[36%] animate-pulse-fast delay-150 shadow-[0_0_8px_#0de3f2]">
+                        </div>
+                    </div>
+
+                    <!-- Dip (36 -> 24 -> 12) - End of First Half -->
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div
+                            class="w-[85%] bg-gradient-to-t from-primary to-secondary h-[24%] animate-pulse-fast delay-200 shadow-[0_0_8px_#0de3f2]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div
+                            class="w-[85%] bg-gradient-to-t from-primary to-secondary h-[12%] animate-pulse-fast delay-300 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+
+                    <!-- Rise 2 (Slope +8%) - Second Half -->
+                    <!-- Linear rise to 64% (just below 65% vertex) -->
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[20%] animate-pulse-fast delay-400 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[28%] animate-pulse-fast delay-500 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[36%] animate-pulse-fast delay-600 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[44%] animate-pulse-fast delay-700 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[52%] animate-pulse-fast delay-800 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div class="w-[85%] bg-secondary h-[60%] animate-pulse-fast delay-900 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                    <div class="relative w-full h-full flex items-end justify-center">
+                        <div class="absolute inset-y-0 w-[1px] bg-white/30"></div>
+                        <div
+                            class="w-[85%] bg-secondary h-[64%] animate-pulse-fast delay-1000 shadow-[0_0_8px_#10b981]">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Typography -->
+    <div class="text-center space-y-2">
+        <h1 class="text-6xl font-bold tracking-tighter animate-flicker">
+            <span class="text-white">Wise</span><span class="gradient-electric">budget</span>
+        </h1>
+        <p class="text-primary/60 text-sm font-bold uppercase tracking-[0.3em] pl-1">
+            Gestão Financeira
+        </p>
+    </div>
+
+    <!-- Loading Bar -->
+    <div class="w-64 space-y-3 mt-4">
+        <div class="h-[2px] w-full bg-white/10 overflow-hidden relative">
+            <div id="loading-bar"
+                class="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary shadow-[0_0_15px_#0de3f2]"
+                style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-primary/80">
+            <span id="loading-status">Inicializando</span>
+            <span id="loading-pct">0%</span>
+        </div>
+    </div>
+
+    </div>
+
+    <script>
+        // Preview Animation Logic
+        let progress = 0;
+        const bar = document.getElementById("loading-bar");
+        const status = document.getElementById("loading-status");
+        const pct = document.getElementById("loading-pct");
+
+        setInterval(() => {
+            progress += Math.random() * 4;
+            if (progress > 100) progress = 100;
+
+            bar.style.width = progress + "%";
+            pct.innerText = Math.floor(progress) + "%";
+
+            if (progress < 30) status.innerText = "A LIGAR MOTORES...";
+            else if (progress < 60) status.innerText = "A CARREGAR DADOS...";
+            else if (progress < 90) status.innerText = "A SINCRONIZAR...";
+            else status.innerText = "PRONTO";
+
+            if (progress >= 100) setTimeout(() => progress = 0, 2000); // Loop for preview
+        }, 100);
+    </script>
+</body>
+
+</html>
