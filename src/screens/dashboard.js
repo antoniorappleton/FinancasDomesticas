@@ -57,11 +57,11 @@ function setupDashboardModal(ds) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Previsão Cashflow (próximos 12 meses)";
+    titleEl.textContent = "Cashflow Fixo (Histórico 12 meses)";
 
-    const labels = ds.forecastLabels || [];
-    const net = ds.forecastNet || [];
-    const cum = ds.forecastCum || [];
+    const labels = ds.cfLabels || [];
+    const net = ds.cfNet || [];
+    const cum = ds.cfCum || [];
 
     mount({
       type: "bar",
@@ -70,14 +70,14 @@ function setupDashboardModal(ds) {
         datasets: [
           {
             type: "bar",
-            label: "Poupança mensal (prev.)",
+            label: "Líquido Fixo Real",
             data: net,
-            backgroundColor: "#22c55e",
+            backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
             order: 2,
           },
           {
             type: "line",
-            label: "Poupança acumulada (prev.)",
+            label: "Acumulado",
             data: cum,
             borderColor: "#3b82f6",
             borderWidth: 2,
@@ -93,10 +93,14 @@ function setupDashboardModal(ds) {
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
-        scales: { y: { ...axisMoney, beginAtZero: true } },
+        scales: { y: { ...axisMoney, beginAtZero: false } },
       },
     });
-    extraEl.innerHTML = `<div class="muted">Baseado na média dos últimos 6 meses (Receitas - Despesas).</div>`;
+    extraEl.innerHTML = `
+      <div class="muted">
+        <strong>Líquido Fixo</strong> = Receitas Fixas - Despesas Fixas (no mês real).<br>
+        Mostra a capacidade real de poupança histórica. Valores negativos indicam meses de maior despesa (ex: seguros anuais).
+      </div>`;
   }
 
   function renderTendencias() {
@@ -805,17 +809,20 @@ export async function init({ sb, outlet } = {}) {
       return { ...m, income, expense, savings, net };
     });
 
-    // ------- Fixas/Variáveis + Top categorias + Pais -------
+    // ------- Fixas/Variáveis + Top categorias + Pais + CASHFLOW FINDER -------
+    // Modificado para buscar também INCOME e regularidades, para construir o gráfico de Cashflow Fixo
+    let cfFixed = { labels: [], net: [], cum: [] }; // definindo aqui para estar acessível
+
     try {
-      const { data: ttypeExp } = await sb
+      const { data: tTypes } = await sb
         .from("transaction_types")
-        .select("id,code")
-        .eq("code", "EXPENSE")
-        .single();
-      const expTypeId = ttypeExp?.id ?? -999;
+        .select("id,code");
+      const expTypeId = tTypes.find((t) => t.code === "EXPENSE")?.id ?? -999;
+      const incTypeId = tTypes.find((t) => t.code === "INCOME")?.id ?? -999;
 
       let hasTxNature = true,
-        hasCatNature = true;
+        hasCatNature = true,
+        hasRegularity = true;
       try {
         await sb.from("transactions").select("id, expense_nature").limit(1);
       } catch {
@@ -833,7 +840,10 @@ export async function init({ sb, outlet } = {}) {
       const cols = [
         "date",
         "amount",
+        "type_id",
         "category_id",
+        "regularity_id",
+        "regularities(code,name_pt)",
         hasTxNature ? "expense_nature" : null,
         hasCatNature
           ? "categories(expense_nature_default,name,parent_id)"
@@ -842,7 +852,7 @@ export async function init({ sb, outlet } = {}) {
         .filter(Boolean)
         .join(",");
 
-      // Fetch all expense transactions (paginated)
+      // Fetch all expense AND income transactions (paginated) for last 12 months
       let data = [];
       {
         let page = 0;
@@ -851,7 +861,7 @@ export async function init({ sb, outlet } = {}) {
           const { data: chunk, error } = await sb
             .from("transactions")
             .select(cols)
-            .eq("type_id", expTypeId)
+            .in("type_id", [expTypeId, incTypeId])
             .gte("date", from12Local)
             .range(page * size, (page + 1) * size - 1)
             .order("date", { ascending: true });
@@ -864,7 +874,6 @@ export async function init({ sb, outlet } = {}) {
 
       const parentsMap = new Map();
       try {
-        // Fetch all categories (assuming < 1000, but safer to order)
         const { data: cats } = await sb
           .from("categories")
           .select("id,name,parent_id")
@@ -881,13 +890,10 @@ export async function init({ sb, outlet } = {}) {
           if (rowCat.parent_id) {
             const p = parentsMap.get(rowCat.parent_id);
             if (p) return `${p.name} > ${rowCat.name}`;
-            // Fallback if parent missing
             return rowCat.name;
           }
           return rowCat.name;
         }
-
-        // Try ID lookup
         const c = parentsMap.get(id);
         if (!c) return "(Sem categoria)";
         if (!c.parent_id) return c.name;
@@ -900,13 +906,14 @@ export async function init({ sb, outlet } = {}) {
         if (rc) {
           if (rc.parent_id) {
             const p = parentsMap.get(rc.parent_id);
-            return p?.name || rc.name; // Fallback to child name if parent map fails
+            return p?.name || rc.name;
           }
           return rc.name;
         }
         return "(Sem categoria)";
       };
 
+      // ==== Lógica de Classificação FIXO ====
       const FIXED_HINTS = [
         "renda",
         "utilidades",
@@ -920,19 +927,44 @@ export async function init({ sb, outlet } = {}) {
         "empregada",
         "iuc",
       ];
-      const looksFixed = (name) =>
+      const looksFixedEXP = (name) =>
         FIXED_HINTS.some((h) => (name || "").toLowerCase().includes(h));
-      const isFixed = (row) => {
-        const tx = hasTxNature ? row.expense_nature : null;
+
+      const isFixedExpense = (row) => {
+        // 1. Natureza explícita na tx
+        const txNat = hasTxNature ? row.expense_nature : null;
+        if (txNat && ["fixed", "fixa"].includes(txNat.toLowerCase()))
+          return true;
+        // 2. Natureza na categoria
         const catDef = hasCatNature
           ? row.categories?.expense_nature_default
           : null;
-        const val = (tx || catDef || "").toLowerCase();
-        if (val) return ["fixed", "fixa", "f", "mensal"].includes(val);
-        return looksFixed(catPath(row.category_id, row.categories));
+        if (catDef && ["fixed", "fixa"].includes(catDef.toLowerCase()))
+          return true;
+        // 3. Regularidade (se existir e for mensal/anual etc)
+        const reg = row.regularities?.code || row.regularities?.name_pt || "";
+        if (/mensal|anual|semestral|trimestral/i.test(reg)) return true;
+        // 4. Heurística pelo nome da categoria
+        return looksFixedEXP(catPath(row.category_id, row.categories));
+      };
+
+      const isFixedIncome = (row) => {
+        // 1. Regularidade
+        const reg = row.regularities?.code || row.regularities?.name_pt || "";
+        if (/mensal|anual|semestral|trimestral/i.test(reg)) return true;
+        // 2. Palavras chave na categoria ou nome
+        const catName = (row.categories?.name || "").toLowerCase();
+        if (/salário|ordenado|vencimento|pensão|subsidio|renda/i.test(catName))
+          return true;
+        return false;
       };
 
       fixedVarByMonth = new Map();
+      const fixedCashflowByMonth = new Map(); // map: '2025-01' -> { incFixed, expFixed }
+      monthsKeys.forEach((k) =>
+        fixedCashflowByMonth.set(k, { incFixed: 0, expFixed: 0 }),
+      );
+
       thisMonthAgg = { fixed: 0, variable: 0 };
       topCatThisMonth = new Map();
       const parentAgg12m = new Map();
@@ -941,21 +973,51 @@ export async function init({ sb, outlet } = {}) {
 
       (data || []).forEach((r) => {
         const k = String(r.date).slice(0, 7);
-        const fv = fixedVarByMonth.get(k) || { fixed: 0, variable: 0 };
         const amt = Number(r.amount || 0);
-        if (isFixed(r)) fv.fixed += amt;
-        else fv.variable += amt;
-        fixedVarByMonth.set(k, fv);
 
-        const pname = parentNameOf(r);
-        parentAgg12m.set(pname, (parentAgg12m.get(pname) || 0) + amt);
+        // Agregação geral (Fix vs Var) e categorização (apenas despesas)
+        const isExp = r.type_id === expTypeId;
+        const isInc = r.type_id === incTypeId;
 
-        if (r.date >= monthStart && r.date < monthEnd) {
-          const kcat = catPath(r.category_id, r.categories);
-          topCatThisMonth.set(kcat, (topCatThisMonth.get(kcat) || 0) + amt);
-          if (isFixed(r)) thisMonthAgg.fixed += amt;
-          else thisMonthAgg.variable += amt;
+        // --- Lógica Chart Cashflow (Fixo) ---
+        if (fixedCashflowByMonth.has(k)) {
+          const entry = fixedCashflowByMonth.get(k);
+          if (isInc && isFixedIncome(r)) {
+            entry.incFixed += amt;
+          } else if (isExp && isFixedExpense(r)) {
+            entry.expFixed += Math.abs(amt);
+          }
         }
+
+        // --- Lógica Antiga (Para donut e barras fix/var) - Apenas Despesas ---
+        if (isExp) {
+          const fv = fixedVarByMonth.get(k) || { fixed: 0, variable: 0 };
+          const isF = isFixedExpense(r);
+          if (isF) fv.fixed += amt;
+          else fv.variable += amt;
+          fixedVarByMonth.set(k, fv);
+
+          const pname = parentNameOf(r);
+          parentAgg12m.set(pname, (parentAgg12m.get(pname) || 0) + amt);
+
+          if (r.date >= monthStart && r.date < monthEnd) {
+            const kcat = catPath(r.category_id, r.categories);
+            topCatThisMonth.set(kcat, (topCatThisMonth.get(kcat) || 0) + amt);
+            if (isF) thisMonthAgg.fixed += amt;
+            else thisMonthAgg.variable += amt;
+          }
+        }
+      });
+
+      // --- Build Cashflow Series ---
+      let running = 0;
+      monthsKeys.forEach((k) => {
+        const { incFixed, expFixed } = fixedCashflowByMonth.get(k);
+        const net = incFixed - expFixed;
+        running += net;
+        cfFixed.labels.push(labelMonthPT(k));
+        cfFixed.net.push(net);
+        cfFixed.cum.push(running);
       });
 
       const parentArr = Array.from(parentAgg12m.entries()).sort(
@@ -969,7 +1031,9 @@ export async function init({ sb, outlet } = {}) {
       parentDist.values = top
         .map(([, v]) => v)
         .concat(other > 0 ? [other] : []);
-    } catch {}
+    } catch (e) {
+      console.error("Data fetch error", e);
+    }
 
     // ------- Métodos (120d) -------
     try {
@@ -1233,20 +1297,7 @@ export async function init({ sb, outlet } = {}) {
   //====== Fim mini-card: Investimentos==//
   // ---------------- DEMO (fallback) ----------------
   if (!monthly.length) {
-    const labs = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
-    ];
+    // Usar os mesmos monthsKeys que os dados reais
     const income = [500, 600, 550, 580, 620, 590, 610, 640, 600, 650, 670, 700];
     const expense = [
       400, 420, 390, 410, 430, 420, 440, 460, 450, 470, 480, 500,
@@ -1255,9 +1306,9 @@ export async function init({ sb, outlet } = {}) {
       100, 150, 130, 140, 190, 170, 180, 180, 150, 180, 190, 200,
     ];
     const net = income.map((v, i) => v - expense[i] - savings[i]);
-    monthly = labs.map((label, i) => ({
-      key: label,
-      label,
+    monthly = monthsKeys.map((key, i) => ({
+      key, // Usar YYYY-MM format
+      label: labelMonthPT(key), // Gerar label formatado
       income: income[i],
       expense: expense[i],
       savings: savings[i],
@@ -1265,7 +1316,7 @@ export async function init({ sb, outlet } = {}) {
     }));
 
     fixedVarByMonth = new Map(
-      labs.map((m, i) => [
+      monthsKeys.map((m, i) => [
         m,
         {
           fixed: Math.round(expense[i] * 0.6),
@@ -1416,44 +1467,36 @@ export async function init({ sb, outlet } = {}) {
 
   // ===================== CÁLCULO PREVISÃO (Forecast 12m) =====================
   const forecast12m = { labels: [], net: [], cum: [] };
+  (function () {})();
+  // Usar média dos últimos 6 meses para projetar
+  // Ignoramos o mês atual (incompleto) para média?
+  // ===================== CÁLCULO CASHFLOW FIXO (HISTÓRICO 12M) =====================
+  // netFixed = Receitas Fixas - Despesas Fixas (no mês real)
+  // accum = Soma progressiva
+  const cfFixed = { labels: [], net: [], cum: [] };
   (function () {
-    // Usar média dos últimos 6 meses para projetar
-    // Ignoramos o mês atual (incompleto) para média?
-    // Vamos usar 'monthly' inteiro, mas idealmente seria slice(-7, -1) se quiséssemos ignorar atual
-    // Para simplificar, usamos os últimos 6 disponíveis.
-    const hist = monthly.slice(-6);
-    if (!hist.length) return;
+    const months = monthsKeys; // Use os 12 meses já calculados
+    let runningTotal = 0;
 
-    const avgInc =
-      hist.reduce((sum, m) => sum + (Number(m.income) || 0), 0) / hist.length;
-    // Consideramos "Saving Capacity" = Income - Expense.
-    // Se eles já pouparam (m.savings), isso conta como capacidade de poupança, logo NÃO subtraímos savings como despesa.
-    // Despesa Real = m.expense.
-    const avgExp =
-      hist.reduce((sum, m) => sum + Math.abs(Number(m.expense) || 0), 0) /
-      hist.length;
+    months.forEach((m) => {
+      // Pegar dados de fixas/variáveis para este mês
+      const fixVarData = fixedVarByMonth.get(m) || { fixed: 0, variable: 0 };
 
-    const avgNet = avgInc - avgExp; // Potencial de poupança mensal
+      // Para cashflow fixo, consideramos:
+      // - Receitas do mês (assumindo todas como "fixas" para simplificar)
+      // - Despesas fixas do mês
+      const monthData = monthly.find((mo) => mo.key === m);
+      const income = monthData ? Number(monthData.income) || 0 : 0;
+      const fixedExpense = fixVarData.fixed || 0;
 
-    // Gerar meses futuros
-    const today = new Date();
-    let currentCum = 0; // Começamos do zero para mostrar o "Potencial acumulado daqui para a frente"
-    // OU começamos do saldo atual? O user disse "visão das poupanças a 12 meses".
-    // "com o que sobra no fim de cada mês... o potencial de poupança... somando às receitas e assim sucessivamente"
-    // Parece ser acumulado incremental.
+      // Líquido fixo = Receitas - Despesas Fixas
+      const netFixed = income - fixedExpense;
+      runningTotal += netFixed;
 
-    for (let i = 1; i <= 12; i++) {
-      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
-      const lbl = d
-        .toLocaleDateString("pt-PT", { month: "short", year: "2-digit" })
-        .replace(".", "");
-      const label = lbl.charAt(0).toUpperCase() + lbl.slice(1);
-
-      forecast12m.labels.push(label);
-      forecast12m.net.push(avgNet);
-      currentCum += avgNet;
-      forecast12m.cum.push(currentCum);
-    }
+      cfFixed.labels.push(labelMonthPT(m));
+      cfFixed.net.push(netFixed);
+      cfFixed.cum.push(runningTotal);
+    });
   })();
 
   // ===================== Gráficos principais =====================
@@ -2419,73 +2462,6 @@ export async function init({ sb, outlet } = {}) {
   const fHash = outlet.querySelector("#footer-hash");
   if (fHash) fHash.textContent = "";
 
-  // Implementação local do MiniCardHider (recuperado)
-  function setupMiniCardHider(root) {
-    const HIDDEN_KEY = "wb:hiddenMiniCards";
-    function getHidden() {
-      try {
-        return JSON.parse(localStorage.getItem(HIDDEN_KEY) || "[]");
-      } catch {
-        return [];
-      }
-    }
-    function hide(key, title) {
-      const arr = getHidden();
-      if (!arr.find((x) => x.key === key)) {
-        arr.push({ key, title });
-        localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr));
-      }
-    }
-
-    const cards = root.querySelectorAll(".mini-card[data-chart]");
-    if (!cards.length) return;
-
-    const hidden = getHidden();
-    const hiddenKeys = new Set(hidden.map((x) => x.key));
-
-    cards.forEach((card) => {
-      const key = card.dataset.chart;
-      if (hiddenKeys.has(key)) {
-        card.style.display = "none";
-        return;
-      }
-      if (card.querySelector(".mini-card__hide")) return;
-
-      const btn = document.createElement("button");
-      btn.className = "mini-card__hide";
-      btn.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`;
-      btn.title = "Ocultar (ver Definições)";
-      Object.assign(btn.style, {
-        position: "absolute",
-        top: "4px",
-        right: "4px",
-        border: "none",
-        background: "transparent",
-        color: "#9ca3af",
-        cursor: "pointer",
-        padding: "2px",
-        lineHeight: 0,
-      });
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        // REMOVIDO: confirm("Ocultar cartão do dashboard?")
-        const title =
-          card.querySelector(".mini-card__title")?.textContent || key;
-        hide(key, title);
-        card.style.display = "none";
-        // Dispara evento para o Settings atualizar prateleira
-        window.dispatchEvent(
-          new CustomEvent("wb:minicard:changed", {
-            detail: { action: "hide", key, title },
-          }),
-        );
-      };
-      card.style.position = "relative";
-      card.appendChild(btn);
-    });
-  }
-
   // Ajuda FAB
   (function mountHelpForDashboard() {
     let btn = document.getElementById("help-fab");
@@ -2654,11 +2630,19 @@ export async function init({ sb, outlet } = {}) {
             ? dailyCumForecast
             : [],
 
-        // Previsão 12 meses
-        forecastLabels: forecast12m.labels,
-        forecastNet: forecast12m.net,
-        forecastCum: forecast12m.cum,
+        // Cashflow Fixo Histórico
+        cfLabels: cfFixed && cfFixed.labels ? cfFixed.labels : [],
+        cfNet: cfFixed && cfFixed.net ? cfFixed.net : [],
+        cfCum: cfFixed && cfFixed.cum ? cfFixed.cum : [],
       };
+
+      // Debug: verificar se os dados estão sendo calculados
+      console.log("📊 Dashboard Data para Modal:", {
+        cfLabels: dsMini.cfLabels,
+        cfNet: dsMini.cfNet,
+        cfCum: dsMini.cfCum,
+        monthlyCount: dsMini.labels12m?.length,
+      });
 
       setupDashboardModal(dsMini);
     }
