@@ -1012,8 +1012,12 @@ export async function init({ sb, outlet } = {}) {
           else fv.variable += amt;
           fixedVarByMonth.set(k, fv);
 
-          const pname = parentNameOf(r);
-          parentAgg12m.set(pname, (parentAgg12m.get(pname) || 0) + amt);
+          // Fix: Ensure parentAgg12m only aggregates the last 12 months (matches monthsKeys)
+          // to avoid including the extra historical data loaded for seasonal projection.
+          if (monthsKeys.includes(k)) {
+            const pname = parentNameOf(r);
+            parentAgg12m.set(pname, (parentAgg12m.get(pname) || 0) + amt);
+          }
 
           if (r.date >= monthStart && r.date < monthEnd) {
             const kcat = catPath(r.category_id, r.categories);
@@ -1533,14 +1537,15 @@ export async function init({ sb, outlet } = {}) {
       let netVal = 0;
 
       if (key <= currentMonthKey) {
-        // REAL 2026
-        const realData = allHistoryMap.get(key); // Income Total
-        const realFV = fixedVarByMonth.get(key); // Fixed Expense
+        // REAL 2026 (KPI Real = Receita - Despesa Total)
+        // O usuário quer que o valor bata com o KPI real, ou seja, o Net efetivo.
+        // Se usarmos inc - expFixed, ignoramos despesas variáveis que JÁ aconteceram.
+        // Portanto, usamos realData.net se disponível.
+        const realData = allHistoryMap.get(key);
 
-        const inc = realData ? Number(realData.income) || 0 : 0;
-        const expFixed = realFV ? realFV.fixed || 0 : 0;
-
-        netVal = inc - expFixed;
+        // Nota: realData.net geralmente já deduz despesas e poupanças (dependendo da view).
+        // Se o KPI é Income - Expense, usamos realData.net.
+        netVal = realData ? Number(realData.net) || 0 : 0;
       } else {
         // FUTURO => BUSCAR 2025 (Homólogo)
         const prevKey = `2025-${String(i).padStart(2, "0")}`;
