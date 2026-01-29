@@ -29,18 +29,19 @@
 
   /* === Custom Visuals Globals (Requested Schema) === */
   --app-bg-image: none;
-  --app-bg-color: #0b1220; 
+  --app-bg-color: #0b1220;
   --app-bg-blur: 0px;
 
-  --app-overlay-color: rgba(0,0,0,0.35); /* Película */
+  --app-overlay-color: rgba(0, 0, 0, 0.35);
+  /* Película */
 
   /* Structural UI Vars */
   --ui-card-bg: #ffffff;
-  --ui-card-border: rgba(255,255,255,0.12);
+  --ui-card-border: rgba(255, 255, 255, 0.12);
   --ui-card-blur: 0px;
 
-  --ui-header-bg: rgba(15,23,42,0.85);
-  --ui-menu-bg: rgba(15,23,42,0.90);
+  --ui-header-bg: rgba(15, 23, 42, 0.85);
+  --ui-menu-bg: rgba(15, 23, 42, 0.90);
   --ui-fab-bg: #0ea5e9;
 
   /* Fonts */
@@ -65,7 +66,8 @@ body {
 
 body {
   margin: 0;
-  background: transparent; /* Permite ver body::before (-z-index) */
+  background: transparent;
+  /* Permite ver body::before (-z-index) */
   color: var(--text);
   font-family: var(--font-body);
   font-size: 15px;
@@ -159,7 +161,8 @@ a {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--ui-header-bg); /* Theme */
+  background: var(--ui-header-bg);
+  /* Theme */
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, .08)
 }
@@ -247,9 +250,12 @@ a {
 }
 
 .card {
-  background: var(--ui-card-bg); /* Theme */
-  border: 1px solid var(--ui-card-border); /* Theme */
-  backdrop-filter: blur(var(--ui-card-blur)); /* Theme */
+  background: var(--ui-card-bg);
+  /* Theme */
+  border: 1px solid var(--ui-card-border);
+  /* Theme */
+  backdrop-filter: blur(var(--ui-card-blur));
+  /* Theme */
   -webkit-backdrop-filter: blur(var(--ui-card-blur));
   border-radius: var(--radius);
   padding: clamp(16px, 4vw, 24px);
@@ -347,7 +353,8 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   gap: 6px;
   padding: 6px 8px calc(max(6px, env(safe-area-inset-bottom)));
-  background: var(--ui-menu-bg); /* Theme */
+  background: var(--ui-menu-bg);
+  /* Theme */
   color: #fff;
   border-top: 1px solid rgba(255, 255, 255, .08);
   box-shadow: 0 -6px 16px rgba(2, 6, 23, .15);
@@ -1696,9 +1703,14 @@ td:nth-child(5) {
   width: clamp(64px, 9.5vw, 76px);
   height: clamp(64px, 9.5vw, 76px);
   border-radius: 999px;
+  display: grid;
   place-items: center;
-  background: var(--ui-fab-bg); /* Theme */
+  background: var(--ui-fab-bg);
+  /* Theme */
   color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(2, 6, 23, .25);
 }
 
 .fab-nav__toggle svg {
@@ -1731,7 +1743,8 @@ td:nth-child(5) {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  background: var(--ui-fab-bg); /* Theme */
+  background: var(--ui-fab-bg);
+  /* Theme */
   color: #fff;
   border: 0;
   box-shadow: 0 10px 22px rgba(2, 6, 23, .22);
@@ -1777,7 +1790,7 @@ td:nth-child(5) {
 .fab-nav.is-open .fab-item:focus .fab-label,
 .fab-nav.is-open .fab-item:hover .fab-label {
   opacity: 1;
-}
+}`r`n`r`n/* SEMPRE mostra labels quando menu est� aberto */`r`n.fab-nav.is-open .fab-label {`r`n  opacity: 1 !important;`r`n}
 
 /* Se quiseres etiqueta por baixo: adiciona .below no span */
 .fab-label.below {
