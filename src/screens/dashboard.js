@@ -57,42 +57,34 @@ function setupDashboardModal(ds) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Cashflow anual (12 meses)";
+    titleEl.textContent = "Previsão Cashflow (próximos 12 meses)";
 
-    const labels = ds.labels12m || [];
-    const income = ds.income12m || [];
-    const expense = (ds.expense12m || []).map(Math.abs);
-    const savings = (ds.savings12m || []).map(Math.abs);
-
-    // net por mês: Receitas - (Despesas + Poupanças)
-    const netMonthly = labels.map(
-      (_, i) => (income[i] || 0) - (expense[i] || 0) - (savings[i] || 0),
-    );
-
-    // acumulados
-    const netCum = [];
-    const savCum = [];
-    netMonthly.reduce((acc, v, i) => (netCum[i] = acc + v), 0);
-    savings.reduce((acc, v, i) => (savCum[i] = acc + v), 0);
+    const labels = ds.forecastLabels || [];
+    const net = ds.forecastNet || [];
+    const cum = ds.forecastCum || [];
 
     mount({
-      type: "line",
+      type: "bar",
       data: {
         labels,
         datasets: [
           {
-            label: "Disponível (acum.)",
-            data: netCum,
-            tension: 0.25,
-            borderWidth: 2,
-            fill: true,
+            type: "bar",
+            label: "Poupança mensal (prev.)",
+            data: net,
+            backgroundColor: "#22c55e",
+            order: 2,
           },
           {
-            label: "Poupanças (acum.)",
-            data: savCum,
-            tension: 0.25,
+            type: "line",
+            label: "Poupança acumulada (prev.)",
+            data: cum,
+            borderColor: "#3b82f6",
             borderWidth: 2,
-            fill: false,
+            tension: 0.25,
+            fill: true,
+            backgroundColor: "rgba(59, 130, 246, 0.1)",
+            order: 1,
           },
         ],
       },
@@ -104,6 +96,7 @@ function setupDashboardModal(ds) {
         scales: { y: { ...axisMoney, beginAtZero: true } },
       },
     });
+    extraEl.innerHTML = `<div class="muted">Baseado na média dos últimos 6 meses (Receitas - Despesas).</div>`;
   }
 
   function renderTendencias() {
@@ -1421,6 +1414,48 @@ export async function init({ sb, outlet } = {}) {
   );
   setPill("kpi-net-trend", pct(latest.net, prev.net), true);
 
+  // ===================== CÁLCULO PREVISÃO (Forecast 12m) =====================
+  const forecast12m = { labels: [], net: [], cum: [] };
+  (function () {
+    // Usar média dos últimos 6 meses para projetar
+    // Ignoramos o mês atual (incompleto) para média?
+    // Vamos usar 'monthly' inteiro, mas idealmente seria slice(-7, -1) se quiséssemos ignorar atual
+    // Para simplificar, usamos os últimos 6 disponíveis.
+    const hist = monthly.slice(-6);
+    if (!hist.length) return;
+
+    const avgInc =
+      hist.reduce((sum, m) => sum + (Number(m.income) || 0), 0) / hist.length;
+    // Consideramos "Saving Capacity" = Income - Expense.
+    // Se eles já pouparam (m.savings), isso conta como capacidade de poupança, logo NÃO subtraímos savings como despesa.
+    // Despesa Real = m.expense.
+    const avgExp =
+      hist.reduce((sum, m) => sum + Math.abs(Number(m.expense) || 0), 0) /
+      hist.length;
+
+    const avgNet = avgInc - avgExp; // Potencial de poupança mensal
+
+    // Gerar meses futuros
+    const today = new Date();
+    let currentCum = 0; // Começamos do zero para mostrar o "Potencial acumulado daqui para a frente"
+    // OU começamos do saldo atual? O user disse "visão das poupanças a 12 meses".
+    // "com o que sobra no fim de cada mês... o potencial de poupança... somando às receitas e assim sucessivamente"
+    // Parece ser acumulado incremental.
+
+    for (let i = 1; i <= 12; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const lbl = d
+        .toLocaleDateString("pt-PT", { month: "short", year: "2-digit" })
+        .replace(".", "");
+      const label = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+
+      forecast12m.labels.push(label);
+      forecast12m.net.push(avgNet);
+      currentCum += avgNet;
+      forecast12m.cum.push(currentCum);
+    }
+  })();
+
   // ===================== Gráficos principais =====================
   // Tendências (12m)
   mountChart("chart-monthly", {
@@ -2618,6 +2653,11 @@ export async function init({ sb, outlet } = {}) {
           Array.isArray(dailyCumForecast) && dailyCumForecast.length
             ? dailyCumForecast
             : [],
+
+        // Previsão 12 meses
+        forecastLabels: forecast12m.labels,
+        forecastNet: forecast12m.net,
+        forecastCum: forecast12m.cum,
       };
 
       setupDashboardModal(dsMini);
