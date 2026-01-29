@@ -126,7 +126,7 @@ function setupDashboardModal(ds) {
       <div class="muted">
         <strong>Modelo Sazonal 2026 (Dual):</strong><br>
         • <span style="color:#22c55e">■</span> Líquido Fixo: Receita - Despesa Fixa (Mostra o potencial).<br>
-        • <span style="color:#94a3b8">■</span> Líquido Total: O valor final real (considerando Despesas variáveis).<br>
+        • <span style="color:#94a3b8">■</span> Líquido Total: O valor final real (considerando Despesas Fixas e Variáveis).<br>
         • Passado: Dados Reais. Futuro: Espelho de 2025.
       </div>`;
   }
@@ -2573,11 +2573,6 @@ export async function init({ sb, outlet } = {}) {
     });
   })();
 
-  // limpar charts ao sair
-  window.addEventListener("hashchange", () => {
-    if (!location.hash.startsWith("#/")) destroyCharts();
-  });
-
   // ====== Colapsáveis com SVG inline (após título) ======
   (function enhanceCollapsibles(root = document) {
     const LS_KEY = "wb:dash:collapsed";
@@ -2730,5 +2725,28 @@ export async function init({ sb, outlet } = {}) {
     console.warn("mini-cards wiring falhou:", e);
   }
 
+  // ===================== Cleanup Logic =====================
+  const cleanup = () => {
+    // 1. Remove listeners
+    window.removeEventListener("hashchange", onHashChange);
+
+    // 2. Destroy charts
+    destroyCharts();
+
+    // 3. Remove help elements if valid
+    const helpBtn = document.getElementById("help-fab");
+    if (helpBtn) helpBtn.remove(); // Optional: remove if you want fresh init every time
+    // Note: If elements are inside 'outlet', they are removed by main.js clearing innerHTML.
+    // help-fab is body-appended? Let's check. Yes line 2544 "document.body.appendChild".
+    // So we MUST remove it.
+  };
+
+  function onHashChange() {
+    if (!location.hash.startsWith("#/")) destroyCharts();
+  }
+  window.addEventListener("hashchange", onHashChange);
+
   setupMiniCardHider(outlet);
+
+  return cleanup;
 }

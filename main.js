@@ -51,6 +51,11 @@ const ROUTES = {
     js: "/src/screens/dashboard.js",
     showFooter: true,
   },
+  "#/transactions": {
+    file: "/src/screens/Movimentos.html",
+    js: "/src/screens/Movimentos.js",
+    showFooter: true,
+  },
   "#/movimentos": {
     file: "/src/screens/Movimentos.html",
     js: "/src/screens/Movimentos.js",
@@ -95,8 +100,21 @@ function setActiveTab() {
   });
 }
 
+let currentCleanup = null;
+
 async function loadScreen(route) {
   const r = ROUTES[route] || ROUTES["#/"];
+
+  // 1. Cleanup previous screen
+  if (typeof currentCleanup === "function") {
+    try {
+      currentCleanup();
+    } catch (e) {
+      console.warn("Cleanup falhou:", e);
+    }
+    currentCleanup = null;
+  }
+
   setStyle(outlet, { opacity: "0", transition: "opacity .15s ease" });
   await new Promise((res) => setTimeout(res, 90));
 
@@ -122,8 +140,11 @@ async function loadScreen(route) {
         const jsURL = `${resolveUrl(r.js)}?v=${APPV}`;
         const mod = await import(jsURL);
         const fn = mod.init || mod.default;
-        if (typeof fn === "function")
-          await fn({ sb: window.sb, outlet, route });
+        if (typeof fn === "function") {
+          // 2. Init new screen and save cleanup
+          const maybeCleanup = await fn({ sb: window.sb, outlet, route });
+          if (typeof maybeCleanup === "function") currentCleanup = maybeCleanup;
+        }
       } catch (e) {
         console.warn("Controller JS falhou:", r.js, e);
       }
