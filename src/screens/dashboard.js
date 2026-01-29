@@ -57,7 +57,7 @@ function setupDashboardModal(ds) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Cashflow Fixo (Histórico 12 meses)";
+    titleEl.textContent = "Projeção Cashflow 2026 (Fixo)";
 
     const labels = ds.cfLabels || [];
     const net = ds.cfNet || [];
@@ -70,7 +70,7 @@ function setupDashboardModal(ds) {
         datasets: [
           {
             type: "bar",
-            label: "Líquido Fixo Real",
+            label: "Líquido Fixo (Real/Prev.)",
             data: net,
             backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
             order: 2,
@@ -98,8 +98,10 @@ function setupDashboardModal(ds) {
     });
     extraEl.innerHTML = `
       <div class="muted">
-        <strong>Líquido Fixo</strong> = Receitas Fixas - Despesas Fixas (no mês real).<br>
-        Mostra a capacidade real de poupança histórica. Valores negativos indicam meses de maior despesa (ex: seguros anuais).
+        <strong>Modelo Sazonal 2026 (Sincronizado):</strong><br>
+        • Passado (Jan-Hoje): Dados Financeiros Reais.<br>
+        • Futuro: Espelho de 2025 (Receita Total Homóloga - Despesa Fixa Homóloga).<br>
+        <em>Captura automaticamente variações como Seguros anuais, IMI, Subsídios, etc.</em>
       </div>`;
   }
 
@@ -714,14 +716,16 @@ export async function init({ sb, outlet } = {}) {
   // ===================== Dados (via SB ou DEMO) =====================
   const HAS_SB = !!(sb && typeof sb.from === "function");
   const monthsKeys = lastNMonthsKeys(12);
+
+  // Alterado: Carregar desde o início do ano ANTERIOR para ter base de comparação (homólogo)
   const from12Local = (() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - 11);
-    return ymd(d);
+    const now = new Date();
+    const prevYear = now.getFullYear() - 1;
+    return `${prevYear}-01-01`;
   })();
 
   let monthly = [];
+  let allHistoryMap = new Map(); // Guarda histórico completo (2025...) para projeções
   let fixedVarByMonth = new Map();
   let thisMonthAgg = { fixed: 0, variable: 0 };
   let topCatThisMonth = new Map();
@@ -739,17 +743,22 @@ export async function init({ sb, outlet } = {}) {
           .gte("month", from12Local)
           .order("month", { ascending: true });
         if (error || !data) return null;
-        const map = new Map(
-          data.map((r) => [
-            monthKeyFromRow(r.month),
-            {
-              income: +r.income || 0,
-              expense: +r.expense || 0,
-              savings: +r.savings || 0,
-              net: +r.net || 0,
-            },
-          ]),
-        );
+
+        // Guardar tudo no mapa histórico
+        const map = new Map();
+        data.forEach((r) => {
+          const k = monthKeyFromRow(r.month);
+          const vals = {
+            income: +r.income || 0,
+            expense: +r.expense || 0,
+            savings: +r.savings || 0,
+            net: +r.net || 0,
+          };
+          map.set(k, vals);
+        });
+        allHistoryMap = map;
+
+        // Retorna apenas os 12 meses para os gráficos principais
         return monthsKeys.map((k) => ({
           key: k,
           label: labelMonthPT(k),
@@ -763,6 +772,7 @@ export async function init({ sb, outlet } = {}) {
       }
     })();
     if (viaView) monthly = viaView;
+
     if (!monthly.length) {
       try {
         const { data: types } = await sb
@@ -792,6 +802,9 @@ export async function init({ sb, outlet } = {}) {
           }
           agg.set(k, m);
         });
+
+        allHistoryMap = agg; // Guardar histórico completo
+
         monthly = monthsKeys.map((k) => ({
           key: k,
           label: labelMonthPT(k),
@@ -980,13 +993,15 @@ export async function init({ sb, outlet } = {}) {
         const isInc = r.type_id === incTypeId;
 
         // --- Lógica Chart Cashflow (Fixo) ---
-        if (fixedCashflowByMonth.has(k)) {
-          const entry = fixedCashflowByMonth.get(k);
-          if (isInc && isFixedIncome(r)) {
-            entry.incFixed += amt;
-          } else if (isExp && isFixedExpense(r)) {
-            entry.expFixed += Math.abs(amt);
-          }
+        if (!fixedCashflowByMonth.has(k)) {
+          fixedCashflowByMonth.set(k, { incFixed: 0, expFixed: 0 });
+        }
+        const entry = fixedCashflowByMonth.get(k);
+
+        if (isInc && isFixedIncome(r)) {
+          entry.incFixed += amt;
+        } else if (isExp && isFixedExpense(r)) {
+          entry.expFixed += Math.abs(amt);
         }
 
         // --- Lógica Antiga (Para donut e barras fix/var) - Apenas Despesas ---
@@ -1470,33 +1485,83 @@ export async function init({ sb, outlet } = {}) {
   (function () {})();
   // Usar média dos últimos 6 meses para projetar
   // Ignoramos o mês atual (incompleto) para média?
-  // ===================== CÁLCULO CASHFLOW FIXO (HISTÓRICO 12M) =====================
-  // netFixed = Receitas Fixas - Despesas Fixas (no mês real)
-  // accum = Soma progressiva
+  // ===================== CÁLCULO CASHFLOW FIXO (HÍBRIDO 2026) =====================
+  // Lógica: Meses passados/atual = REAL. Meses futuros = PREVISÃO (Média Histórica)
+  // ===================== CÁLCULO CASHFLOW FIXO (HÍBRIDO 2026 - SAZONAL) =====================
+  // Lógica: Meses passados/atual = REAL. Meses futuros = PROJEÇÃO HOMÓLOGA (2025)
+  // Permite capturar sazonalidade de receitas e despesas fixas anuais.
   const cfFixed = { labels: [], net: [], cum: [] };
   (function () {
-    const months = monthsKeys; // Use os 12 meses já calculados
+    // 1. Calcular Média Líquida 2025 (Fallback caso não haja mês homólogo)
+    let sumNet = 0;
+    let count = 0;
+
+    // Usar allHistoryMap se disponível, senão fixedCashflowByMonth (que agora tem tudo)
+    // O fixedCashflowByMonth tem {incFixed, expFixed}, mas para sazonalidade queremos TOTAL INCOME.
+    // O allHistoryMap tem {income, ...}.
+
+    const sourceMap =
+      typeof allHistoryMap !== "undefined" && allHistoryMap.size > 0
+        ? allHistoryMap
+        : fixedVarByMonth; // fallback arriscado
+
+    if (sourceMap && typeof sourceMap.forEach === "function") {
+      sourceMap.forEach((val, key) => {
+        if (String(key).startsWith("2025")) {
+          const fv = fixedVarByMonth.get(key);
+          const inc = val.income !== undefined ? val.income : 0; // Se from allHistory
+          // Se for fallback, income não está lá...
+          // Mas allHistoryMap DEVE estar populado se a query rodou.
+
+          const expFixed = fv ? fv.fixed || 0 : 0;
+          sumNet += inc - expFixed;
+          count++;
+        }
+      });
+    }
+    const avgNet = count > 0 ? sumNet / count : 0;
+
+    const currentYear = "2026";
+    const now = new Date();
+    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
     let runningTotal = 0;
 
-    months.forEach((m) => {
-      // Pegar dados de fixas/variáveis para este mês
-      const fixVarData = fixedVarByMonth.get(m) || { fixed: 0, variable: 0 };
+    for (let i = 1; i <= 12; i++) {
+      const key = `${currentYear}-${String(i).padStart(2, "0")}`;
 
-      // Para cashflow fixo, consideramos:
-      // - Receitas do mês (assumindo todas como "fixas" para simplificar)
-      // - Despesas fixas do mês
-      const monthData = monthly.find((mo) => mo.key === m);
-      const income = monthData ? Number(monthData.income) || 0 : 0;
-      const fixedExpense = fixVarData.fixed || 0;
+      let netVal = 0;
 
-      // Líquido fixo = Receitas - Despesas Fixas
-      const netFixed = income - fixedExpense;
-      runningTotal += netFixed;
+      if (key <= currentMonthKey) {
+        // REAL 2026
+        const realData = allHistoryMap.get(key); // Income Total
+        const realFV = fixedVarByMonth.get(key); // Fixed Expense
 
-      cfFixed.labels.push(labelMonthPT(m));
-      cfFixed.net.push(netFixed);
+        const inc = realData ? Number(realData.income) || 0 : 0;
+        const expFixed = realFV ? realFV.fixed || 0 : 0;
+
+        netVal = inc - expFixed;
+      } else {
+        // FUTURO => BUSCAR 2025 (Homólogo)
+        const prevKey = `2025-${String(i).padStart(2, "0")}`;
+        const histData = allHistoryMap.get(prevKey);
+        const histFV = fixedVarByMonth.get(prevKey);
+
+        if (histData) {
+          const inc25 = Number(histData.income) || 0;
+          const fixed25 = histFV ? histFV.fixed || 0 : 0;
+          netVal = inc25 - fixed25;
+        } else {
+          netVal = avgNet;
+        }
+      }
+
+      runningTotal += netVal;
+
+      cfFixed.labels.push(labelMonthPT(key));
+      cfFixed.net.push(netVal);
       cfFixed.cum.push(runningTotal);
-    });
+    }
   })();
 
   // ===================== Gráficos principais =====================
