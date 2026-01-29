@@ -62,29 +62,55 @@ function setupDashboardModal(ds) {
     const labels = ds.cfLabels || [];
     const net = ds.cfNet || [];
     const cum = ds.cfCum || [];
+    const netTotal = ds.cfNetTotal || [];
+    const cumTotal = ds.cfCumTotal || [];
 
     mount({
       type: "bar",
       data: {
         labels,
         datasets: [
+          // --- BARS ---
           {
             type: "bar",
-            label: "Líquido Fixo (Real/Prev.)",
+            label: "Líquido Fixo",
             data: net,
             backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
-            order: 2,
+            order: 3,
+            stack: "fixed",
+            barPercentage: 0.6,
+          },
+          {
+            type: "bar",
+            label: "Líquido Total",
+            data: netTotal,
+            backgroundColor: "#94a3b8", // Grey for total context
+            order: 4,
+            stack: "total",
+            barPercentage: 0.6,
+            hidden: false,
+          },
+          // --- LINES ---
+          {
+            type: "line",
+            label: "Acumulado Fixo",
+            data: cum,
+            borderColor: "#3b82f6", // Blue
+            borderWidth: 2,
+            tension: 0.25,
+            fill: false,
+            order: 1,
           },
           {
             type: "line",
-            label: "Acumulado",
-            data: cum,
-            borderColor: "#3b82f6",
+            label: "Acumulado Total",
+            data: cumTotal,
+            borderColor: "#64748b", // Slate
             borderWidth: 2,
+            borderDash: [5, 5],
             tension: 0.25,
-            fill: true,
-            backgroundColor: "rgba(59, 130, 246, 0.1)",
-            order: 1,
+            fill: false,
+            order: 2,
           },
         ],
       },
@@ -98,10 +124,10 @@ function setupDashboardModal(ds) {
     });
     extraEl.innerHTML = `
       <div class="muted">
-        <strong>Modelo Sazonal 2026 (Sincronizado):</strong><br>
-        • Passado (Jan-Hoje): Dados Financeiros Reais.<br>
-        • Futuro: Espelho de 2025 (Receita Total Homóloga - Despesa Fixa Homóloga).<br>
-        <em>Captura automaticamente variações como Seguros anuais, IMI, Subsídios, etc.</em>
+        <strong>Modelo Sazonal 2026 (Dual):</strong><br>
+        • <span style="color:#22c55e">■</span> Líquido Fixo: Receita - Despesa Fixa (Mostra o potencial).<br>
+        • <span style="color:#94a3b8">■</span> Líquido Total: O valor final real (considerando Despesas variáveis).<br>
+        • Passado: Dados Reais. Futuro: Espelho de 2025.
       </div>`;
   }
 
@@ -1491,81 +1517,63 @@ export async function init({ sb, outlet } = {}) {
   // Ignoramos o mês atual (incompleto) para média?
   // ===================== CÁLCULO CASHFLOW FIXO (HÍBRIDO 2026) =====================
   // Lógica: Meses passados/atual = REAL. Meses futuros = PREVISÃO (Média Histórica)
-  // ===================== CÁLCULO CASHFLOW FIXO (HÍBRIDO 2026 - SAZONAL) =====================
-  // Lógica: Meses passados/atual = REAL. Meses futuros = PROJEÇÃO HOMÓLOGA (2025)
-  // Permite capturar sazonalidade de receitas e despesas fixas anuais.
-  const cfFixed = { labels: [], net: [], cum: [] };
+  // ===================== CÁLCULO CASHFLOW FIXO (HÍBRIDO 2026 - DUAL) =====================
+  // Lógica:
+  // 1. Net Fixed = Income - Fixed Expense
+  // 2. Net Total = Income - Total Expense (Real or 2025 equivalent)
+  const cfFixed = { labels: [], net: [], cum: [], netTotal: [], cumTotal: [] };
   (function () {
-    // 1. Calcular Média Líquida 2025 (Fallback caso não haja mês homólogo)
-    let sumNet = 0;
-    let count = 0;
-
-    // Usar allHistoryMap se disponível, senão fixedCashflowByMonth (que agora tem tudo)
-    // O fixedCashflowByMonth tem {incFixed, expFixed}, mas para sazonalidade queremos TOTAL INCOME.
-    // O allHistoryMap tem {income, ...}.
-
-    const sourceMap =
-      typeof allHistoryMap !== "undefined" && allHistoryMap.size > 0
-        ? allHistoryMap
-        : fixedVarByMonth; // fallback arriscado
-
-    if (sourceMap && typeof sourceMap.forEach === "function") {
-      sourceMap.forEach((val, key) => {
-        if (String(key).startsWith("2025")) {
-          const fv = fixedVarByMonth.get(key);
-          const inc = val.income !== undefined ? val.income : 0; // Se from allHistory
-          // Se for fallback, income não está lá...
-          // Mas allHistoryMap DEVE estar populado se a query rodou.
-
-          const expFixed = fv ? fv.fixed || 0 : 0;
-          sumNet += inc - expFixed;
-          count++;
-        }
-      });
-    }
-    const avgNet = count > 0 ? sumNet / count : 0;
-
     const currentYear = "2026";
     const now = new Date();
     const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    let runningTotal = 0;
+    let runningTotalFixed = 0;
+    let runningTotalTotal = 0;
 
     for (let i = 1; i <= 12; i++) {
       const key = `${currentYear}-${String(i).padStart(2, "0")}`;
-
-      let netVal = 0;
+      let netValFixed = 0;
+      let netValTotal = 0;
 
       if (key <= currentMonthKey) {
-        // REAL 2026 (KPI Real = Receita - Despesa Total)
-        // O usuário quer que o valor bata com o KPI real, ou seja, o Net efetivo.
-        // Se usarmos inc - expFixed, ignoramos despesas variáveis que JÁ aconteceram.
-        // Portanto, usamos realData.net se disponível.
+        // --- PASSADO/PRESENTE (REAL) ---
         const realData = allHistoryMap.get(key);
+        const realFV = fixedVarByMonth.get(key);
 
-        // Nota: realData.net geralmente já deduz despesas e poupanças (dependendo da view).
-        // Se o KPI é Income - Expense, usamos realData.net.
-        netVal = realData ? Number(realData.net) || 0 : 0;
+        const inc = realData ? Number(realData.income) || 0 : 0;
+        const net = realData ? Number(realData.net) || 0 : 0;
+        const fixed = realFV ? realFV.fixed || 0 : 0;
+
+        netValFixed = inc - fixed; // Líquido 'Potencial' (só fixas)
+        netValTotal = net; // Líquido Real (final)
       } else {
-        // FUTURO => BUSCAR 2025 (Homólogo)
+        // --- FUTURO (PROJEÇÃO 2025) ---
         const prevKey = `2025-${String(i).padStart(2, "0")}`;
         const histData = allHistoryMap.get(prevKey);
         const histFV = fixedVarByMonth.get(prevKey);
 
         if (histData) {
           const inc25 = Number(histData.income) || 0;
+          const net25 = Number(histData.net) || 0;
           const fixed25 = histFV ? histFV.fixed || 0 : 0;
-          netVal = inc25 - fixed25;
+
+          netValFixed = inc25 - fixed25; // Projeção Fixo
+          netValTotal = net25; // Projeção Total
         } else {
-          netVal = avgNet;
+          // Fallback (média? ou zero?) - mantendo 0 para evitar ruído se não houver dados
+          netValFixed = 0;
+          netValTotal = 0;
         }
       }
 
-      runningTotal += netVal;
+      runningTotalFixed += netValFixed;
+      runningTotalTotal += netValTotal;
 
       cfFixed.labels.push(labelMonthPT(key));
-      cfFixed.net.push(netVal);
-      cfFixed.cum.push(runningTotal);
+      cfFixed.net.push(netValFixed);
+      cfFixed.cum.push(runningTotalFixed);
+      cfFixed.netTotal.push(netValTotal);
+      cfFixed.cumTotal.push(runningTotalTotal);
     }
   })();
 
@@ -2704,6 +2712,8 @@ export async function init({ sb, outlet } = {}) {
         cfLabels: cfFixed && cfFixed.labels ? cfFixed.labels : [],
         cfNet: cfFixed && cfFixed.net ? cfFixed.net : [],
         cfCum: cfFixed && cfFixed.cum ? cfFixed.cum : [],
+        cfNetTotal: cfFixed && cfFixed.netTotal ? cfFixed.netTotal : [],
+        cfCumTotal: cfFixed && cfFixed.cumTotal ? cfFixed.cumTotal : [],
       };
 
       // Debug: verificar se os dados estão sendo calculados
