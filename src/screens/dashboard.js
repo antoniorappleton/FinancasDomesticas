@@ -1013,9 +1013,27 @@ export async function init({ sb, outlet } = {}) {
       (data || []).forEach((r) => {
         const k = String(r.date).slice(0, 7);
         const amt = Number(r.amount || 0);
-
-        // Agregação geral (Fix vs Var) e categorização (apenas despesas)
         const isExp = r.type_id === expTypeId;
+
+        // --- FILTRO DE EXCEPÇÃO (User Request) ---
+        // Excluir despesa 'Casa > Manutenção' > 2500€ em Dez 2025 (ex: Obras de 35k)
+        // para não estragar a projeção de 2026 (Net Total e Sazonalidade).
+        if (k === "2025-12" && isExp && amt > 2500) {
+          const path = catPath(r.category_id, r.categories).toLowerCase();
+          if (path.includes("manutenção") && path.includes("casa")) {
+            console.log(`⚠️ Excluding outlier from ${k}: ${amt}€ (${path})`);
+
+            // 1. Corrigir allHistoryMap (que vem da View com dados agregados)
+            const hist = allHistoryMap.get(k);
+            if (hist) {
+              hist.expense = Math.max(0, (hist.expense || 0) - amt);
+              hist.net = (hist.net || 0) + amt; // Saldo aumenta se despesa sai
+            }
+            // 2. Ignorar esta transação para as próximas agregações (FixedVar, etc)
+            return;
+          }
+        }
+
         const isInc = r.type_id === incTypeId;
 
         // --- Lógica Chart Cashflow (Fixo) ---
