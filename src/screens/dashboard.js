@@ -196,19 +196,15 @@ function setupDashboardModal(ds, rawData) {
 
         // Apply Trend
         const projInc = baseInc * incomeRatio;
-        // Para despesa TOTAL (Liquid Total context), aplicamos trend de despesa
-        const projExpTotal = baseExp * expenseRatio;
-        // A projeção de Net Total é Income - Expense (ignorando savings por agora ou assumindo 0)
-        // Se quisermos ser rigorosos: Net = Income - Exp - Sav. Vamos simplificar Net = Inc - Exp.
-        const projNetTotal = projInc - projExpTotal;
+        
+        // Para despesa TOTAL (Liquid Total context):
+        // Base trend + Ajuste manual (já que é um custo extra confirmado)
+        const extraFixed = manualFor(i);
+        console.log(`DEBUG: Month ${i}, Extra: ${extraFixed}`);
+        const fixedFinal = baseFixed + (extraFixed || 0);
 
-        // Para valor FIXO:
-        // Se override manual existe -> USAR.
-        // Se não -> usar baseFixed (mas, devíamos aplicar inflação? O user só pediu trend 70/30 para "médias").
-        // Vou assumir que despesas fixas NÃO seguem a trend de "gastos gerais", são *fixas* à base 2025.
-        // A trend income afeta o "Net Fixed" porque NetFixed = Income - Fixed.
-        const fixedOverride = manualFor(i);
-        const fixedFinal = fixedOverride != null ? fixedOverride : baseFixed;
+        const projExpTotal = (baseExp * expenseRatio) + (extraFixed || 0);
+        const projNetTotal = projInc - projExpTotal;
 
         netValFixed = projInc - fixedFinal;
         netValTotal = projNetTotal; // Contexto geral
@@ -301,21 +297,19 @@ function setupDashboardModal(ds, rawData) {
     extraEl.innerHTML = `
       <div class="muted" style="margin-bottom:8px">
         <strong>Previsão de Saldo 2026:</strong><br>
-        • <span style="color:#22c55e">■</span> Sobra (Fixas): Entradas - Saídas Obrigatórias (potencial).<br>
-        • <span style="color:#94a3b8">■</span> Sobra Real: Resultado final (Obrigatórias + Extras).<br>
-        • Passado/Presente: reais. Futuro: espelho 2025.
+        • <span style="color:#22c55e">■</span> Liquido só com Despesas Fixas: Entradas - Despesas Fixas.<br>
+        • <span style="color:#94a3b8">■</span> Liquido Real: Entradas - Despesas (Fixas e Variáveis).<br>
+        (Futuro c/base no histórico do ano anterior)
       </div>
       
       <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">
         <button id="fx26-toggle" class="btn btn--ghost" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding: 6px 4px; font-size:0.9rem; font-weight:600; color:var(--text);">
-          <span>Ajustes de despesas fixas 2026</span>
-          <span>Ajustes de despesas obrigatórias 2026</span>
+          <span>Ajuste o gráfico com algumas despesas fixas para este ano que não tinha antes</span>
           <span id="fx26-icon">${isPanelOpen ? chevronUp : chevronDown}</span>
         </button>
 
         <div id="fx26-container" ${isPanelOpen ? "" : "hidden"} style="margin-top:6px;">
           <fieldset id="fx26-panel" class="panel" style="border:1px solid var(--border); padding:10px; border-radius:8px; background:var(--surface-2);">
-            <legend style="font-weight:600; padding:0 6px;">Ajustes de Despesas Obrigatórias 2026</legend>
             <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;">
               <input type="checkbox" id="fx26-enabled">
               <span style="font-weight:500;">Ativar ajustes manuais</span>

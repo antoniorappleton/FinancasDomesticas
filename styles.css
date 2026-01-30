@@ -1792,7 +1792,12 @@ td:nth-child(5) {
   opacity: 1;
 }
 
-/* SEMPRE mostra labels quando menu esta aberto */
+}
+
+/* SEMPRE mostra labels quando menu está aberto */
+.fab-nav.is-open .fab-label {
+  opacity: 1 !important;
+}
 .fab-nav.is-open .fab-label {
   opacity: 1 !important;
 }
