@@ -21,7 +21,7 @@ import {
 import { repo } from "../lib/repo.js";
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
-function setupDashboardModal(ds) {
+function setupDashboardModal(ds, rawData) {
   const modal = document.getElementById("dash-modal");
   const titleEl = document.getElementById("dash-modal-title");
   const canvas = document.getElementById("dash-modal-canvas");
@@ -56,25 +56,187 @@ function setupDashboardModal(ds) {
   };
 
   // ---------- Renderers ----------
+  // ---------- Helpers para Ajustes Manuais 2026 ----------
+  function loadFixedSettings() {
+    try {
+      return JSON.parse(localStorage.getItem("wb:fixed2026") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveFixedSettings(obj) {
+    localStorage.setItem("wb:fixed2026", JSON.stringify(obj || {}));
+  }
+
+  function rebuildSeriesWithOverrides(settings) {
+    const { allHistoryMap, fixedVarByMonth } = rawData || {};
+    const labels = [];
+    const netFixed = [];
+    const cumFixed = [];
+    const netTotal = [];
+    const cumTotal = [];
+    const currentYear = "2026";
+    const now = new Date();
+    // Chave do mês atual para decidir REAL vs PROJEÇÃO (ex: "2026-02")
+    const currentMonthKey = `${now.getFullYear()}-${String(
+      now.getMonth() + 1,
+    ).padStart(2, "0")}`;
+
+    const enabled = !!settings?.enabled;
+    const items = Array.isArray(settings?.items) ? settings.items : [];
+
+    // helper: soma manual por mês (1..12)
+    const manualFor = (m) => {
+      if (!enabled || !items.length) return null;
+      const mm = Number(m);
+      const sum = items.reduce((acc, it) => {
+        const apply = Array.isArray(it.months) ? it.months.includes(mm) : true;
+        const a = Number(it.amount || 0);
+        return acc + (apply ? Math.max(0, a) : 0);
+      }, 0);
+      return sum;
+    };
+
+    // --- 1. Calcular Fatores de Tendência (Weighted Trend) ---
+    // Compara YTD 2026 vs YTD 2025 para os meses já fechados/existentes.
+    let sumInc26 = 0,
+      sumInc25 = 0;
+    let sumExp26 = 0,
+      sumExp25 = 0; // Para Net Total context
+    let countMonths = 0;
+
+    for (let i = 1; i <= 12; i++) {
+      const k26 = `${currentYear}-${String(i).padStart(2, "0")}`;
+      if (k26 > currentMonthKey) break; // Só meses passados/atuais
+
+      const d26 = allHistoryMap?.get(k26);
+      if (!d26) continue; // Se não houver dados, não conta
+
+      const k25 = `2025-${String(i).padStart(2, "0")}`;
+      const d25 = allHistoryMap?.get(k25);
+
+      if (d25) {
+        sumInc26 += Number(d26.income || 0);
+        sumInc25 += Number(d25.income || 0);
+        sumExp26 += Math.abs(Number(d26.expense || 0));
+        sumExp25 += Math.abs(Number(d25.expense || 0));
+        countMonths++;
+      }
+    }
+
+    // Se tivermos histórico comparável, calculamos o ratio
+    let incomeRatio = 1.0;
+    let expenseRatio = 1.0;
+
+    if (countMonths > 0 && sumInc25 > 0) {
+      const rawRatio = sumInc26 / sumInc25;
+      // Peso: 70% tendência, 30% baseline (1.0 ou o próprio histórico 2025 se assumirmos ratio 1)
+      // A lógica "70% aos de 2026" vs "30% aos de 2025" traduz-se em aplicar o ratio com força 0.7?
+      // Ou seja: Projected = Baseline * (1 + (Ratio - 1) * 0.7) ?
+      // Se Ratio=1.2 (+20%), com força 0.7 assumimos +14%.
+      // Ou simples ponderação? Vamos usar a lógica de "Dampened Trend"
+      incomeRatio = 1 + (rawRatio - 1) * 0.7;
+    }
+    if (countMonths > 0 && sumExp25 > 0) {
+      const rawRatio = sumExp26 / sumExp25;
+      expenseRatio = 1 + (rawRatio - 1) * 0.7;
+    }
+
+    // Safety limits (não deixar explodir nem zerar absurdamente)
+    incomeRatio = Math.max(0.5, Math.min(2.0, incomeRatio));
+    expenseRatio = Math.max(0.5, Math.min(2.0, expenseRatio));
+
+    // --- 2. Construir Séries ---
+    let runFixed = 0;
+    let runTotal = 0;
+
+    for (let i = 1; i <= 12; i++) {
+      const key2026 = `${currentYear}-${String(i).padStart(2, "0")}`;
+      const label = new Date(Number(currentYear), i - 1, 1).toLocaleDateString(
+        "pt-PT",
+        { month: "short", year: "numeric" },
+      );
+      labels.push(label);
+
+      let netValFixed = 0;
+      let netValTotal = 0;
+
+      if (key2026 <= currentMonthKey) {
+        // --- REAL (Passado/Presente) ---
+        const realData = allHistoryMap?.get(key2026);
+        const realFV = fixedVarByMonth?.get(key2026);
+
+        const inc = realData ? Number(realData.income || 0) : 0;
+        const net = realData ? Number(realData.net || 0) : 0;
+        const fixed = realFV ? Math.abs(Number(realFV.fixed || 0)) : 0;
+
+        netValFixed = inc - fixed;
+        netValTotal = net;
+      } else {
+        // --- PROJEÇÃO (Futuro com Weighted Trend + Overrides) ---
+        const key2025 = `2025-${String(i).padStart(2, "0")}`;
+        const histData = allHistoryMap?.get(key2025);
+        const histFV = fixedVarByMonth?.get(key2025);
+
+        // Base 2025
+        const baseInc = histData ? Number(histData.income || 0) : 0;
+        const baseNet = histData ? Number(histData.net || 0) : 0;
+        const baseExp =
+          baseInc - baseNet - (Number(histData?.savings || 0) || 0); // Approx expense
+        const baseFixed = histFV ? Math.abs(Number(histFV.fixed || 0)) : 0;
+
+        // Apply Trend
+        const projInc = baseInc * incomeRatio;
+        // Para despesa TOTAL (Liquid Total context), aplicamos trend de despesa
+        const projExpTotal = baseExp * expenseRatio;
+        // A projeção de Net Total é Income - Expense (ignorando savings por agora ou assumindo 0)
+        // Se quisermos ser rigorosos: Net = Income - Exp - Sav. Vamos simplificar Net = Inc - Exp.
+        const projNetTotal = projInc - projExpTotal;
+
+        // Para valor FIXO:
+        // Se override manual existe -> USAR.
+        // Se não -> usar baseFixed (mas, devíamos aplicar inflação? O user só pediu trend 70/30 para "médias").
+        // Vou assumir que despesas fixas NÃO seguem a trend de "gastos gerais", são *fixas* à base 2025.
+        // A trend income afeta o "Net Fixed" porque NetFixed = Income - Fixed.
+        const fixedOverride = manualFor(i);
+        const fixedFinal = fixedOverride != null ? fixedOverride : baseFixed;
+
+        netValFixed = projInc - fixedFinal;
+        netValTotal = projNetTotal; // Contexto geral
+      }
+
+      runFixed += netValFixed;
+      runTotal += netValTotal;
+
+      netFixed.push(netValFixed);
+      cumFixed.push(runFixed);
+      netTotal.push(netValTotal);
+      cumTotal.push(runTotal);
+    }
+
+    return { labels, netFixed, cumFixed, netTotal, cumTotal };
+  }
+
+  // ---------- Renderers ----------
   function renderCashflow() {
     titleEl.textContent = "Projeção Cashflow 2026 (Fixo)";
 
-    const labels = ds.cfLabels || [];
-    const net = ds.cfNet || [];
-    const cum = ds.cfCum || [];
-    const netTotal = ds.cfNetTotal || [];
-    const cumTotal = ds.cfCumTotal || [];
+    // 1) Lê settings e constrói séries (com/sem override)
+    const settings = loadFixedSettings();
+    const series = rebuildSeriesWithOverrides(settings);
 
+    // 2) Monta/atualiza Chart
     mount({
       type: "bar",
       data: {
-        labels,
+        labels: series.labels,
         datasets: [
           // --- BARS ---
           {
             type: "bar",
             label: "Líquido Fixo",
-            data: net,
+            data: series.netFixed,
             backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
             order: 3,
             stack: "fixed",
@@ -83,7 +245,7 @@ function setupDashboardModal(ds) {
           {
             type: "bar",
             label: "Líquido Total",
-            data: netTotal,
+            data: series.netTotal,
             backgroundColor: "#94a3b8", // Grey for total context
             order: 4,
             stack: "total",
@@ -94,7 +256,7 @@ function setupDashboardModal(ds) {
           {
             type: "line",
             label: "Acumulado Fixo",
-            data: cum,
+            data: series.cumFixed,
             borderColor: "#3b82f6", // Blue
             borderWidth: 2,
             tension: 0.25,
@@ -104,7 +266,7 @@ function setupDashboardModal(ds) {
           {
             type: "line",
             label: "Acumulado Total",
-            data: cumTotal,
+            data: series.cumTotal,
             borderColor: "#64748b", // Slate
             borderWidth: 2,
             borderDash: [5, 5],
@@ -122,13 +284,137 @@ function setupDashboardModal(ds) {
         scales: { y: { ...axisMoney, beginAtZero: false } },
       },
     });
+
+    // 3) Render UI (painel de ajustes) no extraEl
+    const isPanelOpen = localStorage.getItem("wb:fixed2026:open") === "1";
+    const chevronDown = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    const chevronUp = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
+
     extraEl.innerHTML = `
-      <div class="muted">
-        <strong>Modelo Sazonal 2026 (Dual):</strong><br>
-        • <span style="color:#22c55e">■</span> Líquido Fixo: Receita - Despesa Fixa (Mostra o potencial).<br>
-        • <span style="color:#94a3b8">■</span> Líquido Total: O valor final real (considerando Despesas Fixas e Variáveis).<br>
-        • Passado: Dados Reais. Futuro: Espelho de 2025.
-      </div>`;
+      <div class="muted" style="margin-bottom:8px">
+        <strong>Modelo Sazonal 2026:</strong><br>
+        • <span style="color:#22c55e">■</span> Líquido Fixo: Receita - Despesa Fixa (potencial).<br>
+        • <span style="color:#94a3b8">■</span> Líquido Total: Resultado real (fixas + variáveis).<br>
+        • Passado/Presente: reais. Futuro: espelho 2025.
+      </div>
+      
+      <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">
+        <button id="fx26-toggle" class="btn btn--ghost" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding: 6px 4px; font-size:0.9rem; font-weight:600; color:var(--text);">
+          <span>Ajustes de despesas fixas 2026</span>
+          <span id="fx26-icon">${isPanelOpen ? chevronUp : chevronDown}</span>
+        </button>
+
+        <div id="fx26-container" ${isPanelOpen ? "" : "hidden"} style="margin-top:6px;">
+          <fieldset id="fx26-panel" class="panel" style="border:1px solid var(--border); padding:10px; border-radius:8px; background:var(--surface-2);">
+            <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;">
+              <input type="checkbox" id="fx26-enabled">
+              <span style="font-weight:500;">Ativar ajustes manuais</span>
+            </label>
+            
+            <div id="fx26-inputs" class="grid" style="display:grid; grid-template-columns: 1fr auto; gap:8px; max-width:400px; margin-top:8px; align-items:center;">
+              <label for="fx26-rent" style="font-size:0.9rem">Renda</label> 
+              <input id="fx26-rent" type="number" min="0" step="1" style="width:100px; padding:4px;">
+              
+              <label for="fx26-uti" style="font-size:0.9rem">Água + Luz + Internet</label> 
+              <input id="fx26-uti" type="number" min="0" step="1" style="width:100px; padding:4px;">
+              
+              <label for="fx26-oth" style="font-size:0.9rem">Outros fixos</label> 
+              <input id="fx26-oth" type="number" min="0" step="1" style="width:100px; padding:4px;">
+            </div>
+            
+            <div class="actions" style="margin-top:12px; display:flex; gap:8px;">
+              <button class="btn btn--sm" id="fx26-apply">Recalcular projeção</button>
+              <button class="btn btn--ghost btn--sm" id="fx26-reset">Repor padrão</button>
+            </div>
+          </fieldset>
+        </div>
+      </div>
+    `;
+
+    // 4) Inicializar estado dos inputs
+    const toggleBtn = extraEl.querySelector("#fx26-toggle");
+    const container = extraEl.querySelector("#fx26-container");
+    const iconEl = extraEl.querySelector("#fx26-icon");
+
+    const enabledEl = extraEl.querySelector("#fx26-enabled");
+    const rentEl = extraEl.querySelector("#fx26-rent");
+    const utiEl = extraEl.querySelector("#fx26-uti");
+    const othEl = extraEl.querySelector("#fx26-oth");
+    const applyBtn = extraEl.querySelector("#fx26-apply");
+    const resetBtn = extraEl.querySelector("#fx26-reset");
+
+    // Toggle logic
+    toggleBtn.addEventListener("click", () => {
+      const isHidden = container.hidden;
+      container.hidden = !isHidden;
+      iconEl.innerHTML = !isHidden ? chevronDown : chevronUp;
+      localStorage.setItem("wb:fixed2026:open", !isHidden ? "1" : "0");
+    });
+
+    // mapear settings -> inputs
+    const mapToInputs = (set) => {
+      enabledEl.checked = !!set?.enabled;
+      const get = (label) =>
+        (set?.items || []).find((i) => (i.label || "").toLowerCase() === label);
+      rentEl.value = Number(get("renda")?.amount || 0);
+      utiEl.value = Number(get("água + luz + internet")?.amount || 0);
+      othEl.value = Number(get("outros")?.amount || 0);
+    };
+
+    mapToInputs(settings);
+
+    function buildSettingsFromInputs() {
+      const en = enabledEl.checked;
+      const items = [
+        {
+          label: "Renda",
+          amount: Number(rentEl.value || 0),
+          months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        },
+        {
+          label: "Água + Luz + Internet",
+          amount: Number(utiEl.value || 0),
+          months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        },
+        {
+          label: "Outros",
+          amount: Number(othEl.value || 0),
+          months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        },
+      ];
+      return { enabled: en, items };
+    }
+
+    function updateChart() {
+      const newSet = buildSettingsFromInputs();
+      saveFixedSettings(newSet);
+      mapToInputs(newSet); // Refresh inputs/state if needed
+      const s = rebuildSeriesWithOverrides(newSet);
+
+      chart.data.labels = s.labels;
+      chart.data.datasets[0].data = s.netFixed; // barra fixed
+      chart.data.datasets[2].data = s.cumFixed; // linha cum fixed
+      chart.data.datasets[1].data = s.netTotal; // barra total
+      chart.data.datasets[3].data = s.cumTotal; // linha cum total
+      chart.update();
+    }
+
+    applyBtn.addEventListener("click", updateChart);
+    // Auto update on checkbox toggle
+    enabledEl.addEventListener("change", () => updateChart());
+
+    // Allow Enter key to submit in inputs
+    [rentEl, utiEl, othEl].forEach((el) => {
+      el.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") updateChart();
+      });
+    });
+
+    resetBtn.addEventListener("click", () => {
+      localStorage.removeItem("wb:fixed2026");
+      mapToInputs({});
+      updateChart();
+    });
   }
 
   function renderTendencias() {
@@ -2737,7 +3023,7 @@ export async function init({ sb, outlet } = {}) {
         monthlyCount: dsMini.labels12m?.length,
       });
 
-      setupDashboardModal(dsMini);
+      setupDashboardModal(dsMini, { allHistoryMap, fixedVarByMonth });
     }
   } catch (e) {
     console.warn("mini-cards wiring falhou:", e);
