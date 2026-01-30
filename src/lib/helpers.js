@@ -251,3 +251,35 @@ export const toolMoney = {
 };
 
 export const ptDate = (iso) => new Date(iso).toLocaleDateString("pt-PT");
+
+// A11y: Focus Trap helper for Modals
+export function trapFocus(element) {
+  const focusableEls = element.querySelectorAll(
+    'a[href]:not([disabled]), button:not([disabled]), textarea:not([disabled]), input[type="text"]:not([disabled]), input[type="radio"]:not([disabled]), input[type="checkbox"]:not([disabled]), select:not([disabled])'
+  );
+  if (!focusableEls.length) return;
+
+  const first = focusableEls[0];
+  const last = focusableEls[focusableEls.length - 1];
+
+  element.addEventListener("keydown", function (e) {
+    const isTabPressed = e.key === "Tab" || e.keyCode === 9;
+    if (!isTabPressed) return;
+
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        last.focus();
+        e.preventDefault();
+      }
+    } else {
+      if (document.activeElement === last) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  });
+  
+  // Auto focus first element
+  setTimeout(() => first.focus(), 50);
+}
+

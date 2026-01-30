@@ -19,6 +19,9 @@ import {
   ensureChartStack,
 } from "../lib/helpers.js";
 import { repo } from "../lib/repo.js";
+import { trapFocus } from "../lib/helpers.js";
+import { Toast, Modal } from "../lib/ui.js";
+
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
@@ -32,7 +35,9 @@ function setupDashboardModal(ds, rawData) {
 
   const open = () => {
     modal.hidden = false;
+    trapFocus(modal);
   };
+
   const close = () => {
     modal.hidden = true;
     extraEl.innerHTML = "";
@@ -40,8 +45,11 @@ function setupDashboardModal(ds, rawData) {
       chart.destroy();
       chart = null;
     }
+    // Return focus
+    document.getElementById("dash-modal-open")?.focus();
   };
   btnX?.addEventListener("click", close);
+
   btnClose?.addEventListener("click", close);
   modal?.addEventListener("click", (e) => {
     if (e.target === modal) close();
@@ -2638,6 +2646,27 @@ export async function init({ sb, outlet } = {}) {
       const g = grouped.get(parentName);
       g.total += Number(val || 0);
 
+      // --- Empty State ---
+    const hasData = history.length > 0 || real.length > 0;
+    if (!hasData) {
+      if (document.getElementById("dash-empty")) {
+        document.getElementById("dash-empty").hidden = false;
+        document.getElementById("dash-content").hidden = true;
+        
+        // Customize text based on user history (simulated check)
+        const isNewUser = !localStorage.getItem("wb:welcome_ts");
+        const msg = isNewUser 
+            ? "Ainda não tens movimentos. Começa agora!" 
+            : "Sem movimentos este mês.";
+        
+        document.querySelector("#dash-empty h3").textContent = msg;
+      }
+      return;
+    }
+    if (document.getElementById("dash-empty")) {
+       document.getElementById("dash-empty").hidden = true;
+       document.getElementById("dash-content").hidden = false;
+    }
       // Se tiver filhos explícitos (parts > 1) ou se quisermos mostrar sempre o item como child
       // Vamos adicionar à lista de children
       const count = Math.max(1, Number(catCount12m.get(fullName) || 0));

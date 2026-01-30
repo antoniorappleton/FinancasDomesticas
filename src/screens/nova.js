@@ -1,5 +1,7 @@
 // src/screens/nova.js
 import { repo } from "../lib/repo.js";
+import { Toast } from "../lib/ui.js";
+
 
 export async function init({ outlet } = {}) {
   const sb = window.sb;
@@ -14,14 +16,9 @@ export async function init({ outlet } = {}) {
     return d.toISOString().slice(0, 10);
   };
   const parseAmount = (s) => Number(String(s || "").replace(",", ".")) || 0;
-  const toast = (msg, ok = true) => {
-    const box = $("tx-msg");
-    if (!box) return;
-    box.style.display = "block";
-    box.style.borderLeft = ok ? "4px solid #16a34a" : "4px solid #ef4444";
-    box.textContent = msg;
-    setTimeout(() => (box.style.display = "none"), 2500);
-  };
+  // Use global Toast instead
+  const toast = (msg, ok = true) => ok ? Toast.success(msg) : Toast.error(msg);
+
 
   $("tx-date") && ($("tx-date").value = todayISO());
 

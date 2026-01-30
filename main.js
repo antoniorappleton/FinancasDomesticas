@@ -1,6 +1,9 @@
 // main.js — Router SPA com base path dinâmico (localhost + GitHub Pages)
 import { initAuth } from "./src/lib/auth.js";
 import { loadTheme, applyTheme } from "./src/lib/theme.js";
+import { Onboarding } from "./src/lib/onboarding.js";
+import { Toast } from "./src/lib/ui.js";
+
 
 /* ===================== Base path ===================== */
 // Ex.: / -> "" ; /REPO -> "/REPO" ; /REPO/index.html -> "/REPO"
@@ -77,6 +80,11 @@ const ROUTES = {
     showFooter: true,
   },
   "#/metas": {
+    file: "/src/screens/Metas.html",
+    js: "/src/screens/Metas.js",
+    showFooter: true,
+  },
+  "#/objetivos": {
     file: "/src/screens/Metas.html",
     js: "/src/screens/Metas.js",
     showFooter: true,
@@ -198,7 +206,11 @@ function onSignedIn() {
   if (window.sb) loadTheme(window.sb);
 
   handleRoute();
+  
+  // Show wizard if new user
+  setTimeout(() => Onboarding.init(), 1000);
 }
+
 function onSignedOut() {
   setStyle(document.getElementById("app-main"), { display: "none" });
   if (footer) footer.hidden = true;
@@ -268,6 +280,18 @@ function onSignedOut() {
       handleRoute();
     });
     window.dispatchEvent(new Event("app:ready"));
+
+    // Service Worker Update Toasts
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+         Toast.info("App atualizada! Recarregue se desejar.");
+      });
+    }
+
+    // Network Status Toasts
+    window.addEventListener("online", () => Toast.success("Ligação recuperada 🟢"));
+    window.addEventListener("offline", () => Toast.error("Sem internet 🔴"));
+
   } catch (e) {
     console.error("Falha no arranque:", e);
   }

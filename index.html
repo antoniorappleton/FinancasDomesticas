@@ -44,6 +44,8 @@
     <link rel="manifest" href="./manifest.json?v=12" />
   </head>
   <body>
+    <a href="#app-main" class="skip-link">Saltar para o conteúdo principal</a>
+
     <!-- Splash mínimo 3s -->
     <div id="wb-splash" class="wb-splash" aria-hidden="true">
       <div class="wb-splash__box">
@@ -162,7 +164,8 @@
       </div>
     </header>
 
-    <main id="app-main">
+    <main id="app-main" tabindex="-1">
+
       <div id="outlet" class="outlet"></div>
     </main>
 
