@@ -220,7 +220,7 @@ function setupDashboardModal(ds, rawData) {
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Projeção Cashflow 2026 (Fixo)";
+    titleEl.textContent = "Previsão de Saldo 2026 (Contas Fixas)";
 
     // 1) Lê settings e constrói séries (com/sem override)
     const settings = loadFixedSettings();
@@ -235,7 +235,7 @@ function setupDashboardModal(ds, rawData) {
           // --- BARS ---
           {
             type: "bar",
-            label: "Líquido Fixo",
+            label: "Sobra (Fixas)",
             data: series.netFixed,
             backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
             order: 3,
@@ -244,7 +244,7 @@ function setupDashboardModal(ds, rawData) {
           },
           {
             type: "bar",
-            label: "Líquido Total",
+            label: "Sobra Real",
             data: series.netTotal,
             backgroundColor: "#94a3b8", // Grey for total context
             order: 4,
@@ -255,7 +255,7 @@ function setupDashboardModal(ds, rawData) {
           // --- LINES ---
           {
             type: "line",
-            label: "Acumulado Fixo",
+            label: "Acumulado Anual (Fixas)",
             data: series.cumFixed,
             borderColor: "#3b82f6", // Blue
             borderWidth: 2,
@@ -265,7 +265,7 @@ function setupDashboardModal(ds, rawData) {
           },
           {
             type: "line",
-            label: "Acumulado Total",
+            label: "Acumulado Anual (Real)",
             data: series.cumTotal,
             borderColor: "#64748b", // Slate
             borderWidth: 2,
@@ -292,20 +292,22 @@ function setupDashboardModal(ds, rawData) {
 
     extraEl.innerHTML = `
       <div class="muted" style="margin-bottom:8px">
-        <strong>Modelo Sazonal 2026:</strong><br>
-        • <span style="color:#22c55e">■</span> Líquido Fixo: Receita - Despesa Fixa (potencial).<br>
-        • <span style="color:#94a3b8">■</span> Líquido Total: Resultado real (fixas + variáveis).<br>
+        <strong>Previsão de Saldo 2026:</strong><br>
+        • <span style="color:#22c55e">■</span> Sobra (Fixas): Entradas - Saídas Obrigatórias (potencial).<br>
+        • <span style="color:#94a3b8">■</span> Sobra Real: Resultado final (Obrigatórias + Extras).<br>
         • Passado/Presente: reais. Futuro: espelho 2025.
       </div>
       
       <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:4px;">
         <button id="fx26-toggle" class="btn btn--ghost" style="width:100%; display:flex; justify-content:space-between; align-items:center; padding: 6px 4px; font-size:0.9rem; font-weight:600; color:var(--text);">
           <span>Ajustes de despesas fixas 2026</span>
+          <span>Ajustes de despesas obrigatórias 2026</span>
           <span id="fx26-icon">${isPanelOpen ? chevronUp : chevronDown}</span>
         </button>
 
         <div id="fx26-container" ${isPanelOpen ? "" : "hidden"} style="margin-top:6px;">
           <fieldset id="fx26-panel" class="panel" style="border:1px solid var(--border); padding:10px; border-radius:8px; background:var(--surface-2);">
+            <legend style="font-weight:600; padding:0 6px;">Ajustes de Despesas Obrigatórias 2026</legend>
             <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;">
               <input type="checkbox" id="fx26-enabled">
               <span style="font-weight:500;">Ativar ajustes manuais</span>
@@ -318,7 +320,7 @@ function setupDashboardModal(ds, rawData) {
               <label for="fx26-uti" style="font-size:0.9rem">Água + Luz + Internet</label> 
               <input id="fx26-uti" type="number" min="0" step="1" style="width:100px; padding:4px;">
               
-              <label for="fx26-oth" style="font-size:0.9rem">Outros fixos</label> 
+              <label for="fx26-oth" style="font-size:0.9rem">Outras obrigatórias</label> 
               <input id="fx26-oth" type="number" min="0" step="1" style="width:100px; padding:4px;">
             </div>
             
@@ -449,7 +451,7 @@ function setupDashboardModal(ds, rawData) {
       datasets: [
         {
           type: "bar",
-          label: "Receitas",
+          label: "Entradas",
           data: [...inc, null],
           backgroundColor: CHART_COLORS.inc,
           borderColor: CHART_COLORS.inc,
@@ -457,7 +459,7 @@ function setupDashboardModal(ds, rawData) {
         },
         {
           type: "bar",
-          label: "Despesas",
+          label: "Saídas",
           data: [...exp, null],
           backgroundColor: CHART_COLORS.exp,
           borderColor: CHART_COLORS.exp,
@@ -475,7 +477,7 @@ function setupDashboardModal(ds, rawData) {
         // barras previsão
         {
           type: "bar",
-          label: "Receitas (prev.)",
+          label: "Entradas (prev.)",
           data: Array(labels.length).fill(null).concat(incF),
           backgroundColor: CHART_COLORS.incF,
           borderColor: CHART_COLORS.inc,
@@ -483,7 +485,7 @@ function setupDashboardModal(ds, rawData) {
         },
         {
           type: "bar",
-          label: "Despesas (prev.)",
+          label: "Saídas (prev.)",
           data: Array(labels.length).fill(null).concat(expF),
           backgroundColor: CHART_COLORS.expF,
           borderColor: CHART_COLORS.exp,
@@ -501,7 +503,7 @@ function setupDashboardModal(ds, rawData) {
         // Linha do saldo
         {
           type: "line",
-          label: "Saldo",
+          label: "Sobra",
           data: [...saldoReal, saldoF],
           borderColor: CHART_COLORS.saldo,
           borderWidth: 2,
@@ -553,10 +555,10 @@ function setupDashboardModal(ds, rawData) {
 
       extraEl.innerHTML += `
       <div class="rpt-legend" style="margin-top:8px">
-        <div class="rpt-legend__item"><span style="flex:1">Fixas (prev.)</span><strong>${money(
+        <div class="rpt-legend__item"><span style="flex:1">Obrigatórias (prev.)</span><strong>${money(
           avgFixed,
         )}</strong><span class="muted">&nbsp;(${pf}%)</span></div>
-        <div class="rpt-legend__item"><span style="flex:1">Variáveis (prev.)</span><strong>${money(
+        <div class="rpt-legend__item"><span style="flex:1">Extras (prev.)</span><strong>${money(
           avgVar,
         )}</strong><span class="muted">&nbsp;(${pv}%)</span></div>
       </div>`;
@@ -564,12 +566,12 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderFixVarMes() {
-    titleEl.textContent = "Fixas vs Variáveis (mês atual)";
+    titleEl.textContent = "Obrigatórias vs Extras (mês atual)";
     const total = (ds.fixasMes || 0) + (ds.variaveisMes || 0) || 1;
     mount({
       type: "doughnut",
       data: {
-        labels: ["Fixas", "Variáveis"],
+        labels: ["Obrigatórias", "Extras"],
         datasets: [{ data: [ds.fixasMes || 0, ds.variaveisMes || 0] }],
       },
       options: {
@@ -591,13 +593,13 @@ function setupDashboardModal(ds, rawData) {
     });
     const fix = ds.fixasMes || 0,
       vari = ds.variaveisMes || 0;
-    extraEl.innerHTML = `<div class="rpt-legend__item"><span style="flex:1">Fixas</span><strong>${money(
+    extraEl.innerHTML = `<div class="rpt-legend__item"><span style="flex:1">Obrigatórias</span><strong>${money(
       fix,
     )}</strong>
         <span class="muted">&nbsp;(${((fix / (fix + vari || 1)) * 100).toFixed(
           1,
         )}%)</span></div>
-       <div class="rpt-legend__item"><span style="flex:1">Variáveis</span><strong>${money(
+       <div class="rpt-legend__item"><span style="flex:1">Extras</span><strong>${money(
          vari,
        )}</strong>
         <span class="muted">&nbsp;(${((vari / (fix + vari || 1)) * 100).toFixed(
@@ -606,7 +608,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderFixVar12m() {
-    titleEl.textContent = "Fixas vs Variáveis (12 meses)";
+    titleEl.textContent = "Obrigatórias vs Extras (12 meses)";
     const labels = ds.labels12m || [];
     const fixed = ds.fixed12m || [];
     const variable = ds.variable12m || [];
@@ -617,12 +619,12 @@ function setupDashboardModal(ds, rawData) {
 
     const datasets = hasRealFV
       ? [
-          { label: "Fixas", data: fixed, stack: "fv" },
-          { label: "Variáveis", data: variable, stack: "fv" },
+          { label: "Obrigatórias", data: fixed, stack: "fv" },
+          { label: "Extras", data: variable, stack: "fv" },
         ]
       : [
           {
-            label: "Despesas (aprox.)",
+            label: "Saídas (aprox.)",
             data: (ds.expense12m || []).map(Math.abs),
             stack: "exp",
           },
@@ -685,7 +687,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderTopCategorias() {
-    titleEl.textContent = "Top categorias (mês atual)";
+    titleEl.textContent = "Onde gastei mais (mês atual)";
     const pairs = (ds.catLabelsMes || []).map((name, i) => [
       name,
       (ds.catValuesMes || [])[i] || 0,
@@ -764,7 +766,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderRegularidades() {
-    titleEl.textContent = "Despesas por Regularidade (mês atual)";
+    titleEl.textContent = "Saídas por Frequência (mês atual)";
     const labels = ds.regLabelsMes || [];
     const values = ds.regTotalsMes || [];
     const total = values.reduce((a, b) => a + b, 0) || 1;
