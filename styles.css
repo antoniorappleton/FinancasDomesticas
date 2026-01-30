@@ -1790,7 +1790,12 @@ td:nth-child(5) {
 .fab-nav.is-open .fab-item:focus .fab-label,
 .fab-nav.is-open .fab-item:hover .fab-label {
   opacity: 1;
-}`r`n`r`n/* SEMPRE mostra labels quando menu est� aberto */`r`n.fab-nav.is-open .fab-label {`r`n  opacity: 1 !important;`r`n}
+}
+
+/* SEMPRE mostra labels quando menu esta aberto */
+.fab-nav.is-open .fab-label {
+  opacity: 1 !important;
+}
 
 /* Se quiseres etiqueta por baixo: adiciona .below no span */
 .fab-label.below {
@@ -2958,6 +2963,7 @@ td:nth-child(5) {
 .elec-title .highlight {
   background: linear-gradient(135deg, #fff 0%, #0de3f2 50%, #10b981 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 15px rgba(13, 227, 242, 0.3));
 }
