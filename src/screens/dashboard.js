@@ -23,6 +23,8 @@ import { trapFocus } from "../lib/helpers.js";
 import { Toast, Modal } from "../lib/ui.js";
 
 
+import { calculateRoutineFixedAverage, projectCashflow } from "../lib/analytics.js";
+
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
   const modal = document.getElementById("dash-modal");
@@ -64,170 +66,55 @@ function setupDashboardModal(ds, rawData) {
   };
 
   // ---------- Renderers ----------
-  // ---------- Helpers para Ajustes Manuais 2026 ----------
-  function loadFixedSettings() {
+  // ---------- Helpers para Ajustes Manuais (Dynamic Year) ----------
+  function loadFixedSettings(year) {
     try {
-      return JSON.parse(localStorage.getItem("wb:fixed2026") || "{}");
+      return JSON.parse(localStorage.getItem(`wb:fixed:${year}`) || "{}");
     } catch {
       return {};
     }
   }
 
-  function saveFixedSettings(obj) {
-    localStorage.setItem("wb:fixed2026", JSON.stringify(obj || {}));
+  function saveFixedSettings(year, obj) {
+    localStorage.setItem(`wb:fixed:${year}`, JSON.stringify(obj || {}));
   }
 
   function rebuildSeriesWithOverrides(settings) {
-    const { allHistoryMap, fixedVarByMonth } = rawData || {};
-    const labels = [];
-    const netFixed = [];
-    const cumFixed = [];
-    const netTotal = [];
-    const cumTotal = [];
-    const currentYear = "2026";
+    // 1. Recover raw transactions from scope (we need them for Annual check)
+    // IMPORTANT: 'monthly' and 'allHistoryMap' are built from VIEW usually.
+    // But 'dashboard.js' logic doesn't expose raw TXs globally easily unless we saved them.
+    // HACK: We will try to rely on 'thisMonthAgg' or 'fixedCashflowByMonth' if they had granularity, but they don't.
+    // ADJUSTMENT: We will assume for now that if we are using the VIEW path, we might miss Annual details unless we fetch them.
+    // However, the user wants this. We can scan 'allHistoryMap' but that's already aggregated.
+    // To properly support "Separating Annuals", we need to know which part of 'expense' is Annual.
+    // For this Turn, we will use a naive approach: If we don't have raw data, we assume 0 Annuals (Smoothing applies to total).
+    // IF we have raw data (fallback path), we could do it.
+    // Let's implement a 'annualFixedByMonth' map that we populate during the Data Fetch phase if possible.
+    
+    // We will update Data Fetching below to populate 'annualFixedByMonth'.
+    const { allHistoryMap, fixedVarByMonth, annualFixedByMonth } = rawData || {};
+    const targetYear = String(new Date().getFullYear()); 
     const now = new Date();
-    // Chave do mês atual para decidir REAL vs PROJEÇÃO (ex: "2026-02")
-    const currentMonthKey = `${now.getFullYear()}-${String(
-      now.getMonth() + 1,
-    ).padStart(2, "0")}`;
+    
+    const currentMonthKey = `${targetYear}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    
+    // Calculate YTD Routine Average
+    const routineAvg = calculateRoutineFixedAverage(fixedVarByMonth, annualFixedByMonth, targetYear, currentMonthKey);
 
-    const enabled = !!settings?.enabled;
-    const items = Array.isArray(settings?.items) ? settings.items : [];
-
-    // helper: soma manual por mês (1..12)
-    const manualFor = (m) => {
-      if (!enabled || !items.length) return null;
-      const mm = Number(m);
-      const sum = items.reduce((acc, it) => {
-        const apply = Array.isArray(it.months) ? it.months.includes(mm) : true;
-        const a = Number(it.amount || 0);
-        return acc + (apply ? Math.max(0, a) : 0);
-      }, 0);
-      return sum;
-    };
-
-    // --- 1. Calcular Fatores de Tendência (Weighted Trend) ---
-    // Compara YTD 2026 vs YTD 2025 para os meses já fechados/existentes.
-    let sumInc26 = 0,
-      sumInc25 = 0;
-    let sumExp26 = 0,
-      sumExp25 = 0; // Para Net Total context
-    let countMonths = 0;
-
-    for (let i = 1; i <= 12; i++) {
-      const k26 = `${currentYear}-${String(i).padStart(2, "0")}`;
-      if (k26 > currentMonthKey) break; // Só meses passados/atuais
-
-      const d26 = allHistoryMap?.get(k26);
-      if (!d26) continue; // Se não houver dados, não conta
-
-      const k25 = `2025-${String(i).padStart(2, "0")}`;
-      const d25 = allHistoryMap?.get(k25);
-
-      if (d25) {
-        sumInc26 += Number(d26.income || 0);
-        sumInc25 += Number(d25.income || 0);
-        sumExp26 += Math.abs(Number(d26.expense || 0));
-        sumExp25 += Math.abs(Number(d25.expense || 0));
-        countMonths++;
-      }
-    }
-
-    // Se tivermos histórico comparável, calculamos o ratio
-    let incomeRatio = 1.0;
-    let expenseRatio = 1.0;
-
-    if (countMonths > 0 && sumInc25 > 0) {
-      const rawRatio = sumInc26 / sumInc25;
-      // Peso: 70% tendência, 30% baseline (1.0 ou o próprio histórico 2025 se assumirmos ratio 1)
-      // A lógica "70% aos de 2026" vs "30% aos de 2025" traduz-se em aplicar o ratio com força 0.7?
-      // Ou seja: Projected = Baseline * (1 + (Ratio - 1) * 0.7) ?
-      // Se Ratio=1.2 (+20%), com força 0.7 assumimos +14%.
-      // Ou simples ponderação? Vamos usar a lógica de "Dampened Trend"
-      incomeRatio = 1 + (rawRatio - 1) * 0.7;
-    }
-    if (countMonths > 0 && sumExp25 > 0) {
-      const rawRatio = sumExp26 / sumExp25;
-      expenseRatio = 1 + (rawRatio - 1) * 0.7;
-    }
-
-    // Safety limits (não deixar explodir nem zerar absurdamente)
-    incomeRatio = Math.max(0.5, Math.min(2.0, incomeRatio));
-    expenseRatio = Math.max(0.5, Math.min(2.0, expenseRatio));
-
-    // --- 2. Construir Séries ---
-    let runFixed = 0;
-    let runTotal = 0;
-
-    for (let i = 1; i <= 12; i++) {
-      const key2026 = `${currentYear}-${String(i).padStart(2, "0")}`;
-      const label = new Date(Number(currentYear), i - 1, 1).toLocaleDateString(
-        "pt-PT",
-        { month: "short", year: "numeric" },
-      );
-      labels.push(label);
-
-      let netValFixed = 0;
-      let netValTotal = 0;
-
-      if (key2026 <= currentMonthKey) {
-        // --- REAL (Passado/Presente) ---
-        const realData = allHistoryMap?.get(key2026);
-        const realFV = fixedVarByMonth?.get(key2026);
-
-        const inc = realData ? Number(realData.income || 0) : 0;
-        const net = realData ? Number(realData.net || 0) : 0;
-        const fixed = realFV ? Math.abs(Number(realFV.fixed || 0)) : 0;
-
-        netValFixed = inc - fixed;
-        netValTotal = net;
-      } else {
-        // --- PROJEÇÃO (Futuro com Weighted Trend + Overrides) ---
-        const key2025 = `2025-${String(i).padStart(2, "0")}`;
-        const histData = allHistoryMap?.get(key2025);
-        const histFV = fixedVarByMonth?.get(key2025);
-
-        // Base 2025
-        const baseInc = histData ? Number(histData.income || 0) : 0;
-        const baseNet = histData ? Number(histData.net || 0) : 0;
-        const baseExp =
-          baseInc - baseNet - (Number(histData?.savings || 0) || 0); // Approx expense
-        const baseFixed = histFV ? Math.abs(Number(histFV.fixed || 0)) : 0;
-
-        // Apply Trend
-        const projInc = baseInc * incomeRatio;
-        
-        // Para despesa TOTAL (Liquid Total context):
-        // Base trend + Ajuste manual (já que é um custo extra confirmado)
-        const extraFixed = manualFor(i);
-        console.log(`DEBUG: Month ${i}, Extra: ${extraFixed}`);
-        const fixedFinal = baseFixed + (extraFixed || 0);
-
-        const projExpTotal = (baseExp * expenseRatio) + (extraFixed || 0);
-        const projNetTotal = projInc - projExpTotal;
-
-        netValFixed = projInc - fixedFinal;
-        netValTotal = projNetTotal; // Contexto geral
-      }
-
-      runFixed += netValFixed;
-      runTotal += netValTotal;
-
-      netFixed.push(netValFixed);
-      cumFixed.push(runFixed);
-      netTotal.push(netValTotal);
-      cumTotal.push(runTotal);
-    }
-
-    return { labels, netFixed, cumFixed, netTotal, cumTotal };
+    // Project
+    return projectCashflow(targetYear, allHistoryMap, fixedVarByMonth, annualFixedByMonth, settings, routineAvg);
   }
 
   // ---------- Renderers ----------
   function renderCashflow() {
-    titleEl.textContent = "Previsão de Saldo 2026 (Contas Fixas)";
+    const targetYear = String(new Date().getFullYear());
+    titleEl.textContent = `Previsão de Saldo ${targetYear} (Contas Fixas)`;
 
     // 1) Lê settings e constrói séries (com/sem override)
-    const settings = loadFixedSettings();
+    // 1) Lê settings e constrói séries (com/sem override)
+    // rawData is already available in closure and contains the maps we need
+    
+    const settings = loadFixedSettings(targetYear);
     const series = rebuildSeriesWithOverrides(settings);
 
     // 2) Monta/atualiza Chart
@@ -290,13 +177,14 @@ function setupDashboardModal(ds, rawData) {
     });
 
     // 3) Render UI (painel de ajustes) no extraEl
-    const isPanelOpen = localStorage.getItem("wb:fixed2026:open") === "1";
+    const settingsKey = `wb:fixed:${targetYear}:open`;
+    const isPanelOpen = localStorage.getItem(settingsKey) === "1";
     const chevronDown = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     const chevronUp = `<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>`;
 
     extraEl.innerHTML = `
       <div class="muted" style="margin-bottom:8px">
-        <strong>Previsão de Saldo 2026:</strong><br>
+        <strong>Previsão de Saldo ${targetYear}:</strong><br>
         • <span style="color:#22c55e">■</span> Liquido só com Despesas Fixas: Entradas - Despesas Fixas.<br>
         • <span style="color:#94a3b8">■</span> Liquido Real: Entradas - Despesas (Fixas e Variáveis).<br>
         (Futuro c/base no histórico do ano anterior)
@@ -352,7 +240,7 @@ function setupDashboardModal(ds, rawData) {
       const isHidden = container.hidden;
       container.hidden = !isHidden;
       iconEl.innerHTML = !isHidden ? chevronDown : chevronUp;
-      localStorage.setItem("wb:fixed2026:open", !isHidden ? "1" : "0");
+      localStorage.setItem(settingsKey, !isHidden ? "1" : "0");
     });
 
     // mapear settings -> inputs
@@ -391,7 +279,7 @@ function setupDashboardModal(ds, rawData) {
 
     function updateChart() {
       const newSet = buildSettingsFromInputs();
-      saveFixedSettings(newSet);
+      saveFixedSettings(targetYear, newSet);
       mapToInputs(newSet); // Refresh inputs/state if needed
       const s = rebuildSeriesWithOverrides(newSet);
 
@@ -415,7 +303,7 @@ function setupDashboardModal(ds, rawData) {
     });
 
     resetBtn.addEventListener("click", () => {
-      localStorage.removeItem("wb:fixed2026");
+      localStorage.removeItem(`wb:fixed:${targetYear}`);
       mapToInputs({});
       updateChart();
     });
@@ -1041,8 +929,9 @@ export async function init({ sb, outlet } = {}) {
   })();
 
   let monthly = [];
-  let allHistoryMap = new Map(); // Guarda histórico completo (2025...) para projeções
+  let allHistoryMap = new Map(); // Guarda histórico completo
   let fixedVarByMonth = new Map();
+  let annualFixedByMonth = new Map(); // [NEW] Guarda despesas anuais por mês
   let thisMonthAgg = { fixed: 0, variable: 0 };
   let topCatThisMonth = new Map();
   let parentDist = { labels: [], values: [] };
@@ -1065,9 +954,9 @@ export async function init({ sb, outlet } = {}) {
         data.forEach((r) => {
           const k = monthKeyFromRow(r.month);
           const vals = {
-            income: +r.income || 0,
-            expense: +r.expense || 0,
-            savings: +r.savings || 0,
+            income: Number(r.income || 0),
+            expense: Math.abs(Number(r.expense || 0)),
+            savings: Math.abs(Number(r.savings || 0)),
             net: +r.net || 0,
           };
           map.set(k, vals);
@@ -1336,6 +1225,14 @@ export async function init({ sb, outlet } = {}) {
           entry.incFixed += amt;
         } else if (isExp && isFixedExpense(r)) {
           entry.expFixed += Math.abs(amt);
+          
+          // [NEW] Check if it is an ANNUAL Fixed Expense to separate it
+          // Heuristic: Regularity code is 'YEARLY' or 'ANUAL'
+          const regCode = (r.regularities?.code || "").toUpperCase();
+          const regName = (r.regularities?.name_pt || "").toUpperCase();
+          if (regCode === "YEARLY" || regCode === "ANNUAL" || regName.includes("ANUAL")) {
+             annualFixedByMonth.set(k, (annualFixedByMonth.get(k) || 0) + Math.abs(amt));
+          }
         }
 
         // --- Lógica Antiga (Para donut e barras fix/var) - Apenas Despesas ---
@@ -3048,7 +2945,7 @@ export async function init({ sb, outlet } = {}) {
         monthlyCount: dsMini.labels12m?.length,
       });
 
-      setupDashboardModal(dsMini, { allHistoryMap, fixedVarByMonth });
+      setupDashboardModal(dsMini, { allHistoryMap, fixedVarByMonth, annualFixedByMonth });
     }
   } catch (e) {
     console.warn("mini-cards wiring falhou:", e);
