@@ -573,8 +573,15 @@ export async function init({ sb, outlet } = {}) {
           secondary = o.notes || "Alerta personalizado";
         }
 
-        const color =
-          ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+        let color = "";
+        if (o.type === "savings_goal") {
+          // Poupança: Mais perto de 100% = Mais Verde
+          color = ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981";
+        } else {
+          // Despesa (budget_cap): Mais perto de 100% = Mais Vermelho
+          color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+        }
+
         const isBudget = o.type.startsWith("budget_");
         const warn = isBudget && goal && current > goal ? "color:#b91c1c" : "";
         const due = o.due_date
@@ -585,7 +592,12 @@ export async function init({ sb, outlet } = {}) {
         return `
         <div class="card" data-id="${o.id}">
           <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <div class="cat-card__title"><strong>${o.title}</strong></div>
+            <div class="cat-card__title">
+              <strong>${o.title}</strong>
+              <span style="margin-left:8px; font-size:0.85em; color:${color}; font-weight:800">
+                ${(ratio * 100).toFixed(0)}%
+              </span>
+            </div>
             <div style="display:flex;gap:4px">
               
               <button class="icon-btn" data-edit="${o.id}" title="Editar" aria-label="Editar">
