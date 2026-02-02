@@ -806,7 +806,8 @@ function setupMiniCardHider(outletEl) {
         e.stopPropagation(); // não abrir o modal por engano
         // marca como oculto e esconde já
         hideCard(key, title);
-        card.style.display = "none";
+        const item = card.closest(".carousel-item") || card;
+        item.style.display = "none";
         // dispara evento global para o Settings atualizar a “prateleira”
         window.dispatchEvent(
           new CustomEvent("wb:minicard:changed", {
@@ -818,7 +819,8 @@ function setupMiniCardHider(outletEl) {
     }
 
     // estado inicial
-    card.style.display = isHidden(key) ? "none" : "";
+    const item = card.closest(".carousel-item") || card;
+    item.style.display = isHidden(key) ? "none" : "";
   });
 }
 
@@ -829,6 +831,61 @@ export async function init({ sb, outlet } = {}) {
 
   // -------- Chart.js on-demand --------
   await ensureChartStack();
+
+  // ====== Helper: Setup Carousel (Manual logic) ======
+  function setupCarousel(box, track, dotsBox) {
+    if (!box || !track) return;
+    // Only count items that are NOT hidden
+    const allItems = Array.from(track.querySelectorAll(".carousel-item"));
+    const items = allItems.filter(
+      (i) => i.style.display !== "none" && getComputedStyle(i).display !== "none",
+    );
+    if (!items.length) return;
+
+    let currentIdx = 0;
+    const getItemsPerView = () => (window.innerWidth >= 600 ? 2 : 1);
+
+    const showSlide = (idx) => {
+      const perView = getItemsPerView();
+      const total = items.length;
+      if (idx >= total) idx = 0;
+      if (idx < 0) idx = total - 1;
+      currentIdx = idx;
+
+      const percentage = 100 / perView;
+      track.style.transform = `translateX(-${currentIdx * percentage}%)`;
+
+      if (dotsBox) {
+        const allDots = dotsBox.querySelectorAll(".carousel-dot");
+        allDots.forEach((d, i) => d.classList.toggle("active", i === currentIdx));
+      }
+    };
+
+    if (dotsBox) {
+      dotsBox.innerHTML = Array.from(items)
+        .map(
+          (_, i) =>
+            `<div class="carousel-dot ${i === 0 ? "active" : ""}" data-idx="${i}"></div>`,
+        )
+        .join("");
+      dotsBox.querySelectorAll(".carousel-dot").forEach((d) => {
+        d.addEventListener("click", () => showSlide(Number(d.dataset.idx)));
+      });
+    }
+
+    let interval = setInterval(() => showSlide(currentIdx + 1), 5000);
+    box.addEventListener("mouseenter", () => clearInterval(interval));
+    box.addEventListener("mouseleave", () => {
+      clearInterval(interval);
+      interval = setInterval(() => showSlide(currentIdx + 1), 5000);
+    });
+
+    window.addEventListener("resize", () => {
+      showSlide(currentIdx);
+    });
+
+    return { showSlide };
+  }
 
   // -------- helpers --------
   const byId = (id) => outlet.querySelector("#" + id);
@@ -2107,147 +2164,61 @@ export async function init({ sb, outlet } = {}) {
       upcoming.sort((a, b) => a.next - b.next);
 
       // Render
+      // Render
       const box = outlet.querySelector("#upcoming-fixed-list");
       if (box && upcoming.length) {
         box.innerHTML = `
-          <div class="carousel-container">
-            <div class="carousel-track" id="upcoming-track"></div>
+          <div class="carousel-container" id="upcoming-car-box">
+            <div class="carousel-track" id="upcoming-track">
+              ${upcoming
+                .map((u) => {
+                  let badgeClass = "badge-ok";
+                  let statusText = `${u.daysLeft} dias`;
+                  if (u.daysLeft === 0) {
+                    badgeClass = "badge-danger";
+                    statusText = "Hoje";
+                  } else if (u.daysLeft <= 5) {
+                    badgeClass = "badge-danger";
+                  } else if (u.daysLeft <= 10) {
+                    badgeClass = "badge-warn";
+                  }
+                  return `
+                  <div class="carousel-item">
+                    <div class="upcoming-card">
+                      <div class="uc-header">
+                        <div class="uc-date">
+                          <span class="uc-day">${u.next.getDate()}</span>
+                          <span class="uc-month">${u.next.toLocaleDateString(
+                            "pt-PT",
+                            { month: "short" },
+                          )}</span>
+                        </div>
+                        <div class="uc-info">
+                          <div class="uc-cat" title="${u.name}">${u.name}</div>
+                          <div class="uc-amount">${money(u.amount)}</div>
+                        </div>
+                      </div>
+                      <div class="uc-footer">
+                        <span class="badge ${badgeClass}">${statusText}</span>
+                        ${
+                          u.avgDay !== u.next.getDate()
+                            ? '<span title="Ajustado pela média" class="uc-smart">✨ Smart</span>'
+                            : ""
+                        }
+                      </div>
+                    </div>
+                  </div>`;
+                })
+                .join("")}
+            </div>
             <div class="carousel-dots" id="upcoming-dots"></div>
           </div>
         `;
-        const track = box.querySelector("#upcoming-track");
-
-        track.innerHTML = upcoming
-          .map((u) => {
-            const dateStr = u.next.toLocaleDateString("pt-PT", {
-              day: "numeric",
-              month: "short",
-            });
-
-            // Status Colors (Updated Rules)
-            // Red (0-5 days), Yellow (6-10 days), Green (> 10 days)
-            let badgeClass = "badge-ok";
-            let statusText = `${u.daysLeft} dias`;
-
-            if (u.daysLeft === 0) {
-              badgeClass = "badge-danger";
-              statusText = "Hoje";
-            } else if (u.daysLeft <= 5) {
-              badgeClass = "badge-danger";
-            } else if (u.daysLeft <= 10) {
-              badgeClass = "badge-warn";
-            } else {
-              badgeClass = "badge-ok"; // > 10 days
-            }
-
-            return `
-              <div class="carousel-item">
-               <div class="upcoming-card">
-                  <div class="uc-header">
-                    <div class="uc-date">
-                      <span class="uc-day">${u.next.getDate()}</span>
-                      <span class="uc-month">${u.next.toLocaleDateString("pt-PT", { month: "short" })}</span>
-                    </div>
-                    <div class="uc-info">
-                      <div class="uc-cat" title="${u.name}">${u.name}</div>
-                      <div class="uc-amount">${money(u.amount)}</div>
-                    </div>
-                  </div>
-                  <div class="uc-footer">
-                    <span class="badge ${badgeClass}">${statusText}</span>
-                    ${u.avgDay !== u.next.getDate() ? '<span title="Ajustado pela média" class="uc-smart">✨ Smart</span>' : ""}
-                  </div>
-               </div>
-              </div>
-              `;
-          })
-          .join("");
-
-        // Scroll logic
-        let currentIdx = 0;
-        const totalSlides = upcoming.length;
-
-        // Create dots
-        const dotsBox = box.querySelector("#upcoming-dots");
-        if (dotsBox) {
-          dotsBox.innerHTML = upcoming
-            .map(
-              (_, i) =>
-                `<div class="carousel-dot ${i === 0 ? "active" : ""}" data-idx="${i}"></div>`,
-            )
-            .join("");
-
-          const allDots = dotsBox.querySelectorAll(".carousel-dot");
-          const showSlide = (idx) => {
-            if (idx >= totalSlides) idx = 0;
-            if (idx < 0) idx = totalSlides - 1;
-            currentIdx = idx;
-            // Assuming track has 100% width items
-            track.style.transform = `translateX(-${currentIdx * 100}%)`;
-
-            allDots.forEach((d) => d.classList.remove("active"));
-            allDots[currentIdx]?.classList.add("active");
-          };
-
-          allDots.forEach((d) => {
-            d.addEventListener("click", () => showSlide(Number(d.dataset.idx)));
-          });
-
-          // Auto-play
-          let interval = setInterval(() => showSlide(currentIdx + 1), 4000);
-
-          // Pause on hover
-          box.addEventListener("mouseenter", () => clearInterval(interval));
-          box.addEventListener("mouseleave", () => {
-            clearInterval(interval);
-            interval = setInterval(() => showSlide(currentIdx + 1), 4000);
-          });
-        }
-
-        // Verify "Fixed" logic:
-        // We filter by `periodMonths(r.regularities)`. If consistent returns > 0, it is considered recurring/fixed.
-
-        // Simple horizontal scroll styles if not present
-        if (!document.getElementById("uc-styles")) {
-          const s = document.createElement("style");
-          s.id = "uc-styles";
-          s.textContent = `
-               .carousel-container { position: relative; overflow: hidden; width: 100%; border-radius: 12px; }
-               .carousel-track { display: flex; transition: transform 0.5s ease; width: 100%; }
-               .carousel-item { min-width: 100%; padding: 4px; box-sizing: border-box; }
-               
-               .upcoming-card {
-                  background: var(--surface);
-                  border: 1px solid var(--border);
-                  border-radius: 12px;
-                  padding: 12px;
-                  display: flex; flex-direction: column; gap: 8px;
-                  box-shadow: var(--shadow-card);
-               }
-               .uc-header { display: flex; gap: 12px; align-items: center; }
-               .uc-date { 
-                 display: flex; flex-direction: column; align-items: center; 
-                 background: var(--bg); border-radius: 8px; padding: 6px 10px;
-                 min-width: 50px;
-               }
-               .uc-day { font-weight: 800; font-size: 1.25rem; line-height: 1; color: var(--text); }
-               .uc-month { font-size: 0.75rem; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-               .uc-info { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
-               .uc-cat { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
-               .uc-amount { font-size: 1rem; font-weight: 700; color: var(--primary); }
-               .uc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
-               .badge { font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; font-weight: 600; letter-spacing: 0.02em; }
-               .badge-ok { background: #dcfce7; color: #15803d; }
-               .badge-warn { background: #fef08a; color: #854d0e; }
-               .badge-danger { background: #fee2e2; color: #991b1b; }
-               .uc-smart { font-size: 0.75rem; color: #8b5cf6; font-weight: 600; background: #f5f3ff; padding: 2px 6px; border-radius: 4px; }
-               
-               .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; margin-bottom: 4px; }
-               .carousel-dot { width: 8px; height: 8px; background: #cbd5e1; border-radius: 50%; cursor: pointer; transition: background 0.3s; }
-               .carousel-dot.active { background: var(--primary); transform: scale(1.2); }
-             `;
-          document.head.appendChild(s);
-        }
+        setupCarousel(
+          box.querySelector("#upcoming-car-box"),
+          box.querySelector("#upcoming-track"),
+          box.querySelector("#upcoming-dots"),
+        );
       } else if (box) {
         box.innerHTML = `<div class="muted" style="padding:16px;text-align:center">Sem despesas fixas previstas.</div>`;
       }
@@ -2973,6 +2944,14 @@ export async function init({ sb, outlet } = {}) {
   window.addEventListener("hashchange", onHashChange);
 
   setupMiniCardHider(outlet);
+
+  // ====== Mini-cards Carousel ======
+  const miniTrack = outlet.querySelector("#mini-track");
+  if (miniTrack) {
+    const miniBox = miniTrack.closest(".carousel-container");
+    const miniDots = outlet.querySelector("#mini-dots");
+    setupCarousel(miniBox, miniTrack, miniDots);
+  }
 
   return cleanup;
 }
