@@ -641,10 +641,12 @@ export async function init({ sb, outlet } = {}) {
     alert(`Iniciando parsePDF: ${file.name} (${file.size} bytes)`);
 
     if (!window.pdfjsLib) {
-      alert("ERRO CRITICO: Biblioteca PDF não carregada. Tente recarregar a página.");
+      alert(
+        "ERRO CRITICO: Biblioteca PDF não carregada. Tente recarregar a página.",
+      );
       throw new Error("Biblioteca PDF não carregada.");
     }
-    
+
     try {
       const arrayBuffer = await file.arrayBuffer();
       // alert("ArrayBuffer lido. Chamando getDocument...");
@@ -654,151 +656,152 @@ export async function init({ sb, outlet } = {}) {
       const res = [];
       let fullTextDebug = []; // For debugging/fallback
 
-    // Coordinates for columns (discovered dynamically)
-    let xDebit = 0;
-    let xCredit = 0;
+      // Coordinates for columns (discovered dynamically)
+      let xDebit = 0;
+      let xCredit = 0;
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
 
-      // 1. Get Items with Coords
-      const items = textContent.items
-        .map((item) => ({
-          str: item.str,
-          clean: item.str.trim(),
-          x: item.transform[4],
-          y: item.transform[5],
-          w: item.width,
-        }))
-        .sort((a, b) => {
-          // Sort by Y (desc) then X (asc)
-          if (Math.abs(a.y - b.y) < 5) return a.x - b.x;
-          return b.y - a.y;
-        });
+        // 1. Get Items with Coords
+        const items = textContent.items
+          .map((item) => ({
+            str: item.str,
+            clean: item.str.trim(),
+            x: item.transform[4],
+            y: item.transform[5],
+            w: item.width,
+          }))
+          .sort((a, b) => {
+            // Sort by Y (desc) then X (asc)
+            if (Math.abs(a.y - b.y) < 5) return a.x - b.x;
+            return b.y - a.y;
+          });
 
-      // 2. Discover Headers (if not yet found or refine)
-      // ActivoBank headers: "DÉBITO" and "CRÉDITO"
-      const debitItem = items.find((it) => /D[EÉ]BITO/i.test(it.clean));
-      const creditItem = items.find((it) => /CR[EÉ]DITO/i.test(it.clean));
+        // 2. Discover Headers (if not yet found or refine)
+        // ActivoBank headers: "DÉBITO" and "CRÉDITO"
+        const debitItem = items.find((it) => /D[EÉ]BITO/i.test(it.clean));
+        const creditItem = items.find((it) => /CR[EÉ]DITO/i.test(it.clean));
 
-      if (debitItem) xDebit = debitItem.x;
-      if (creditItem) xCredit = creditItem.x;
+        if (debitItem) xDebit = debitItem.x;
+        if (creditItem) xCredit = creditItem.x;
 
-      // 3. Group into lines
-      const lines = [];
-      let currentLine = null;
-      for (const it of items) {
-        if (!it.clean) continue;
-        if (!currentLine || Math.abs(currentLine.y - it.y) > 5) {
-          currentLine = { y: it.y, items: [it], text: it.str };
-          lines.push(currentLine);
-        } else {
-          currentLine.items.push(it);
-          currentLine.text += "  " + it.str;
-        }
-      }
-
-      // Add to debug log
-      fullTextDebug.push(...lines.map((l) => l.text));
-
-      // 4. Extract Year (Page Context)
-      // Try to find "EXTRATO DE 202X..."
-      let pageYear = new Date().getFullYear();
-      const yearLine = lines.find((l) =>
-        /EXTRATO.*(\d{4})\/\d{2}\/\d{2}/i.test(l.text),
-      );
-      if (yearLine) {
-        const m = yearLine.text.match(/(\d{4})\/\d{2}\/\d{2}/);
-        if (m) pageYear = Number(m[1]);
-      } else {
-        // Fallback: try global context from debug if available, or current
-      }
-
-      // 5. Detect Transactions
-      const moneyRegex = /(\d{1,3}(?:\s\d{3})*(?:[.,]\d{2}))/g;
-
-      for (const line of lines) {
-        const raw = line.text;
-        const u = raw.toUpperCase().trim();
-        if (isNoiseLine(u)) continue;
-
-        // Pattern: DD.MM  DD.MM  DESCRIPTION ...
-        const mDate = raw
-          .trim()
-          .match(/^(\d{1,2}\.\d{2})\s+(\d{1,2}\.\d{2})\s+(.+)$/);
-        if (!mDate) continue;
-
-        const dateToken = mDate[1];
-        const rest = mDate[3];
-
-        // Find money values
-        const monies = [...raw.matchAll(moneyRegex)].map((x) => x[1]);
-        if (monies.length === 0) continue;
-
-        // Logic: Last is Balance, 2nd-Last is Amount
-        // If only 1 money -> Amount (Balance missing?)
-        const targetMoneyStr =
-          monies.length >= 2 ? monies[monies.length - 2] : monies[0];
-        const mov = parseMoneyPt(targetMoneyStr);
-        if (!Number.isFinite(mov)) continue;
-
-        // Determine Sign (Debit vs Credit)
-        // Strategy: Find the item containing the target amount string
-        // We look for a substring match in the items of this line
-        // NOTE: Regex formatting might differ slightly from individual item string if it spans components,
-        // but typically the amount is its own item or within one item.
-        const amountItem = line.items.find((it) =>
-          it.str.includes(targetMoneyStr),
-        );
-
-        let sign = -1; // Default to expense if unsure? Or logic default.
-
-        // Geometric Check
-        if (amountItem && xDebit > 0 && xCredit > 0) {
-          const mid = (xDebit + xCredit) / 2;
-          if (amountItem.x > mid) {
-            sign = 1; // Credit (Right)
+        // 3. Group into lines
+        const lines = [];
+        let currentLine = null;
+        for (const it of items) {
+          if (!it.clean) continue;
+          if (!currentLine || Math.abs(currentLine.y - it.y) > 5) {
+            currentLine = { y: it.y, items: [it], text: it.str };
+            lines.push(currentLine);
           } else {
-            sign = -1; // Debit (Left)
+            currentLine.items.push(it);
+            currentLine.text += "  " + it.str;
           }
-        } else {
-          // Fallback: Text Heuristic
-          // Remove moneys from description for cleaner check
-          let cleanDesc = rest.replace(moneyRegex, "");
-          sign = inferSignFromText(cleanDesc.toUpperCase());
         }
 
-        // Clean Description
-        let desc = rest
-          .replace(moneyRegex, "")
-          .replace(/\s{2,}/g, " ")
-          .trim();
-        if (desc.length < 3) continue;
+        // Add to debug log
+        fullTextDebug.push(...lines.map((l) => l.text));
 
-        const isoDate = parseActivoBankDateMD(dateToken, pageYear);
-        if (!isoDate) continue;
+        // 4. Extract Year (Page Context)
+        // Try to find "EXTRATO DE 202X..."
+        let pageYear = new Date().getFullYear();
+        const yearLine = lines.find((l) =>
+          /EXTRATO.*(\d{4})\/\d{2}\/\d{2}/i.test(l.text),
+        );
+        if (yearLine) {
+          const m = yearLine.text.match(/(\d{4})\/\d{2}\/\d{2}/);
+          if (m) pageYear = Number(m[1]);
+        } else {
+          // Fallback: try global context from debug if available, or current
+        }
 
-        res.push({
-          date: isoDate,
-          amount: mov * sign,
-          description: normalizeDescription(desc),
-          selected: true,
-        });
+        // 5. Detect Transactions
+        const moneyRegex = /(\d{1,3}(?:\s\d{3})*(?:[.,]\d{2}))/g;
+
+        for (const line of lines) {
+          const raw = line.text;
+          const u = raw.toUpperCase().trim();
+          if (isNoiseLine(u)) continue;
+
+          // Pattern: DD.MM  DD.MM  DESCRIPTION ...
+          const mDate = raw
+            .trim()
+            .match(/^(\d{1,2}\.\d{2})\s+(\d{1,2}\.\d{2})\s+(.+)$/);
+          if (!mDate) continue;
+
+          const dateToken = mDate[1];
+          const rest = mDate[3];
+
+          // Find money values
+          const monies = [...raw.matchAll(moneyRegex)].map((x) => x[1]);
+          if (monies.length === 0) continue;
+
+          // Logic: Last is Balance, 2nd-Last is Amount
+          // If only 1 money -> Amount (Balance missing?)
+          const targetMoneyStr =
+            monies.length >= 2 ? monies[monies.length - 2] : monies[0];
+          const mov = parseMoneyPt(targetMoneyStr);
+          if (!Number.isFinite(mov)) continue;
+
+          // Determine Sign (Debit vs Credit)
+          // Strategy: Find the item containing the target amount string
+          // We look for a substring match in the items of this line
+          // NOTE: Regex formatting might differ slightly from individual item string if it spans components,
+          // but typically the amount is its own item or within one item.
+          const amountItem = line.items.find((it) =>
+            it.str.includes(targetMoneyStr),
+          );
+
+          let sign = -1; // Default to expense if unsure? Or logic default.
+
+          // Geometric Check
+          if (amountItem && xDebit > 0 && xCredit > 0) {
+            const mid = (xDebit + xCredit) / 2;
+            if (amountItem.x > mid) {
+              sign = 1; // Credit (Right)
+            } else {
+              sign = -1; // Debit (Left)
+            }
+          } else {
+            // Fallback: Text Heuristic
+            // Remove moneys from description for cleaner check
+            let cleanDesc = rest.replace(moneyRegex, "");
+            sign = inferSignFromText(cleanDesc.toUpperCase());
+          }
+
+          // Clean Description
+          let desc = rest
+            .replace(moneyRegex, "")
+            .replace(/\s{2,}/g, " ")
+            .trim();
+          if (desc.length < 3) continue;
+
+          const isoDate = parseActivoBankDateMD(dateToken, pageYear);
+          if (!isoDate) continue;
+
+          res.push({
+            date: isoDate,
+            amount: mov * sign,
+            description: normalizeDescription(desc),
+            selected: true,
+          });
+        }
       }
-    }
 
-    console.log("PDF Extracted Lines (Debug):", fullTextDebug);
+      console.log("PDF Extracted Lines (Debug):", fullTextDebug);
 
-    if (res.length === 0) {
-      const dbg =
-        "<br><b>Debug (5 linhas):</b><br>" +
-        fullTextDebug.slice(0, 5).map(escapeHtml).join("<br>");
-      const info = document.getElementById("imp-info");
-      if (info) info.innerHTML = "Não encontrei movimentos ActivoBank. " + dbg;
-    }
+      if (res.length === 0) {
+        const dbg =
+          "<br><b>Debug (5 linhas):</b><br>" +
+          fullTextDebug.slice(0, 5).map(escapeHtml).join("<br>");
+        const info = document.getElementById("imp-info");
+        if (info)
+          info.innerHTML = "Não encontrei movimentos ActivoBank. " + dbg;
+      }
 
-    return res;
+      return res;
     } catch (e) {
       throw e;
     }
@@ -1019,7 +1022,9 @@ export async function init({ sb, outlet } = {}) {
       // DEBUG: Ver que tipo de ficheiro é detectado
       alert(`Ficheiro: ${file.name}\nType: ${file.type}`);
 
-      const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isPDF =
+        file.type === "application/pdf" ||
+        file.name.toLowerCase().endsWith(".pdf");
 
       if (isPDF) {
         parsedItems = await parsePDF(file);
