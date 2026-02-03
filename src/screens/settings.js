@@ -799,6 +799,9 @@ export async function init({ sb, outlet } = {}) {
     }
 
     return res;
+    } catch (e) {
+      throw e;
+    }
   }
 
   // === UI & INTERACTION ===
@@ -1013,7 +1016,12 @@ export async function init({ sb, outlet } = {}) {
       btn.textContent = "A processar...";
       if (info) info.textContent = "A ler ficheiro...";
 
-      if (file.type === "application/pdf") {
+      // DEBUG: Ver que tipo de ficheiro é detectado
+      alert(`Ficheiro: ${file.name}\nType: ${file.type}`);
+
+      const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+      if (isPDF) {
         parsedItems = await parsePDF(file);
       } else {
         parsedItems = await parseCSV(file);
