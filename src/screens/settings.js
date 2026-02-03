@@ -637,13 +637,22 @@ export async function init({ sb, outlet } = {}) {
   // PDF Parser using pdf.js -> ActivoBank Logic
   // PDF Parser using pdf.js -> ActivoBank Logic (Geometric + Text)
   async function parsePDF(file) {
-    if (!window.pdfjsLib)
-      throw new Error("Biblioteca PDF não carregada. Recarregue a página.");
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // DEBUG: Mobile diagnostics
+    alert(`Iniciando parsePDF: ${file.name} (${file.size} bytes)`);
 
-    const res = [];
-    let fullTextDebug = []; // For debugging/fallback
+    if (!window.pdfjsLib) {
+      alert("ERRO CRITICO: Biblioteca PDF não carregada. Tente recarregar a página.");
+      throw new Error("Biblioteca PDF não carregada.");
+    }
+    
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      // alert("ArrayBuffer lido. Chamando getDocument...");
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      // alert(`PDF carregado. Páginas: ${pdf.numPages}`);
+
+      const res = [];
+      let fullTextDebug = []; // For debugging/fallback
 
     // Coordinates for columns (discovered dynamically)
     let xDebit = 0;
@@ -1013,11 +1022,13 @@ export async function init({ sb, outlet } = {}) {
       await renderReviewList();
     } catch (err) {
       console.error(err);
-      alert("Erro: " + err.message);
+      alert("Erro ao processar PDF: " + err.message);
       if (info) info.textContent = "Erro ao processar.";
     } finally {
-      btn.disabled = false;
-      btn.textContent = "Processar Ficheiro";
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Processar Ficheiro";
+      }
     }
   });
 
