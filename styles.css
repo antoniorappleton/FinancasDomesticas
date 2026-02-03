@@ -2684,9 +2684,10 @@ td:nth-child(5) {
 /* Collapsible Cards */
 .card-body {
   transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s;
-  max-height: 500px;
+  max-height: 1000px; /* Aumentado de 500px */
   opacity: 1;
-  overflow: hidden;
+  overflow-y: auto; /* Permite scroll se exceder */
+  overflow-x: hidden;
 }
 
 .card-body.collapsed {
