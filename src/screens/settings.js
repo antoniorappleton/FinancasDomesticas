@@ -637,18 +637,23 @@ export async function init({ sb, outlet } = {}) {
   // PDF Parser using pdf.js -> ActivoBank Logic
   // PDF Parser using pdf.js -> ActivoBank Logic (Geometric + Text)
   async function parsePDF(file) {
-    // DEBUG: Mobile diagnostics
-    // Alert removido para não bloquear UI em mobile
-    // alert(`Iniciando parsePDF: ${file.name} (${file.size} bytes)`);
-
     if (!window.pdfjsLib) {
-      // Changed from alert to throw
-      throw new Error("Biblioteca PDF não carregada.");
+      throw new Error("Biblioteca PDF não carregada. Verifique a internet.");
+    }
+
+    // Ensure worker is configured (fail-safe)
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
 
     try {
+      setImpInfo("A carregar PDF na memória...");
       const arrayBuffer = await file.arrayBuffer();
+
+      setImpInfo("A analisar estrutura do PDF...");
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      setImpInfo(`PDF carregado. ${pdf.numPages} páginas.`);
 
       const res = [];
       let fullTextDebug = [];
@@ -659,6 +664,7 @@ export async function init({ sb, outlet } = {}) {
       let xCredit = 0;
 
       for (let i = 1; i <= pdf.numPages; i++) {
+        setImpInfo(`A ler página ${i}/${pdf.numPages}...`);
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
 
