@@ -638,23 +638,21 @@ export async function init({ sb, outlet } = {}) {
   // PDF Parser using pdf.js -> ActivoBank Logic (Geometric + Text)
   async function parsePDF(file) {
     // DEBUG: Mobile diagnostics
-    alert(`Iniciando parsePDF: ${file.name} (${file.size} bytes)`);
+    // Alert removido para não bloquear UI em mobile
+    // alert(`Iniciando parsePDF: ${file.name} (${file.size} bytes)`);
 
     if (!window.pdfjsLib) {
-      alert(
-        "ERRO CRITICO: Biblioteca PDF não carregada. Tente recarregar a página.",
-      );
+      // Changed from alert to throw
       throw new Error("Biblioteca PDF não carregada.");
     }
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      // alert("ArrayBuffer lido. Chamando getDocument...");
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      // alert(`PDF carregado. Páginas: ${pdf.numPages}`);
 
       const res = [];
-      let fullTextDebug = []; // For debugging/fallback
+      let fullTextDebug = [];
+      let totalPDFTextItems = 0; // Para detetar scanned/imagem
 
       // Coordinates for columns (discovered dynamically)
       let xDebit = 0;
@@ -663,6 +661,10 @@ export async function init({ sb, outlet } = {}) {
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
+
+        if (textContent && textContent.items) {
+          totalPDFTextItems += textContent.items.length;
+        }
 
         // 1. Get Items with Coords
         const items = textContent.items
@@ -713,8 +715,6 @@ export async function init({ sb, outlet } = {}) {
         if (yearLine) {
           const m = yearLine.text.match(/(\d{4})\/\d{2}\/\d{2}/);
           if (m) pageYear = Number(m[1]);
-        } else {
-          // Fallback: try global context from debug if available, or current
         }
 
         // 5. Detect Transactions
@@ -739,22 +739,17 @@ export async function init({ sb, outlet } = {}) {
           if (monies.length === 0) continue;
 
           // Logic: Last is Balance, 2nd-Last is Amount
-          // If only 1 money -> Amount (Balance missing?)
           const targetMoneyStr =
             monies.length >= 2 ? monies[monies.length - 2] : monies[0];
           const mov = parseMoneyPt(targetMoneyStr);
           if (!Number.isFinite(mov)) continue;
 
           // Determine Sign (Debit vs Credit)
-          // Strategy: Find the item containing the target amount string
-          // We look for a substring match in the items of this line
-          // NOTE: Regex formatting might differ slightly from individual item string if it spans components,
-          // but typically the amount is its own item or within one item.
           const amountItem = line.items.find((it) =>
             it.str.includes(targetMoneyStr),
           );
 
-          let sign = -1; // Default to expense if unsure? Or logic default.
+          let sign = -1; // Default to expense
 
           // Geometric Check
           if (amountItem && xDebit > 0 && xCredit > 0) {
@@ -766,7 +761,6 @@ export async function init({ sb, outlet } = {}) {
             }
           } else {
             // Fallback: Text Heuristic
-            // Remove moneys from description for cleaner check
             let cleanDesc = rest.replace(moneyRegex, "");
             sign = inferSignFromText(cleanDesc.toUpperCase());
           }
@@ -793,10 +787,19 @@ export async function init({ sb, outlet } = {}) {
       console.log("PDF Extracted Lines (Debug):", fullTextDebug);
 
       if (res.length === 0) {
+        const info = document.getElementById("imp-info");
+
+        // Detetar se é digitalização
+        if (totalPDFTextItems < 50) {
+          if (info)
+            info.innerHTML =
+              "<b>Atenção:</b> Este PDF parece ser uma digitalização (imagem).<br>A app precisa de texto selecionável. Tente exportar o extrato como CSV ou PDF original (não 'Digitalizar').";
+          return [];
+        }
+
         const dbg =
           "<br><b>Debug (5 linhas):</b><br>" +
           fullTextDebug.slice(0, 5).map(escapeHtml).join("<br>");
-        const info = document.getElementById("imp-info");
         if (info)
           info.innerHTML = "Não encontrei movimentos ActivoBank. " + dbg;
       }
@@ -1007,36 +1010,70 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // Event Listeners
+
+  // Feedback imediato no file selection
+  $("#imp-file")?.addEventListener("change", () => {
+    const fileInput = $("#imp-file");
+    const info = $("#imp-info");
+    const btnProcess = $("#imp-process");
+
+    const f = fileInput.files?.[0];
+    if (!f) {
+      if (info) info.textContent = "";
+      return;
+    }
+
+    const mb = (f.size / (1024 * 1024)).toFixed(1);
+    let msg = `Selecionado: ${f.name} (${mb} MB)`;
+
+    // Limite recomendado
+    if (f.size > 12 * 1024 * 1024) {
+      msg += " — ficheiro grande; pode falhar no telemóvel.";
+      // Opcional: style warning
+    }
+
+    if (info) info.textContent = msg;
+    if (btnProcess) btnProcess.disabled = false;
+  });
+
+  function setImpInfo(msg) {
+    const el = $("#imp-info");
+    if (el) el.textContent = msg;
+  }
+
   $("#imp-process")?.addEventListener("click", async () => {
     const file = $("#imp-file")?.files?.[0];
     if (!file) return alert("Por favor, selecione um ficheiro primeiro.");
 
     const btn = $("#imp-process");
-    const info = $("#imp-info");
+    // const info = $("#imp-info"); // Usar setImpInfo
 
     try {
       btn.disabled = true;
       btn.textContent = "A processar...";
-      if (info) info.textContent = "A ler ficheiro...";
+      setImpInfo("A preparar ficheiro...");
 
-      // DEBUG: Ver que tipo de ficheiro é detectado
-      alert(`Ficheiro: ${file.name}\nType: ${file.type}`);
-
-      const isPDF =
-        file.type === "application/pdf" ||
-        file.name.toLowerCase().endsWith(".pdf");
+      // Normalizar nome para detetar PDF
+      const name = (file.name || "").trim().toLowerCase();
+      const isPDF = file.type === "application/pdf" || name.endsWith(".pdf");
 
       if (isPDF) {
+        setImpInfo("A ler PDF (pode demorar)...");
+        // Pequeno delay para UI atualizar antes de bloquear main thread com parsing
+        await new Promise((r) => setTimeout(r, 50));
         parsedItems = await parsePDF(file);
       } else {
+        setImpInfo("A ler CSV...");
         parsedItems = await parseCSV(file);
       }
 
       await renderReviewList();
+
+      // Se sucesso e items > 0, info é atualizado no renderReviewList.
+      // Se 0 items, renderReviewList lida com isso (ou parsePDF já deu warning).
     } catch (err) {
       console.error(err);
-      alert("Erro ao processar PDF: " + err.message);
-      if (info) info.textContent = "Erro ao processar.";
+      setImpInfo("Erro ao processar: " + err.message);
     } finally {
       if (btn) {
         btn.disabled = false;
