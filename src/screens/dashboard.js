@@ -832,9 +832,15 @@ export async function init({ sb, outlet } = {}) {
   // -------- Chart.js on-demand --------
   await ensureChartStack();
 
-  // ====== Helper: Setup Carousel (Manual logic) ======
   function setupCarousel(box, track, dotsBox) {
     if (!box || !track) return;
+    
+    // Identify target carousels
+    const isMulti = 
+      box.classList.contains("mini-carousel") || 
+      box.classList.contains("upcoming-carousel") ||
+      track.id === "mini-track";
+
     // Only count items that are NOT hidden
     const allItems = Array.from(track.querySelectorAll(".carousel-item"));
     const items = allItems.filter(
@@ -843,23 +849,65 @@ export async function init({ sb, outlet } = {}) {
     if (!items.length) return;
 
     let currentIdx = 0;
-    const getItemsPerView = () => (window.innerWidth >= 600 ? 2 : 1);
+    
+    const getItemsPerView = () => {
+      // Logic for multi-item carousels (Quick Analysis & Upcoming)
+      if (isMulti) {
+        const w = window.innerWidth;
+        if (w >= 900) return 6;
+        if (w >= 600) return 5;
+        if (w >= 420) return 4;
+        return 3;
+      }
+      return 1; // Fallback for others
+    };
 
     const showSlide = (idx) => {
       const perView = getItemsPerView();
+      
+      // Update item widths if Multi
+      if (isMulti) {
+         const basis = 100 / perView;
+         items.forEach(el => {
+            el.style.flex = `0 0 ${basis}%`;
+            el.style.minWidth = `${basis}%`; 
+            el.style.maxWidth = `${basis}%`;
+         });
+      }
+
       const total = items.length;
-      if (idx >= total) idx = 0;
-      if (idx < 0) idx = total - 1;
+      let maxIdx = Math.max(0, total - perView);
+      
+      // Cycle logic
+      if (idx > maxIdx) idx = 0; 
+      if (idx < 0) idx = maxIdx;
+      
       currentIdx = idx;
 
-      const percentage = 100 / perView;
-      track.style.transform = `translateX(-${currentIdx * percentage}%)`;
+      // Translate: step is 100% / perView * index
+      const stepPct = 100 / perView;
+      track.style.transform = `translateX(-${currentIdx * stepPct}%)`;
 
       if (dotsBox) {
         const allDots = dotsBox.querySelectorAll(".carousel-dot");
         allDots.forEach((d, i) => d.classList.toggle("active", i === currentIdx));
       }
     };
+
+    // Arrows
+    const btnPrev = box.querySelector(".carousel-nav--prev");
+    const btnNext = box.querySelector(".carousel-nav--next");
+    if (btnPrev) {
+        // Clone to remove old listeners (simple way in this context) usually fine, 
+        // but here we are inside init() so listeners are added once.
+        // We just add new listeners. If setupCarousel is called multiple times, this might stack.
+        // 'dashboard.js' seems to run init() once or cleanup. 
+        // We will just add the listener.
+        btnPrev.onclick = () => showSlide(currentIdx - 1);
+    }
+    if (btnNext) {
+        btnNext.onclick = () => showSlide(currentIdx + 1);
+    }
 
     if (dotsBox) {
       dotsBox.innerHTML = Array.from(items)
@@ -873,16 +921,22 @@ export async function init({ sb, outlet } = {}) {
       });
     }
 
-    let interval = setInterval(() => showSlide(currentIdx + 1), 5000);
-    box.addEventListener("mouseenter", () => clearInterval(interval));
-    box.addEventListener("mouseleave", () => {
-      clearInterval(interval);
-      interval = setInterval(() => showSlide(currentIdx + 1), 5000);
-    });
+    // Auto-scroll (optional, keeping existing behavior)
+    if (box._autoInterval) clearInterval(box._autoInterval);
+    box._autoInterval = setInterval(() => showSlide(currentIdx + 1), 5000);
+    
+    box.onmouseenter = () => clearInterval(box._autoInterval);
+    box.onmouseleave = () => {
+      clearInterval(box._autoInterval);
+      box._autoInterval = setInterval(() => showSlide(currentIdx + 1), 5000);
+    };
 
     window.addEventListener("resize", () => {
       showSlide(currentIdx);
     });
+
+    // Initial
+    showSlide(0);
 
     return { showSlide };
   }
@@ -2168,7 +2222,7 @@ export async function init({ sb, outlet } = {}) {
       const box = outlet.querySelector("#upcoming-fixed-list");
       if (box && upcoming.length) {
         box.innerHTML = `
-          <div class="carousel-container" id="upcoming-car-box">
+          <div class="carousel-container upcoming-carousel" id="upcoming-car-box">
             <div class="carousel-track" id="upcoming-track">
               ${upcoming
                 .map((u) => {

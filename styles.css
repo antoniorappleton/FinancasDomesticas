@@ -2008,6 +2008,13 @@ td:nth-child(5) {
   }
 }
 
+/* Overrides for Multi-Card Carousels (Quick Analysis & Upcoming) */
+.mini-carousel .carousel-item,
+.upcoming-carousel .carousel-item {
+  min-width: 0; 
+  /* Width controlled by JS inline styles */
+}
+
 .carousel-dots {
   display: flex;
   justify-content: center;
