@@ -1,4 +1,5 @@
 // auth.js
+import { Toast } from "./ui.js";
 // Overlay de autenticação + integração Supabase
 // Requer window.sb criado no index.html
 
@@ -14,6 +15,8 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
   const formPw = document.getElementById("auth-form");
   const emailEl = document.getElementById("auth-email");
   const passEl = document.getElementById("auth-password");
+  const confirmEl = document.getElementById("auth-confirm-pw"); // Novo
+  const rowConfirm = document.getElementById("row-confirm-pw"); // Container
   const toggle = document.getElementById("auth-toggle");
   const title = document.getElementById("auth-title");
   const submit = document.getElementById("auth-submit");
@@ -33,6 +36,17 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     if (submit) submit.disabled = !!on;
   };
 
+  // erro traduzido
+  const safeError = (err) => {
+    const msg = err.message || err.toString();
+    if (msg.includes("Invalid login credentials"))
+      return "Email ou password errados.";
+    if (msg.includes("User already registered"))
+      return "Este email já está registado.";
+    if (msg.includes("Password should be")) return "A password é muito fraca.";
+    return msg;
+  };
+
   // alternar modos
   let mode = "signin"; // 'signin' | 'signup'
   const updateModeText = () => {
@@ -42,11 +56,13 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
       submit.textContent = "Entrar";
       helpTxt.textContent = "Ainda não tens conta?";
       toggle.textContent = "Criar conta";
+      if (rowConfirm) rowConfirm.classList.add("hidden");
     } else {
       title.textContent = "Criar conta";
       submit.textContent = "Registar";
       helpTxt.textContent = "Já tens conta?";
       toggle.textContent = "Entrar";
+      if (rowConfirm) rowConfirm.classList.remove("hidden");
     }
   };
   toggle?.addEventListener("click", () => {
@@ -65,10 +81,17 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     try {
       const email = emailEl?.value?.trim();
       const pass = passEl?.value ?? "";
+      const confirmPass = confirmEl?.value ?? "";
 
       if (!isEmail(email)) throw new Error("Email inválido.");
       if (pass.length < 6)
         throw new Error("A palavra-passe deve ter pelo menos 6 caracteres.");
+
+      // Validação Extra para Sign Up
+      if (mode === "signup") {
+        if (pass !== confirmPass)
+          throw new Error("As passwords não coincidem.");
+      }
 
       busy(true);
 
@@ -78,7 +101,8 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
           password: pass,
         });
         if (error) throw error;
-        // onAuthStateChange trata do resto
+        // onAuthStateChange trata do rest
+        Toast.success("Bem-vindo de volta! 👋");
       } else {
         const displayName = email.split("@")[0] || "Utilizador";
         const { error } = await sb.auth.signUp({
@@ -86,19 +110,20 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
           password: pass,
           options: {
             data: { name: displayName },
-            emailRedirectTo: CONFIRM_URL, // <- confirm.html correto
+            emailRedirectTo: CONFIRM_URL,
           },
         });
         if (error) throw error;
 
-        // Projetos SEM confirmação obrigatória entram logo:
+        // Tentar login imediato (se o projeto não exigir confirmação)
         try {
           await sb.auth.signInWithPassword({ email, password: pass });
         } catch {}
-        alert("✅ Conta criada. Verifica o e-mail para confirmar.");
+
+        Toast.success("Conta criada! Verifica o teu email. 📧");
       }
     } catch (err) {
-      alert("Erro de autenticação: " + (err?.message || err));
+      Toast.error(safeError(err));
     } finally {
       busy(false);
     }
@@ -116,7 +141,7 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
       alert(
         error
           ? "❌ " + error.message
-          : "📧 Enviámos um link para repor a palavra-passe."
+          : "📧 Enviámos um link para repor a palavra-passe.",
       );
     });
 

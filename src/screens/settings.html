@@ -600,38 +600,44 @@
   <div id="set-msg" class="row-note" style="margin-top:8px"></div>
 </section>
 
-<!-- ===== MODAL CSV ===== -->
+<!-- ===== MODAL/SECÇÃO IMPORTAÇÃO ===== -->
 <section class="card">
-  <h2 class="section-title">Importação CSV</h2>
+  <h2 class="section-title">Importação de Extrato (BETA)</h2>
+  <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
 
-  <div class="form-grid">
+  <div class="form-grid" style="margin-top:12px">
     <label>
-      Ficheiro CSV
-      <input id="imp-file" type="file" accept=".csv,text/csv" />
+      Ficheiro (PDF ou CSV)
+      <input id="imp-file" type="file" accept=".pdf,.csv,text/csv,application/pdf" />
     </label>
+    <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
     <label>
-      Mês (para registo)
-      <input id="imp-month" type="month" />
+      Conta Destino
+      <select id="imp-account">
+        <!-- preenchido via JS -->
+      </select>
     </label>
   </div>
 
   <div class="actions" style="margin-top:8px">
-    <button id="imp-preview" class="btn">Pré-visualizar</button>
-    <button id="imp-import" class="btn btn--primary">Importar</button>
-    <button id="imp-clear" class="btn">Limpar pré-visualização</button>
-    <button id="imp-export-template" class="btn">Exportar modelo Excel</button>
+    <button id="imp-process" class="btn btn--primary">Processar Ficheiro</button>
+    <button id="imp-clear" class="btn">Limpar</button>
   </div>
 
-  <p id="imp-info" class="row-note"></p>
-  <pre id="imp-log" class="row-note" style="white-space:pre-wrap"></pre>
+  <p id="imp-info" class="row-note" style="margin-top:8px"></p>
 
-  <div id="imp-table-wrap" class="card soft" style="margin-top:12px; display:none">
-    <h3 class="section-title">Pré-visualização</h3>
-    <div style="overflow:auto">
-      <table id="imp-table">
-        <thead></thead>
-        <tbody></tbody>
-      </table>
+  <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+      <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
+      <div style="font-size:12px; color:var(--muted)">Assinale as transações a importar</div>
+    </div>
+    
+    <div style="max-height:400px; overflow-y:auto; padding-right:4px">
+        <div id="imp-list" style="display:grid; gap:8px"></div>
+    </div>
+
+    <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd; text-align:right">
+       <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
     </div>
   </div>
 </section>

@@ -234,344 +234,874 @@ export async function init({ sb, outlet } = {}) {
     return null;
   }
 
-  // =============== IMPORTAÇÃO CSV =======================
-  const normalizeHeader = (h) =>
-    String(h || "")
-      .replace(/^\uFEFF/, "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .replace(/[ãâáàä]/g, "a")
-      .replace(/[êéèë]/g, "e")
-      .replace(/[îíìï]/g, "i")
-      .replace(/[õôóòö]/g, "o")
-      .replace(/[ûúùü]/g, "u")
-      .replace(/ç/g, "c");
-  const splitCSVLine = (line, d) =>
-    line
-      .split(new RegExp(`${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`))
-      .map((s) => s.replace(/^"(.*)"$/, "$1").replace(/""/g, '"'));
-  const detectDelimiter = (text) => {
-    const sample = text.split(/\r?\n/).slice(0, 20).join("\n");
-    const cand = [",", ";", "\t", "|"];
-    const scores = cand.map(
-      (d) =>
-        (
-          sample.match(new RegExp(`\\${d}(?=(?:[^"]*"[^"]*")*[^"]*$)`, "g")) ||
-          []
-        ).length,
-    );
-    return cand[scores.indexOf(Math.max(...scores))] || ",";
-  };
-  const normalizeMoney = (s) => {
-    if (typeof s === "number") return +s.toFixed(2);
-    if (!s) return 0;
-    const n = String(s)
-      .replace(/[€\s]/g, "")
-      .replace(/\.(?=\d{3}(?:\D|$))/g, "")
-      .replace(",", ".");
-    const v = parseFloat(n);
-    return isNaN(v) ? 0 : +v.toFixed(2);
-  };
-  const mapKind = (tipo) => {
-    const t = String(tipo || "").toLowerCase();
-    if (t.includes("receit")) return "income";
-    if (t.includes("poup")) return "savings";
-    return "expense";
-  };
-  const mapNature = (tipo) =>
-    String(tipo || "")
-      .toLowerCase()
-      .startsWith("fix")
-      ? "fixed"
-      : "variable";
+  // =============== IMPORTAÇÃO SMART (PDF/CSV) =======================
 
-  async function getTypeIdByCode(code) {
-    const { data, error } = await sb
-      .from("transaction_types")
-      .select("id")
-      .eq("code", code)
-      .single();
-    if (error) throw error;
-    return data.id;
+  // Config e State
+  let parsedItems = [];
+  let importCatOptions = "";
+
+  // Smart Indexing
+  let importCategories = [];
+  let catById = new Map();
+  let leafCatsExpense = [];
+  let leafCatsIncome = [];
+  let leafCatsSavings = [];
+
+  // Helpers
+  function escapeHtml(s) {
+    return String(s || "")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
   }
-  const [EXPENSE_ID, INCOME_ID, SAVINGS_ID] = await Promise.all([
-    getTypeIdByCode("EXPENSE"),
-    getTypeIdByCode("INCOME"),
-    getTypeIdByCode("SAVINGS"),
-  ]);
 
-  // parentName(area), childName(categoria). Cria versões do utilizador se necessário.
-  async function ensureCategoryPath(parentName, childName, tipo) {
-    const uid = await getUserId();
-    if (!uid) throw new Error("Sessão expirada.");
-    const kind = mapKind(tipo);
-    const nature = kind === "expense" ? mapNature(tipo) : null;
+  function norm(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-    let parentGlobal = null,
-      parentId = null;
+  function findLeafByNameIncludes(kind, needle) {
+    const n = norm(needle);
+    const pool =
+      kind === "expense"
+        ? leafCatsExpense
+        : kind === "income"
+          ? leafCatsIncome
+          : leafCatsSavings;
+    return pool.find((c) => norm(c.name).includes(n)) || null;
+  }
 
-    if (parentName) {
-      const { data: pGlob } = await sb
-        .from("categories")
-        .select("id")
-        .eq("name", parentName)
-        .is("parent_id", null)
-        .is("user_id", null)
-        .maybeSingle();
-      parentGlobal = pGlob?.id || null;
+  function findLeafExact(kind, exactName) {
+    const pool =
+      kind === "expense"
+        ? leafCatsExpense
+        : kind === "income"
+          ? leafCatsIncome
+          : leafCatsSavings;
+    const ex = norm(exactName);
+    return pool.find((c) => norm(c.name) === ex) || null;
+  }
 
-      if (!parentGlobal) {
-        const { data: pOwn } = await sb
-          .from("categories")
-          .select("id")
-          .eq("name", parentName)
-          .is("parent_id", null)
-          .eq("user_id", uid)
-          .maybeSingle();
-        parentId = pOwn?.id || null;
-      } else parentId = parentGlobal;
+  function guessCategoryForLine(description, amount) {
+    const d = norm(description);
+    const isIncome = amount > 0;
+    const isSavings = /poupeup/.test(d);
 
-      if (!parentId) {
-        const { data: created, error } = await sb
-          .from("categories")
-          .insert({
-            user_id: uid,
-            parent_id: null,
-            name: parentName,
-            kind,
-            nature,
-          })
-          .select("id")
-          .single();
-        if (error) throw error;
-        parentId = created.id;
+    // 1) Internal/Savings
+    // --- PoupeUp (FORÇAR: TRF P/ = Saída | TRF DE = Entrada) ---
+    // TRF DE PoupeUp -> Entrada (INCOME) -> sugerir "Extras" (editável)
+    if (/trf\s+de\s+poupeup/.test(d)) {
+      const extras = findLeafByNameIncludes("income", "Extras");
+      return extras
+        ? { id: extras.id, confidence: 0.75, skip: false, forceType: "INCOME" }
+        : { id: null, confidence: 0.4, skip: false, forceType: "INCOME" };
+    }
+
+    // TRF P/ PoupeUp -> Saída (EXPENSE) -> sugerir "Outro(s)" (editável)
+    if (/trf\s+p\/\s*poupeup/.test(d) || /trf\s+p\s+poupeup/.test(d)) {
+      const other =
+        findLeafByNameIncludes("expense", "Outro") ||
+        findLeafByNameIncludes("expense", "Outros");
+      return other
+        ? { id: other.id, confidence: 0.65, skip: false, forceType: "EXPENSE" }
+        : { id: null, confidence: 0.35, skip: false, forceType: "EXPENSE" };
+    }
+
+    // "TRF P/ PoupeUp" -> Poupança (savings) - REMOVIDO EM FAVOR DO FORCE EXPENSE ACIMA
+    if (/trf\s+p\/\s*poupeup/.test(d) || /trf\s+p\s+poupeup/.test(d)) {
+      const pouLeaf = findLeafExact("savings", "Poupança");
+      return pouLeaf
+        ? { id: pouLeaf.id, confidence: 0.95, skip: false }
+        : { id: null, confidence: 0.2, skip: false };
+    }
+
+    if (isSavings) {
+      // fallback for other savings if any
+      return { id: null, confidence: 0.2 };
+    }
+
+    // 2) Income
+    if (isIncome) {
+      if (/vencimento|ordenado|salary/.test(d)) {
+        const cat = findLeafByNameIncludes("income", "Ordenado");
+        return cat
+          ? { id: cat.id, confidence: 0.95 }
+          : { id: null, confidence: 0.2 };
+      }
+      if (/explic/.test(d)) {
+        const cat = findLeafByNameIncludes("income", "Explicações");
+        return cat
+          ? { id: cat.id, confidence: 0.9 }
+          : { id: null, confidence: 0.2 };
+      }
+      const extras = findLeafByNameIncludes("income", "Extras");
+      return extras
+        ? { id: extras.id, confidence: 0.6 }
+        : { id: null, confidence: 0.2 };
+    }
+
+    // 3) Expenses
+    if (/(galp|bp|repsol|cepsa|combust|gasolina|diesel)/.test(d)) {
+      const cat = findLeafByNameIncludes("expense", "Combustível");
+      return cat
+        ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (/(via verde|viaverde|portag|estacion)/.test(d)) {
+      const cat = findLeafByNameIncludes(
+        "expense",
+        "Via Verde/Estacionamentos/Portagens",
+      );
+      return cat
+        ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (/\bemel\b/.test(d)) {
+      const cat = findLeafByNameIncludes("expense", "EMEL");
+      return cat
+        ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (
+      /(continente|pingo doce|lidl|aldi|auchan|intermarche|supermerc)/.test(d)
+    ) {
+      const cat = findLeafByNameIncludes("expense", "Supermercado");
+      return cat
+        ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (/(restaurante|cafe|pastelaria|bar)/.test(d)) {
+      const r = findLeafByNameIncludes("expense", "Restaurantes");
+      if (r) return { id: r.id, confidence: 0.75 };
+      const c = findLeafByNameIncludes("expense", "Cafés/Bar de rua");
+      return c ? { id: c.id, confidence: 0.7 } : { id: null, confidence: 0.2 };
+    }
+    if (/(nos|vodafone|meo)/.test(d)) {
+      const nos = findLeafByNameIncludes("expense", "NOS");
+      if (nos) return { id: nos.id, confidence: 0.85 };
+      const tel = findLeafByNameIncludes("expense", "Telemóvel");
+      return tel
+        ? { id: tel.id, confidence: 0.7 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (/(edp|gold energy|electric|energia|gas)/.test(d)) {
+      const cat = findLeafByNameIncludes("expense", "Luz + Gás");
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (/(epal|agua)/.test(d)) {
+      const cat = findLeafByNameIncludes("expense", "Àgua");
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.2 };
+    }
+    if (
+      /(farmacia|medic|hospital|clinica|consulta|fisioter|pilates|seguro de saude)/.test(
+        d,
+      )
+    ) {
+      const med = findLeafByNameIncludes("expense", "Medicamentos");
+      if (med && /(farmacia|medic)/.test(d))
+        return { id: med.id, confidence: 0.8 };
+      const cons = findLeafByNameIncludes("expense", "Consultas Médicas");
+      if (cons && /(consulta|clinica|hospital)/.test(d))
+        return { id: cons.id, confidence: 0.75 };
+      const fisio = findLeafByNameIncludes("expense", "Fisioterapia");
+      if (fisio && /fisioter/.test(d)) return { id: fisio.id, confidence: 0.8 };
+      const seg = findLeafByNameIncludes("expense", "Seguro de Saúde");
+      if (seg && /seguro/.test(d)) return { id: seg.id, confidence: 0.8 };
+      const saude = findLeafByNameIncludes("expense", "Saúde");
+      return saude
+        ? { id: saude.id, confidence: 0.55 }
+        : { id: null, confidence: 0.2 };
+    }
+
+    const other =
+      findLeafByNameIncludes("expense", "Outro") ||
+      findLeafByNameIncludes("expense", "Outros");
+    return other
+      ? { id: other.id, confidence: 0.35 }
+      : { id: null, confidence: 0.2 };
+  }
+
+  function resolveExpenseNature(catObj, description) {
+    if (!catObj) return null; // If no category, we default to resolve later or variable
+    if (catObj.kind !== "expense") return null;
+
+    // 1) Direct on category
+    if (catObj.nature === "fixed" || catObj.nature === "variable")
+      return catObj.nature;
+
+    // 2) Heuristics (Description) - "Mixed parent" fix (PRIORITY OVER PARENT)
+    // Heuristics: DD, Seguro, Mensal, Renda, Prestação
+    const d = String(description || "").toLowerCase();
+    if (
+      /\bdd\b|\bdebito direto\b|\bseguro\b|\bmensal\b|\brenda\b|\bprestacao\b/.test(
+        d,
+      )
+    )
+      return "fixed";
+
+    // 3) Inherit from parent (Lower priority)
+    const parent = catObj.parent_id ? catById.get(catObj.parent_id) : null;
+    if (parent?.nature === "fixed" || parent?.nature === "variable")
+      return parent.nature;
+
+    // 4) Existing Regularity Heuristic
+    const regId = inferRegularity(parent?.name, catObj.name);
+    if (regId) return "fixed";
+
+    // 5) Fallback
+    return "variable";
+  }
+
+  function normalizeDescription(raw) {
+    let s = String(raw || "").trim();
+    // Basic cleanup
+    s = s.replace(
+      /^(COMPRA|PAGAMENTO|MB WAY|TRANSF\.?|DEBITO|CREDITO)\s+/i,
+      "",
+    );
+    s = s.replace(/\s+(TERM|TERM\.|TERMINAL)\s+\d+/i, "");
+    s = s.replace(/\s+DATA\s+\d{2}[-/]\d{2}/i, "");
+    s = s.replace(/\s+\d{2}[:]\d{2}/, "");
+    s = s.replace(/\s+PT$/i, "");
+    s = s.replace(/\s+/g, " ");
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }
+
+  // Load Categories (Lazy)
+  async function loadImportCategories() {
+    if (importCatOptions && importCategories.length) return;
+
+    // Fetch
+    const { data } = await sb
+      .from("categories")
+      .select("id,name,parent_id,kind,nature,expense_nature_default")
+      .order("name");
+    if (!data) return;
+
+    importCategories = data;
+    catById = new Map(data.map((c) => [c.id, c]));
+
+    // Build Indexes
+    const hasChild = new Set(
+      importCategories.map((c) => c.parent_id).filter(Boolean),
+    );
+    const leaves = importCategories.filter((c) => !hasChild.has(c.id));
+
+    leafCatsExpense = leaves.filter((c) => c.kind === "expense");
+    leafCatsIncome = leaves.filter((c) => c.kind === "income");
+    leafCatsSavings = leaves.filter((c) => c.kind === "savings");
+
+    // Build Select HTML
+    const parents = data.filter((c) => !c.parent_id);
+    const children = data.filter((c) => c.parent_id);
+
+    let html = '<option value="">(Sem categoria)</option>';
+
+    parents.forEach((p) => {
+      html += `<optgroup label="${escapeHtml(p.name)}">`;
+      html += `<option value="${p.id}">${escapeHtml(p.name)} (Geral)</option>`;
+      children
+        .filter((c) => c.parent_id === p.id)
+        .forEach((c) => {
+          html += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
+        });
+      html += `</optgroup>`;
+    });
+    importCatOptions = html;
+  }
+
+  // Populate Account Select
+  async function loadAccounts() {
+    const sel = $("#imp-account");
+    if (!sel || sel.children.length > 0) return;
+    const { data } = await sb.from("accounts").select("id,name").order("name");
+    if (data) {
+      sel.innerHTML = data
+        .map((a) => `<option value="${a.id}">${escapeHtml(a.name)}</option>`)
+        .join("");
+      // Select "Conta Principal" if exists
+      const prim = data.find((a) => a.name.includes("Principal"));
+      if (prim) sel.value = prim.id;
+    }
+  }
+
+  // === PARSERS ===
+  // CSV Parser (Generic)
+  async function parseCSV(file) {
+    const text = await file.text();
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    const res = [];
+    const sep = text.includes(";") ? ";" : ",";
+
+    lines.forEach((line) => {
+      if (line.length < 5) return;
+      const cols = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+
+      const dateIdx = cols.findIndex((c) =>
+        /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(c),
+      );
+      if (dateIdx === -1) return;
+
+      const amountCols = cols.map((c, i) => {
+        if (i === dateIdx) return null;
+        const clean = c.replace(/[€\s]/g, "").replace(",", ".");
+        return !isNaN(Number(clean)) && c.length > 0 ? Number(clean) : null;
+      });
+
+      const validAmtIdx = amountCols.findIndex((v) => v !== null && v !== 0);
+      let amount = 0;
+      if (validAmtIdx !== -1) {
+        amount = amountCols[validAmtIdx];
+      } else {
+        return;
+      }
+
+      const strCols = cols.filter(
+        (c, i) => i !== dateIdx && i !== validAmtIdx && c.length > 2,
+      );
+      let desc = strCols.join(" ") || "Movimento Importado";
+
+      let dStr = cols[dateIdx];
+      if (dStr.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
+        const [d, m, y] = dStr.split(/[-/]/);
+        dStr = `${y}-${m}-${d}`;
+      }
+
+      res.push({
+        date: dStr,
+        amount: amount,
+        description: desc,
+        selected: true,
+      });
+    });
+    return res;
+  }
+
+  // === ACTIVO BANK PARSER HELPERS ===
+  function parseMoneyPt(s) {
+    // "1 955.26" -> 1955.26
+    return Number(String(s).replace(/\s+/g, "").replace(",", "."));
+  }
+
+  function isNoiseLine(u) {
+    return (
+      u.includes("SALDO INICIAL") ||
+      u.includes("SALDO FINAL") ||
+      u.includes("SALDO DISPONIVEL") ||
+      u.startsWith("A TRANSPORTAR") ||
+      u.startsWith("TRANSPORTE") ||
+      u.includes("ULTRAPASSAGEM DE CREDITO") ||
+      u.startsWith("DATA") ||
+      u.startsWith("LANC") ||
+      u.startsWith("VALOR") ||
+      u.startsWith("DESCRITIVO") ||
+      u.startsWith("DEBITO") ||
+      u.startsWith("CREDITO") ||
+      u.startsWith("SALDO")
+    );
+  }
+
+  function parseActivoBankDateMD(token, year) {
+    // "1.30" -> 2026-01-30
+    const m = token.match(/^(\d{1,2})\.(\d{2})$/);
+    if (!m) return null;
+    const month = Number(m[1]);
+    const day = Number(m[2]);
+    if (!month || !day) return null;
+    const mm = String(month).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    return `${year}-${mm}-${dd}`;
+  }
+
+  function inferSignFromText(descUpper) {
+    if (
+      descUpper.startsWith("CRED.") ||
+      descUpper.includes("TRANSFERENCIA - VENCIMENTO") ||
+      descUpper.includes("PAGAMENTO DE VENCIMENTO") ||
+      descUpper.includes("TRF DE ") ||
+      descUpper.includes("TRF MB WAY DE ")
+    )
+      return +1;
+    return -1; // Default expense
+  }
+
+  // PDF Parser using pdf.js -> ActivoBank Logic
+  // PDF Parser using pdf.js -> ActivoBank Logic (Geometric + Text)
+  async function parsePDF(file) {
+    if (!window.pdfjsLib)
+      throw new Error("Biblioteca PDF não carregada. Recarregue a página.");
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    const res = [];
+    let fullTextDebug = []; // For debugging/fallback
+
+    // Coordinates for columns (discovered dynamically)
+    let xDebit = 0;
+    let xCredit = 0;
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+
+      // 1. Get Items with Coords
+      const items = textContent.items
+        .map((item) => ({
+          str: item.str,
+          clean: item.str.trim(),
+          x: item.transform[4],
+          y: item.transform[5],
+          w: item.width,
+        }))
+        .sort((a, b) => {
+          // Sort by Y (desc) then X (asc)
+          if (Math.abs(a.y - b.y) < 5) return a.x - b.x;
+          return b.y - a.y;
+        });
+
+      // 2. Discover Headers (if not yet found or refine)
+      // ActivoBank headers: "DÉBITO" and "CRÉDITO"
+      const debitItem = items.find((it) => /D[EÉ]BITO/i.test(it.clean));
+      const creditItem = items.find((it) => /CR[EÉ]DITO/i.test(it.clean));
+
+      if (debitItem) xDebit = debitItem.x;
+      if (creditItem) xCredit = creditItem.x;
+
+      // 3. Group into lines
+      const lines = [];
+      let currentLine = null;
+      for (const it of items) {
+        if (!it.clean) continue;
+        if (!currentLine || Math.abs(currentLine.y - it.y) > 5) {
+          currentLine = { y: it.y, items: [it], text: it.str };
+          lines.push(currentLine);
+        } else {
+          currentLine.items.push(it);
+          currentLine.text += "  " + it.str;
+        }
+      }
+
+      // Add to debug log
+      fullTextDebug.push(...lines.map((l) => l.text));
+
+      // 4. Extract Year (Page Context)
+      // Try to find "EXTRATO DE 202X..."
+      let pageYear = new Date().getFullYear();
+      const yearLine = lines.find((l) =>
+        /EXTRATO.*(\d{4})\/\d{2}\/\d{2}/i.test(l.text),
+      );
+      if (yearLine) {
+        const m = yearLine.text.match(/(\d{4})\/\d{2}\/\d{2}/);
+        if (m) pageYear = Number(m[1]);
+      } else {
+        // Fallback: try global context from debug if available, or current
+      }
+
+      // 5. Detect Transactions
+      const moneyRegex = /(\d{1,3}(?:\s\d{3})*(?:[.,]\d{2}))/g;
+
+      for (const line of lines) {
+        const raw = line.text;
+        const u = raw.toUpperCase().trim();
+        if (isNoiseLine(u)) continue;
+
+        // Pattern: DD.MM  DD.MM  DESCRIPTION ...
+        const mDate = raw
+          .trim()
+          .match(/^(\d{1,2}\.\d{2})\s+(\d{1,2}\.\d{2})\s+(.+)$/);
+        if (!mDate) continue;
+
+        const dateToken = mDate[1];
+        const rest = mDate[3];
+
+        // Find money values
+        const monies = [...raw.matchAll(moneyRegex)].map((x) => x[1]);
+        if (monies.length === 0) continue;
+
+        // Logic: Last is Balance, 2nd-Last is Amount
+        // If only 1 money -> Amount (Balance missing?)
+        const targetMoneyStr =
+          monies.length >= 2 ? monies[monies.length - 2] : monies[0];
+        const mov = parseMoneyPt(targetMoneyStr);
+        if (!Number.isFinite(mov)) continue;
+
+        // Determine Sign (Debit vs Credit)
+        // Strategy: Find the item containing the target amount string
+        // We look for a substring match in the items of this line
+        // NOTE: Regex formatting might differ slightly from individual item string if it spans components,
+        // but typically the amount is its own item or within one item.
+        const amountItem = line.items.find((it) =>
+          it.str.includes(targetMoneyStr),
+        );
+
+        let sign = -1; // Default to expense if unsure? Or logic default.
+
+        // Geometric Check
+        if (amountItem && xDebit > 0 && xCredit > 0) {
+          const mid = (xDebit + xCredit) / 2;
+          if (amountItem.x > mid) {
+            sign = 1; // Credit (Right)
+          } else {
+            sign = -1; // Debit (Left)
+          }
+        } else {
+          // Fallback: Text Heuristic
+          // Remove moneys from description for cleaner check
+          let cleanDesc = rest.replace(moneyRegex, "");
+          sign = inferSignFromText(cleanDesc.toUpperCase());
+        }
+
+        // Clean Description
+        let desc = rest
+          .replace(moneyRegex, "")
+          .replace(/\s{2,}/g, " ")
+          .trim();
+        if (desc.length < 3) continue;
+
+        const isoDate = parseActivoBankDateMD(dateToken, pageYear);
+        if (!isoDate) continue;
+
+        res.push({
+          date: isoDate,
+          amount: mov * sign,
+          description: normalizeDescription(desc),
+          selected: true,
+        });
       }
     }
 
-    if (!childName) return parentId;
+    console.log("PDF Extracted Lines (Debug):", fullTextDebug);
 
-    if (parentGlobal) {
-      const { data: cGlob } = await sb
-        .from("categories")
-        .select("id")
-        .eq("name", childName)
-        .eq("parent_id", parentGlobal)
-        .is("user_id", null)
-        .maybeSingle();
-      if (cGlob?.id) return cGlob.id;
+    if (res.length === 0) {
+      const dbg =
+        "<br><b>Debug (5 linhas):</b><br>" +
+        fullTextDebug.slice(0, 5).map(escapeHtml).join("<br>");
+      const info = document.getElementById("imp-info");
+      if (info) info.innerHTML = "Não encontrei movimentos ActivoBank. " + dbg;
     }
 
-    const { data: cOwn } = await sb
-      .from("categories")
-      .select("id")
-      .eq("name", childName)
-      .eq("parent_id", parentId)
-      .eq("user_id", uid)
-      .maybeSingle();
-    if (cOwn?.id) return cOwn.id;
+    return res;
+  }
 
-    const { data: createdChild, error: e4 } = await sb
-      .from("categories")
-      .insert({
-        user_id: uid,
-        parent_id: parentId,
-        name: childName,
-        kind,
-        nature,
+  // === UI & INTERACTION ===
+
+  // Render List
+  async function renderReviewList() {
+    const area = $("#imp-review-area");
+    const list = $("#imp-list");
+    const info = $("#imp-info");
+    const btnConf = $("#imp-confirm");
+
+    if (!area || !list) return;
+
+    if (parsedItems.length === 0) {
+      area.style.display = "none";
+      if (info) info.textContent = "Nenhuma transação encontrada.";
+      return;
+    }
+
+    await loadImportCategories();
+    area.style.display = "block";
+    if (btnConf) btnConf.disabled = false;
+    if (info)
+      info.textContent = `${parsedItems.length} movimentos encontrados.`;
+
+    // Apply guesses and filtering
+    const finalItems = [];
+
+    parsedItems.forEach((item) => {
+      if (!item.category_id) {
+        const guess = guessCategoryForLine(item.description, item.amount);
+        if (guess.skip) return; // Skip item entirely
+
+        item.category_id = guess.id;
+        item.confidence = guess.confidence;
+        if (guess.forceType) item.forceType = guess.forceType;
+      }
+
+      if (!item._normalized) {
+        item.description = normalizeDescription(item.description);
+        item._normalized = true;
+      }
+
+      // Ensure expense_nature is set (default) if category belongs to expense
+      // This runs on first pass or if category changes.
+      // But we only want to set it if undefined so we don't overwrite user choice?
+      // Actually, if we change category, we probably should re-evaluate nature unless manual?
+      // For now, let's just ensure it has a value for rendering.
+      if (item.expense_nature === undefined) {
+        const cObj = importCategories.find((c) => c.id === item.category_id);
+        item.expense_nature = resolveExpenseNature(cObj, item.description);
+      }
+
+      finalItems.push(item);
+    });
+
+    // Update global parsedItems to only show valid ones
+    parsedItems = finalItems;
+
+    if (parsedItems.length === 0) {
+      area.style.display = "none";
+      if (info)
+        info.textContent =
+          "Nenhuma transação válida encontrada (itens ignorados removidos).";
+      return;
+    }
+
+    if (info)
+      info.textContent = `${parsedItems.length} movimentos encontrados.`;
+
+    list.innerHTML = parsedItems
+      .map((item, idx) => {
+        const isLowConf = (item.confidence || 0) < 0.75;
+        const borderStyle = isLowConf
+          ? "border-left: 4px solid var(--orange-400);"
+          : "border-left: 4px solid var(--green-500);";
+        const badge = isLowConf
+          ? `<span style="background:var(--orange-100); color:var(--orange-700); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold">Rever</span>`
+          : ``;
+
+        // Check if categorized as Savings (Badge Blue)
+        let catBadge = "";
+        let isExpense = false;
+
+        const catObj = importCategories.find((c) => c.id === item.category_id);
+        if (catObj) {
+          if (catObj.kind === "savings") {
+            catBadge = `<span style="background:var(--blue-100); color:var(--blue-700); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px">Poupança</span>`;
+          } else if (catObj.kind === "expense") {
+            isExpense = true;
+          }
+        }
+
+        // OR fallback to amount < 0 if no category yet (though we force guess)
+        if (!catObj && item.amount < 0) isExpense = true;
+
+        // Nature Select (Fixed/Variable) - Only for expenses
+        let natureHtml = "";
+        if (isExpense) {
+          const nat = item.expense_nature || "variable";
+          natureHtml = `
+              <select class="imp-nature" data-idx="${idx}" style="font-size:10px; padding:2px; border:1px solid #ddd; border-radius:4px; max-width:70px;">
+                  <option value="variable" ${nat === "variable" ? "selected" : ""}>Var</option>
+                  <option value="fixed" ${nat === "fixed" ? "selected" : ""}>Fixa</option>
+              </select>
+            `;
+        }
+        return `
+            <div class="card" style="padding:10px; display:grid; gap:6px; background:${item.selected ? "#fff" : "#f0f0f0"}; ${borderStyle}">
+               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px">
+                  <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:14px; margin:0">
+                     <input type="checkbox" ${item.selected ? "checked" : ""} data-idx="${idx}" class="imp-cb">
+                     ${item.date}
+                     ${badge} ${catBadge}
+                  </label>
+                  <div style="display:flex; align-items:center; gap:6px">
+                      ${natureHtml}
+                      <input type="number" value="${item.amount.toFixed(2)}" class="imp-amt" data-idx="${idx}"
+                             style="width:100px; text-align:right; padding:4px; font-weight:bold; color:${item.amount < 0 ? "var(--red-500)" : "var(--green-600)"}">
+                  </div>
+               </div>
+
+               <div style="display:flex; gap:6px; align-items:center">
+                 <input type="text" value="${escapeHtml(item.description)}" class="imp-desc" data-idx="${idx}"
+                        style="font-size:13px; padding:6px; flex:1; border:1px solid #ddd; border-radius:4px">
+                 <select class="imp-cat" data-idx="${idx}" style="width:140px; font-size:12px; padding:4px; border-radius:4px; border:1px solid #ddd; background: ${isLowConf ? "#fff7ed" : "#fff"}">
+                    ${importCatOptions}
+                 </select>
+               </div>
+            </div>`;
       })
-      .select("id")
-      .single();
-    if (e4) throw e4;
-    return createdChild.id;
-  }
-
-  async function getDefaultAccountId() {
-    const uid = await getUserId();
-    let { data: acc } = await sb
-      .from("accounts")
-      .select("id")
-      .eq("name", "Conta Principal")
-      .maybeSingle();
-    if (!acc) {
-      const r = await sb.from("accounts").select("id").limit(1);
-      acc = r.data?.[0];
-    }
-    if (!acc) {
-      const { data: created } = await sb
-        .from("accounts")
-        .insert({
-          name: "Conta Principal",
-          user_id: uid,
-          currency: "EUR",
-          type: "bank",
-        })
-        .select("id")
-        .single();
-      return created.id;
-    }
-    return acc.id;
-  }
-
-  async function parseCsvFile(file) {
-    const text = await file.text();
-    const delimiter = detectDelimiter(text);
-    const lines = text.split(/\r?\n/).filter((l) => l.trim().length);
-    if (lines.length < 2) return [];
-    const headers = splitCSVLine(lines[0], delimiter).map(normalizeHeader);
-    const rows = [];
-    for (let i = 1; i < lines.length; i++) {
-      const cols = splitCSVLine(lines[i], delimiter);
-      const obj = {};
-      headers.forEach((h, idx) => (obj[h] = cols[idx]));
-      rows.push(obj);
-    }
-    return rows;
-  }
-
-  function renderPreviewTable(rows) {
-    const wrap = $("#imp-table-wrap");
-    const thead = $("#imp-table thead");
-    const tbody = $("#imp-table tbody");
-    if (!wrap || !thead || !tbody) return;
-    if (!rows.length) {
-      wrap.style.display = "none";
-      return;
-    }
-    const cols = Object.keys(rows[0]);
-    thead.innerHTML = `<tr>${cols.map((c) => `<th>${c}</th>`).join("")}</tr>`;
-    tbody.innerHTML = rows
-      .slice(0, 200)
-      .map(
-        (r) => `<tr>${cols.map((c) => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`,
-      )
       .join("");
-    wrap.style.display = "block";
+
+    // Bind events
+    list.querySelectorAll(".imp-cb").forEach(
+      (el) =>
+        (el.onchange = (e) => {
+          const idx = e.target.dataset.idx;
+          parsedItems[idx].selected = e.target.checked;
+          e.target.closest(".card").style.background = e.target.checked
+            ? "#fff"
+            : "#f0f0f0";
+        }),
+    );
+    list
+      .querySelectorAll(".imp-desc")
+      .forEach(
+        (el) =>
+          (el.oninput = (e) =>
+            (parsedItems[e.target.dataset.idx].description = e.target.value)),
+      );
+    list
+      .querySelectorAll(".imp-amt")
+      .forEach(
+        (el) =>
+          (el.onchange = (e) =>
+            (parsedItems[e.target.dataset.idx].amount = Number(
+              e.target.value,
+            ))),
+      );
+    list.querySelectorAll(".imp-cat").forEach(
+      (el) =>
+        (el.onchange = (e) => {
+          parsedItems[e.target.dataset.idx].category_id =
+            e.target.value || null;
+          // Remove warning style on manual change
+          e.target.style.background = "#fff";
+
+          // Re-evaluate nature default when category changes (if user hasn't explicitly set it? Hard to track. Let's just update default)
+          const catObj = importCategories.find((c) => c.id === e.target.value);
+          const defNature = resolveExpenseNature(
+            catObj,
+            parsedItems[e.target.dataset.idx].description,
+          );
+          parsedItems[e.target.dataset.idx].expense_nature = defNature;
+
+          // Must re-render to show/hide nature select or update value?
+          // Ideally yes, but lazy way: just update underlying data.
+          // If we want UI update, we have to re-render.
+          renderReviewList();
+        }),
+    );
+    list.querySelectorAll(".imp-nature").forEach(
+      (el) =>
+        (el.onchange = (e) => {
+          parsedItems[e.target.dataset.idx].expense_nature = e.target.value;
+        }),
+    );
   }
 
-  // UI CSV
-  let previewRows = [];
-  $("#imp-clear")?.addEventListener("click", () => {
-    previewRows = [];
-    $("#imp-table-wrap")?.style &&
-      ($("#imp-table-wrap").style.display = "none");
-    $("#imp-log") && ($("#imp-log").textContent = "");
-    $("#imp-info") && ($("#imp-info").textContent = "");
-  });
-  $("#imp-preview")?.addEventListener("click", async () => {
-    const f = $("#imp-file")?.files?.[0];
-    if (!f) return alert("Escolha um ficheiro CSV.");
-    $("#imp-log") && ($("#imp-log").textContent = "");
-    $("#imp-info") && ($("#imp-info").textContent = "A analisar CSV…");
-    const rows = await parseCsvFile(f);
-    previewRows = rows.map((r) => ({
-      Tipo: r["tipo"] ?? r["Tipo"] ?? "",
-      area: r["area"] ?? r["Area"] ?? "",
-      categoria: r["categoria"] ?? r["Categoria"] ?? "",
-      regularidade: r["regularidade"] ?? r["Regularidade"] ?? "",
-      montante:
-        r["montante"] ?? r["Montante"] ?? r["valor"] ?? r["Valor"] ?? "",
-    }));
-    renderPreviewTable(previewRows);
-    $("#imp-info") &&
-      ($("#imp-info").textContent =
-        `Pré-visualização: ${previewRows.length} linhas.`);
-  });
-  $("#imp-import")?.addEventListener("click", async () => {
+  // Event Listeners
+  $("#imp-process")?.addEventListener("click", async () => {
+    const file = $("#imp-file")?.files?.[0];
+    if (!file) return alert("Por favor, selecione um ficheiro primeiro.");
+
+    const btn = $("#imp-process");
+    const info = $("#imp-info");
+
     try {
-      await preflight();
-    } catch (e) {
-      alert(e.message || "Falha de ligação.");
-      return;
+      btn.disabled = true;
+      btn.textContent = "A processar...";
+      if (info) info.textContent = "A ler ficheiro...";
+
+      if (file.type === "application/pdf") {
+        parsedItems = await parsePDF(file);
+      } else {
+        parsedItems = await parseCSV(file);
+      }
+
+      await renderReviewList();
+    } catch (err) {
+      console.error(err);
+      alert("Erro: " + err.message);
+      if (info) info.textContent = "Erro ao processar.";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Processar Ficheiro";
     }
-    if (!previewRows.length) return alert("Faça a pré-visualização primeiro.");
-    const m = $("#imp-month")?.value;
-    if (!m) return alert("Indique o mês (YYYY-MM).");
-    const [y, mo] = m.split("-").map(Number);
-    const startISO = ymd(new Date(y, mo - 1, 1));
-    const endISO = ymd(new Date(y, mo, 1));
-
-    const accountId = await getDefaultAccountId();
-    const uid = await getUserId();
-
-    if (!confirm(`Substituir dados de ${String(mo).padStart(2, "0")}/${y}?`))
-      return;
-
-    await sb
-      .from("transactions")
-      .delete()
-      .gte("date", startISO)
-      .lt("date", endISO);
-
-    const txs = [];
-    for (const row of previewRows) {
-      const tipo = row.Tipo ?? row.tipo;
-      const area = row["Área"] ?? row.area;
-      const cat = row.Categoria ?? row.categoria;
-      const amount = normalizeMoney(
-        row.Montante ?? row.montante ?? row.Valor ?? row.valor,
-      );
-      if (!amount) continue;
-
-      let regularity_id = regularityFromLabel(row.regularidade);
-      if (!regularity_id) regularity_id = inferRegularity(area, cat);
-
-      const category_id = await ensureCategoryPath(
-        area || null,
-        cat || area || "Outros",
-        tipo,
-      );
-
-      const kind = mapKind(tipo); // 'income' | 'savings' | 'expense'
-      const type_id =
-        kind === "income"
-          ? INCOME_ID
-          : kind === "savings"
-            ? SAVINGS_ID
-            : EXPENSE_ID;
-
-      txs.push({
-        user_id: uid,
-        type_id,
-        account_id: accountId,
-        category_id,
-        date: startISO,
-        amount,
-        currency: "EUR",
-        expense_nature: kind === "expense" ? mapNature(tipo) : null,
-        regularity_id,
-        description:
-          `${area || ""}${area ? " > " : ""}${cat || ""}`.trim() || null,
-      });
-    }
-
-    const dedupe = new Map();
-    for (const t of txs) {
-      const key = [
-        t.user_id,
-        t.date,
-        t.amount.toFixed(2),
-        t.type_id,
-        t.account_id,
-        t.category_id || "_",
-        t.description || "",
-      ].join("|");
-      if (!dedupe.has(key)) dedupe.set(key, t);
-    }
-    const finalTxs = [...dedupe.values()];
-    const CHUNK = 200;
-    let inserted = 0;
-    for (let i = 0; i < finalTxs.length; i += CHUNK) {
-      const chunk = finalTxs.slice(i, i + CHUNK);
-      const { error } = await sb.from("transactions").insert(chunk);
-      if (error) throw error;
-      inserted += chunk.length;
-    }
-    $("#imp-info") &&
-      ($("#imp-info").textContent =
-        `✅ Importação concluída: ${inserted} registos.`);
-    alert("Importação concluída!");
   });
+
+  $("#imp-clear")?.addEventListener("click", () => {
+    parsedItems = [];
+    $("#imp-file").value = "";
+    $("#imp-review-area").style.display = "none";
+    $("#imp-info").textContent = "";
+  });
+
+  $("#imp-confirm")?.addEventListener("click", async () => {
+    try {
+      const accountId = $("#imp-account")?.value;
+      if (!accountId) return alert("Selecione a conta destino.");
+      const uid = await getUserId();
+
+      const toImport = parsedItems.filter((i) => i.selected);
+      if (!toImport.length) return alert("Nenhuma transação selecionada.");
+
+      const btn = $("#imp-confirm");
+      btn.disabled = true;
+      btn.textContent = "A guardar...";
+
+      // Determine Type IDs (assuming standard IDs or map available)
+      // If typeMap is not global, we might need to fetch it or use hardcoded common IDs if robust.
+      // Usually `typeMap` is defined in settings.js scope or we fetch it.
+      // Let's assume we can fetch or use existing logic.
+      // If typeMap is missing, we fetch it now.
+      let typeMapLocal = {};
+      const { data: types } = await sb
+        .from("transaction_types")
+        .select("id,code");
+      if (types) types.forEach((t) => (typeMapLocal[t.code] = t.id));
+
+      const payload = toImport.map((item) => {
+        const catObj = item.category_id ? catById.get(item.category_id) : null;
+        const catKind = catObj?.kind || null;
+
+        const isExpense = item.amount < 0;
+
+        // Se veio de uma regra especial (ex: PoupeUp), isso manda.
+        let typeCode =
+          item.forceType ||
+          (catKind === "savings"
+            ? "SAVINGS"
+            : catKind === "income"
+              ? "INCOME"
+              : catKind === "expense"
+                ? "EXPENSE"
+                : item.amount < 0
+                  ? "EXPENSE"
+                  : "INCOME");
+
+        // Use the one from the item (wizard choice) or fallback to resolve
+        const expNature =
+          typeCode === "EXPENSE"
+            ? item.expense_nature ||
+              resolveExpenseNature(catObj, item.description)
+            : null;
+
+        return {
+          user_id: uid,
+          account_id: accountId,
+          type_id: typeMapLocal[typeCode],
+          amount: Math.abs(item.amount),
+          date: item.date,
+          description: item.description,
+          category_id: item.category_id || null,
+          currency: "EUR",
+          expense_nature: expNature,
+        };
+      });
+
+      const { error } = await sb.from("transactions").insert(payload);
+      if (error) throw error;
+
+      alert(`Sucesso! ${payload.length} movimentos importados.`);
+      parsedItems = [];
+      $("#imp-review-area").style.display = "none";
+      $("#imp-file").value = "";
+      $("#imp-info").textContent = "";
+    } catch (e) {
+      console.error(e);
+      alert("Erro ao gravar: " + e.message);
+    } finally {
+      const btn = $("#imp-confirm");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Confirmar Importação";
+      }
+    }
+  });
+
+  // Init
+  loadAccounts();
 
   document
     .querySelector("#imp-export-template")
@@ -1984,26 +2514,26 @@ export async function init({ sb, outlet } = {}) {
   const inputs = {
     // Fundo
     bgFile: $("#thm-bg-file"), // File Input
-    bgUrl: $("#thm-bg-url"),   // Hidden URL
+    bgUrl: $("#thm-bg-url"), // Hidden URL
     bgClear: $("#thm-bg-clear"), // Clear btn
     bgStatus: $("#thm-bg-status"), // Status Label
-    
-    bgColor: $("#thm-bg"), 
-    bgBlur: $("#thm-overlay-blur"), 
+
+    bgColor: $("#thm-bg"),
+    bgBlur: $("#thm-overlay-blur"),
 
     // Overlay
-    overlayCol: $("#thm-overlay-col"), 
-    overlayOp: $("#thm-overlay-op"),   
+    overlayCol: $("#thm-overlay-col"),
+    overlayOp: $("#thm-overlay-op"),
 
     // Cartões
-    cardBgColor: $("#thm-card"),       
-    cardOp: $("#thm-opacity"),         
+    cardBgColor: $("#thm-card"),
+    cardOp: $("#thm-opacity"),
     cardBgText: $("#thm-card-bg-text"),
-    cardBlur: $("#thm-blur"),          
-    
+    cardBlur: $("#thm-blur"),
+
     // Header & Footer
-    headerBg: $("#thm-header"),        
-    fabBg: $("#thm-fab"),              
+    headerBg: $("#thm-header"),
+    fabBg: $("#thm-fab"),
   };
 
   const { DEFAULT_THEME, applyTheme } = await import("../lib/theme.js");
@@ -2025,16 +2555,18 @@ export async function init({ sb, outlet } = {}) {
 
       if (error) throw error;
 
-      const { data: { publicUrl } } = sb.storage
-        .from("user-assets")
-        .getPublicUrl(path);
+      const {
+        data: { publicUrl },
+      } = sb.storage.from("user-assets").getPublicUrl(path);
 
       if (inputs.bgStatus) inputs.bgStatus.textContent = "Carregado!";
       return publicUrl;
     } catch (err) {
       console.error("Upload error:", err);
       if (inputs.bgStatus) inputs.bgStatus.textContent = "Erro no upload.";
-      alert("Erro ao carregar imagem (Verifique se o bucket 'user-assets' existe e é público).");
+      alert(
+        "Erro ao carregar imagem (Verifique se o bucket 'user-assets' existe e é público).",
+      );
       return null;
     }
   }
@@ -2043,7 +2575,7 @@ export async function init({ sb, outlet } = {}) {
   inputs.bgFile?.addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     const url = await uploadBackgroundImage(file);
     if (url) {
       if (inputs.bgUrl) inputs.bgUrl.value = url;
@@ -2070,7 +2602,9 @@ export async function init({ sb, outlet } = {}) {
 
   // ... (rest of logic)
   function hexAlphaToRgba(hex, alpha) {
-    let r = 0, g = 0, b = 0;
+    let r = 0,
+      g = 0,
+      b = 0;
     if (hex && hex.length === 7) {
       r = parseInt(hex.substring(1, 3), 16);
       g = parseInt(hex.substring(3, 5), 16);
@@ -2090,17 +2624,20 @@ export async function init({ sb, outlet } = {}) {
       if (inputs.bgColor) inputs.bgColor.value = s.bg_color || "#0b1220";
       if (inputs.bgBlur) {
         inputs.bgBlur.value = s.bg_blur_px || 0;
-        $("#thm-overlay-blur-val") && ($("#thm-overlay-blur-val").textContent = s.bg_blur_px + "px");
+        $("#thm-overlay-blur-val") &&
+          ($("#thm-overlay-blur-val").textContent = s.bg_blur_px + "px");
       }
 
       // Overlay
-      if (inputs.overlayCol) inputs.overlayCol.value = s.overlay_color || "#000000"; // Simplificação (assumindo hex ou aceitando string)
+      if (inputs.overlayCol)
+        inputs.overlayCol.value = s.overlay_color || "#000000"; // Simplificação (assumindo hex ou aceitando string)
 
       // Card
       if (inputs.cardBgText) inputs.cardBgText.value = s.card_bg_rgba;
       if (inputs.cardBlur) {
         inputs.cardBlur.value = s.card_blur_px || 0;
-        $("#thm-blur-val") && ($("#thm-blur-val").textContent = s.card_blur_px + "px");
+        $("#thm-blur-val") &&
+          ($("#thm-blur-val").textContent = s.card_blur_px + "px");
       }
 
       // Header / Fab
@@ -2129,16 +2666,16 @@ export async function init({ sb, outlet } = {}) {
 
     // 3. Card logic
     // We combine the picker (Hex) + opacity slider -> RGBA
-    let card_bg_rgba = inputs.cardBgText?.value; 
+    let card_bg_rgba = inputs.cardBgText?.value;
     // If empty likely waiting for recalc
-    
+
     // 4. Structure
     // Header & Menu share the same color base usually, with slight opacity diffs?
     // User asked "Cor/transparência do header, menu".
     // We will use the Header Picker and generate RGBA for both header/menu for consistency.
     const hHex = inputs.headerBg?.value || "#0f172a";
-    const header_bg_rgba = hexAlphaToRgba(hHex, "0.95"); 
-    const menu_bg_rgba = hexAlphaToRgba(hHex, "0.98"); 
+    const header_bg_rgba = hexAlphaToRgba(hHex, "0.95");
+    const menu_bg_rgba = hexAlphaToRgba(hHex, "0.98");
 
     const fab_bg = inputs.fabBg?.value || "#0ea5e9";
 
@@ -2155,7 +2692,7 @@ export async function init({ sb, outlet } = {}) {
       card_blur_px,
       header_bg_rgba,
       menu_bg_rgba,
-      fab_bg
+      fab_bg,
     };
   }
 
@@ -2166,26 +2703,28 @@ export async function init({ sb, outlet } = {}) {
       if (e.target === inputs.cardBgColor || e.target === inputs.cardOp) {
         const hex = inputs.cardBgColor?.value || "#ffffff";
         const op = inputs.cardOp?.value || "0.92";
-        if (inputs.cardBgText) inputs.cardBgText.value = hexAlphaToRgba(hex, op);
+        if (inputs.cardBgText)
+          inputs.cardBgText.value = hexAlphaToRgba(hex, op);
         const span = document.getElementById("thm-opacity-val");
         if (span) span.textContent = op;
       }
-      
+
       // Updates labels
       if (e.target === inputs.overlayOp && $("#thm-overlay-op-val"))
         $("#thm-overlay-op-val").textContent = e.target.value;
 
-      if (e.target === inputs.bgBlur && $("#thm-overlay-blur-val")) 
+      if (e.target === inputs.bgBlur && $("#thm-overlay-blur-val"))
         $("#thm-overlay-blur-val").textContent = e.target.value + "px";
-        
-      if (e.target === inputs.cardBlur && $("#thm-blur-val")) 
+
+      if (e.target === inputs.cardBlur && $("#thm-blur-val"))
         $("#thm-blur-val").textContent = e.target.value + "px";
 
       // Apply Live
       const s = getSettingsFromInputs();
       // Ensure card_bg_rgba is set if we didn't touch the sliders yet
-      if (!s.card_bg_rgba && inputs.cardBgText) s.card_bg_rgba = inputs.cardBgText.value;
-      
+      if (!s.card_bg_rgba && inputs.cardBgText)
+        s.card_bg_rgba = inputs.cardBgText.value;
+
       applyTheme(s);
     });
   });
@@ -2193,15 +2732,16 @@ export async function init({ sb, outlet } = {}) {
   btnThemeOpen?.addEventListener("click", () => {
     themeOverlay?.classList.remove("hidden");
     themeOverlay?.removeAttribute("aria-hidden");
-    loadThemeToInputs(); 
+    loadThemeToInputs();
   });
 
   function closeThemeModal() {
     themeOverlay?.classList.add("hidden");
     themeOverlay?.setAttribute("aria-hidden", "true");
     const s = getSettingsFromInputs();
-    if (!s.card_bg_rgba && inputs.cardBgText) s.card_bg_rgba = inputs.cardBgText.value;
-    
+    if (!s.card_bg_rgba && inputs.cardBgText)
+      s.card_bg_rgba = inputs.cardBgText.value;
+
     // Save to DB
     saveGlobalTheme(sb, s).catch(console.error);
   }
@@ -2220,5 +2760,4 @@ export async function init({ sb, outlet } = {}) {
   // Init load global theme (ensure visual consistency on navigate)
   const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "null");
   if (visuals) applyTheme(visuals);
-
 } // end init

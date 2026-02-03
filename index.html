@@ -340,6 +340,15 @@
               </svg>
             </button>
           </label>
+          <label id="row-confirm-pw" class="hidden" style="position: relative">
+            Confirmar Palavra-passe
+            <input
+              id="auth-confirm-pw"
+              type="password"
+              autocomplete="new-password"
+              style="padding-right: 40px"
+            />
+          </label>
           <button id="auth-submit" type="submit" class="btn btn--primary">
             Entrar
           </button>
@@ -444,6 +453,16 @@
       });
     </script>
 
+    <link rel="manifest" href="manifest.json" />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    </script>
     <!-- Supabase e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>

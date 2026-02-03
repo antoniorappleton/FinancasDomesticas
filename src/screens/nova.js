@@ -2,7 +2,6 @@
 import { repo } from "../lib/repo.js";
 import { Toast } from "../lib/ui.js";
 
-
 export async function init({ outlet } = {}) {
   const sb = window.sb;
   const $ = (id) =>
@@ -17,8 +16,8 @@ export async function init({ outlet } = {}) {
   };
   const parseAmount = (s) => Number(String(s || "").replace(",", ".")) || 0;
   // Use global Toast instead
-  const toast = (msg, ok = true) => ok ? Toast.success(msg) : Toast.error(msg);
-
+  const toast = (msg, ok = true) =>
+    ok ? Toast.success(msg) : Toast.error(msg);
 
   $("tx-date") && ($("tx-date").value = todayISO());
 
@@ -209,6 +208,7 @@ export async function init({ outlet } = {}) {
     show(rowNature, t === "EXPENSE");
     // FAB Toggle
     show($("btn-fixed-bulk"), t === "EXPENSE");
+    show($("btn-import"), t === "EXPENSE" || t === "INCOME"); // Allow import for Income too
 
     if (t !== "EXPENSE") {
       // Receita / Poupança → select plano (inclui sistema + tuas)
@@ -668,7 +668,10 @@ export async function init({ outlet } = {}) {
         if (r.lastDate) {
           const ld = new Date(r.lastDate);
           const day = ld.getDate();
-          const safeDay = Math.min(day, new Date(tYear, tMonth + 1, 0).getDate());
+          const safeDay = Math.min(
+            day,
+            new Date(tYear, tMonth + 1, 0).getDate(),
+          );
           const sd = new Date(tYear, tMonth, safeDay);
           const z = new Date(sd.getTime() - sd.getTimezoneOffset() * 60000);
           sDate = z.toISOString().slice(0, 10);
@@ -792,4 +795,6 @@ export async function init({ outlet } = {}) {
       return "€ " + (Number(v) || 0).toFixed(2).replace(".", ",");
     }
   })();
+
+  // ===== Importar PDF/CSV =====
 }
