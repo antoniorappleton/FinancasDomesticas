@@ -836,10 +836,9 @@ export async function init({ sb, outlet } = {}) {
     if (!box || !track) return;
     
     // Identify target carousels
-    const isMulti = 
-      box.classList.contains("mini-carousel") || 
-      box.classList.contains("upcoming-carousel") ||
-      track.id === "mini-track";
+    const isMini = box.classList.contains("mini-carousel") || track.id === "mini-track";
+    const isUpcoming = box.classList.contains("upcoming-carousel");
+    const isMulti = isMini || isUpcoming;
 
     // Only count items that are NOT hidden
     const allItems = Array.from(track.querySelectorAll(".carousel-item"));
@@ -851,14 +850,24 @@ export async function init({ sb, outlet } = {}) {
     let currentIdx = 0;
     
     const getItemsPerView = () => {
-      // Logic for multi-item carousels (Quick Analysis & Upcoming)
-      if (isMulti) {
-        const w = window.innerWidth;
+      const w = window.innerWidth;
+      
+      // Quick Analysis (Compact)
+      if (isMini) {
         if (w >= 900) return 6;
         if (w >= 600) return 5;
         if (w >= 420) return 4;
         return 3;
       }
+      
+      // Upcoming Expenses (Slightly Wider)
+      if (isUpcoming) {
+        if (w >= 900) return 5; // Wider than mini
+        if (w >= 600) return 3; // Tablet: 3 instead of 5
+        if (w >= 420) return 2; // Mobile Wide: 2 instead of 4
+        return 2;               // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
+      }
+      
       return 1; // Fallback for others
     };
 
