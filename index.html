@@ -43,6 +43,16 @@
     <link rel="stylesheet" href="./styles.css" />
 
     <link rel="manifest" href="./manifest.json?v=12" />
+
+    <!-- PDF.js (CDN) for Import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      // Configure worker immediately
+      if (window.pdfjsLib) {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+    </script>
   </head>
 
   <body>

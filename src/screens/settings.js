@@ -916,7 +916,7 @@ export async function init({ sb, outlet } = {}) {
                  <input type="text" value="${escapeHtml(item.description)}" class="imp-desc" data-idx="${idx}"
                         style="font-size:13px; padding:6px; flex:1; border:1px solid #ddd; border-radius:4px">
                  <select class="imp-cat" data-idx="${idx}" style="width:140px; font-size:12px; padding:4px; border-radius:4px; border:1px solid #ddd; background: ${isLowConf ? "#fff7ed" : "#fff"}">
-                    ${importCatOptions}
+                    ${importCatOptions.replace(`value="${item.category_id}"`, `value="${item.category_id}" selected`)}
                  </select>
                </div>
             </div>`;
@@ -950,6 +950,17 @@ export async function init({ sb, outlet } = {}) {
               e.target.value,
             ))),
       );
+    list.querySelectorAll(".imp-cat").forEach(
+      (el) =>
+        (el.onchange = (e) => {
+          const idx = e.target.dataset.idx;
+          parsedItems[idx].category_id = Number(e.target.value);
+          // Optional: Reset nature or re-resolve?
+          // Ideally we just keep the user's manual choice if they made one, or let them set it.
+          // But if they change category to an Ignore/Savings, does it matter?
+          // Since we don't have a "re-guess nature" easily here without context, just update ID is fine.
+        }),
+    );
     list.querySelectorAll(".imp-cat").forEach(
       (el) =>
         (el.onchange = (e) => {
