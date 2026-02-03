@@ -2282,6 +2282,7 @@ export async function init({ sb, outlet } = {}) {
     <p>· Gerar relatórios (Mensal, Intervalo, Anual). Pode também exportar Relatório em PDF.</p>
     <p>· Exportar modelo Excel e voltar a Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
     <p>· Possibilidade de repor os mini cartões ocultos da Dashboard.</p>
+    <p>· Eliminar movimentos de um mês inteiro na secção "Gestão de Dados".</p>
     <button class="close" type="button">Fechar</button>
   `;
 
@@ -2293,6 +2294,50 @@ export async function init({ sb, outlet } = {}) {
       if (e.key === "Escape") pop.classList.add("hidden");
     });
   })();
+
+  // ===== GESTÃO DE DADOS (Delete) =====
+  $("#btn-del-month")?.addEventListener("click", async () => {
+    const val = $("#del-month")?.value;
+    if (!val) return alert("Por favor, selecione um mês.");
+
+    if (
+      !confirm(
+        `ATENÇÃO: Isto irá apagar TODOS os movimentos de ${val}. Esta ação não pode ser desfeita. Continuar?`,
+      )
+    )
+      return;
+    if (
+      !confirm(
+        `Tem a certeza ABSOLUTA? Os dados de ${val} serão perdidos para sempre.`,
+      )
+    )
+      return;
+
+    try {
+      const [y, m] = val.split("-");
+      // Calculate first and last day of month
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0); // Last day of previous month (which is current month in loop logic? No: year, month, 0 is last day of month-1. Wait. new Date(2023, 1, 0) is Jan 31? No.
+      // JS Date: Month is 0-indexed.
+      // input type="month" value="2024-01". y=2024, m=01.
+      // start = new Date(2024, 0, 1) -> Jan 1
+      // end = new Date(2024, 1, 0) -> Feb 0 -> Jan 31. Correct.
+      // But let's be robust:
+      // Helper YMD:
+      const yStr = start.getFullYear();
+      const mStr = String(start.getMonth() + 1).padStart(2, "0");
+      const lastDay = new Date(y, m, 0).getDate();
+
+      const fromISO = `${yStr}-${mStr}-01`;
+      const toISO = `${yStr}-${mStr}-${lastDay}`;
+
+      await repo.transactions.deleteByRange(fromISO, toISO);
+      alert("Movimentos eliminados com sucesso.");
+      $("#del-month").value = "";
+    } catch (e) {
+      alert("Erro ao eliminar: " + (e.message || e));
+    }
+  });
 
   // ===== LOGO no modal: tamanho via CSS ou JS opcional =====
   // (mantemos simples; se precisares de ajustar dinamicamente, usa CSS .rep-logo)
