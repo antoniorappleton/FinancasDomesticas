@@ -2334,44 +2334,7 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
-  // --- Ajuda do ecrã (Definições) ---
-  (function mountHelpForSettings() {
-    let btn = document.getElementById("help-fab");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = "help-fab";
-      btn.className = "help-fab";
-      btn.title = "Ajuda deste ecrã";
-      btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
-      document.body.appendChild(btn);
-    }
 
-    let pop = document.getElementById("help-pop");
-    if (!pop) {
-      pop = document.createElement("div");
-      pop.id = "help-pop";
-      pop.className = "help-pop hidden";
-      document.body.appendChild(pop);
-    }
-
-    // conteúdo específico das Definições/Relatórios/Import CSV
-    pop.innerHTML = `
-    <h3>O que podes fazer aqui?</h3>
-    <p>· Gerar relatórios (Mensal, Intervalo, Anual). Pode também exportar Relatório em PDF.</p>
-    <p>· Exportar modelo Excel e voltar a Importar CSV com pré-visualização, normalização, deduplicação e barra de progresso.</p>
-    <p>· Possibilidade de repor os mini cartões ocultos da Dashboard.</p>
-    <p>· Eliminar movimentos de um mês inteiro na secção "Gestão de Dados".</p>
-    <button class="close" type="button">Fechar</button>
-  `;
-
-    btn.onclick = () => pop.classList.toggle("hidden");
-    pop
-      .querySelector(".close")
-      ?.addEventListener("click", () => pop.classList.add("hidden"));
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") pop.classList.add("hidden");
-    });
-  })();
 
   // ===== GESTÃO DE DADOS (Delete) =====
   $("#btn-del-month")?.addEventListener("click", async () => {

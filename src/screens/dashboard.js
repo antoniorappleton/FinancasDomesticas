@@ -2800,38 +2800,7 @@ export async function init({ sb, outlet } = {}) {
   const fHash = outlet.querySelector("#footer-hash");
   if (fHash) fHash.textContent = "";
 
-  // Ajuda FAB
-  (function mountHelpForDashboard() {
-    let btn = document.getElementById("help-fab");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = "help-fab";
-      btn.className = "help-fab";
-      btn.title = "Ajuda deste ecrã";
-      btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
-      document.body.appendChild(btn);
-    }
-    let pop = document.getElementById("help-pop");
-    if (!pop) {
-      pop = document.createElement("div");
-      pop.id = "help-pop";
-      pop.className = "help-pop hidden";
-      document.body.appendChild(pop);
-    }
-    pop.innerHTML = `
-      <h3>O que mostra este ecrã?</h3>
-      <p>· KPIs do mês corrent.</p>
-      <p>· Análises Anuais e Mensais arrumados em mini cartões. Podem ser ocultados e repostos no screen Definições.</p>
-      <p>· Cartão com as datas e despesas fixas agendadas com base nas próximas despesas mensais e acumulado anual.</p>
-      <button class="close" type="button">Fechar</button>
-    `;
-    btn.onclick = () => pop.classList.toggle("hidden");
-    const close = pop.querySelector(".close");
-    if (close) close.onclick = () => pop.classList.add("hidden");
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") pop.classList.add("hidden");
-    });
-  })();
+
 
   // ====== Colapsáveis com SVG inline (após título) ======
   (function enhanceCollapsibles(root = document) {
@@ -2993,12 +2962,7 @@ export async function init({ sb, outlet } = {}) {
     // 2. Destroy charts
     destroyCharts();
 
-    // 3. Remove help elements if valid
-    const helpBtn = document.getElementById("help-fab");
-    if (helpBtn) helpBtn.remove(); // Optional: remove if you want fresh init every time
-    // Note: If elements are inside 'outlet', they are removed by main.js clearing innerHTML.
-    // help-fab is body-appended? Let's check. Yes line 2544 "document.body.appendChild".
-    // So we MUST remove it.
+
   };
 
   function onHashChange() {

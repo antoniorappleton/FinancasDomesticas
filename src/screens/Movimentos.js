@@ -343,12 +343,7 @@ export async function init(ctx = {}) {
     openEdit(tr.dataset.id);
   });
 
-  // --- Ajuda do ecrã ---
-  if (!document.getElementById("help-fab")) {
-     // (Código de ajuda simplificado, poderia estar num helper global)
-     // ... manter se o user quiser ou remover se for "limpar".
-     // Vou manter simplificado.
-  }
+
 
   // Init
   await fillStatusFilter();

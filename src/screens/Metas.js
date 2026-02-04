@@ -954,45 +954,7 @@ export async function init({ sb, outlet } = {}) {
     }, 60 * 1000); // verifica a cada minuto
   })();
 
-  // --- Ajuda do ecrã (Objectivos) ---
-  (function mountHelpForDashboard() {
-    // cria botão se não existir
-    let btn = document.getElementById("help-fab");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = "help-fab";
-      btn.className = "help-fab";
-      btn.title = "Ajuda deste ecrã";
-      btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
-      document.body.appendChild(btn);
-    }
 
-    // cria popup se não existir
-    let pop = document.getElementById("help-pop");
-    if (!pop) {
-      pop = document.createElement("div");
-      pop.id = "help-pop";
-      pop.className = "help-pop hidden";
-      document.body.appendChild(pop);
-    }
-
-    // conteúdo específico do Dashboard
-    pop.innerHTML = `
-    <h3>O que mostra este ecrã?</h3>
-    <p>· Neste screen pode criar objectivos de poupança.</p>
-    <p>· Ou aceitar aqueles que a aplicação sugere com base nos registos dos últimos 6 meses</p>
-    <button class="close" type="button">Fechar</button>
-  `;
-
-    // liga eventos (uma vez)
-    btn.onclick = () => pop.classList.toggle("hidden");
-    pop
-      .querySelector(".close")
-      ?.addEventListener("click", () => pop.classList.add("hidden"));
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") pop.classList.add("hidden");
-    });
-  })();
 
   // === Inicializar Toggles de Secções ===
   const outletEl = document.getElementById("outlet");

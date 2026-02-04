@@ -344,47 +344,7 @@ export async function init({ outlet } = {}) {
     );
   });
 
-  // ----- popup informações do screen -----
-  // --- Ajuda do ecrã (Dashboard) ---
-  (function mountHelpForDashboard() {
-    // cria botão se não existir
-    let btn = document.getElementById("help-fab");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.id = "help-fab";
-      btn.className = "help-fab";
-      btn.title = "Ajuda deste ecrã";
-      btn.innerHTML = `<svg aria-hidden="true"><use href="#i-info"></use></svg>`;
-      document.body.appendChild(btn);
-    }
 
-    // cria popup se não existir
-    let pop = document.getElementById("help-pop");
-    if (!pop) {
-      pop = document.createElement("div");
-      pop.id = "help-pop";
-      pop.className = "help-pop hidden";
-      document.body.appendChild(pop);
-    }
-
-    // conteúdo específico do Dashboard
-    pop.innerHTML = `
-    <h3>O que mostra este ecrã?</h3>
-    <p>· Neste Screen pode adicionar as suas despesas, receitas, poupanças ou transferências. </p>
-    <p>· Para novas categorias, pode criar as suas personalizadas no screen Definições.</p>
-    <p>· Pode usar o botão '+ Registar Fixas', para um registo mais rápido das despesas fixas.</p>
-    <button class="close" type="button">Fechar</button>
-  `;
-
-    // liga eventos (uma vez)
-    btn.onclick = () => pop.classList.toggle("hidden");
-    pop
-      .querySelector(".close")
-      ?.addEventListener("click", () => pop.classList.add("hidden"));
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") pop.classList.add("hidden");
-    });
-  })();
   // ===== Despesas Fixas em lote (Redesigned) =====
   (function mountFixedBulk() {
     const btn = $("btn-fixed-bulk");
