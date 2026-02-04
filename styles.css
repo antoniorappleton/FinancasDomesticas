@@ -2870,7 +2870,8 @@ td:nth-child(5) {
   pointer-events: none;
 }
 .onboarding-card {
-  background: var(--surface, #ffffff);
+  background: #ffffff !important;
+  color: #1e293b !important;
   border-radius: 20px;
   padding: 30px;
   max-width: 400px;
@@ -2921,8 +2922,8 @@ td:nth-child(5) {
 }
 .toast {
   pointer-events: auto;
-  background: var(--surface-2);
-  color: var(--text);
+  background: #ffffff !important;
+  color: #1e293b !important;
   padding: 12px 16px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
