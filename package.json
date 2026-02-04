@@ -4,7 +4,7 @@
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "live-server --port=5500 --no-browser --open=index.html"
+    "dev": "live-server public --port=5500 --no-browser --open=index.html"
   },
   "keywords": [],
   "author": "",
