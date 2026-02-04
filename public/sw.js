@@ -1,5 +1,5 @@
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v18";
+const VERSION = "v20";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -14,6 +14,7 @@ const APP_SHELL = [
   withBase("/styles.css"),
   withBase("/main.js"),
   withBase("/manifest.json"),
+  withBase("/wisebudget.png"),
   withBase("/wisebudget_bk_wt.png"),
   withBase("/icon-192.png"),
   withBase("/icon-512.png"),
