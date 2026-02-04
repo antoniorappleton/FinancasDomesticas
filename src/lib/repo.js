@@ -372,6 +372,20 @@ export const transactions = {
     if (error) throw error;
   },
 
+  async deleteByRange(fromISO, toISO) {
+    // Safety check
+    if (!fromISO || !toISO)
+      throw new Error("Datas inválidas para eliminação em massa.");
+
+    const { error } = await window.sb
+      .from("transactions")
+      .delete()
+      .gte("date", fromISO)
+      .lte("date", toISO);
+
+    if (error) throw error;
+  },
+
   async getFixedExpensesByYear(year) {
     const type_id = await idByCode("transaction_types", "EXPENSE");
     const start = `${year}-01-01`;

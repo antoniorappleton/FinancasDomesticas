@@ -5,7 +5,6 @@ import { loadTheme, applyTheme } from "./src/lib/theme.js";
 import { Onboarding } from "./src/lib/onboarding.js";
 import { Toast } from "./src/lib/ui.js";
 
-
 /* ===================== Base path ===================== */
 // Ex.: / -> "" ; /REPO -> "/REPO" ; /REPO/index.html -> "/REPO"
 const BASE_PATH = (() => {
@@ -29,6 +28,15 @@ const resolveUrl = (path) => {
 /* ===================== Helpers ===================== */
 const $ = (sel, root = document) => root.querySelector(sel);
 const setStyle = (el, styles = {}) => el && Object.assign(el.style, styles);
+
+function isAbortError(e) {
+  const msg = String(e?.message || "");
+  return (
+    e?.name === "AbortError" ||
+    msg.includes("aborted") ||
+    msg.includes("signal is aborted")
+  );
+}
 
 // aguarda o cliente Supabase ficar disponível (até 3s)
 async function waitForSupabase(maxMs = 3000) {
@@ -187,6 +195,22 @@ async function handleRoute() {
     }
   } catch (e) {
     console.error(e);
+
+    // ✅ Mobile/PWA: aborts acontecem sem motivo "visível"
+    if (isAbortError(e)) {
+      // não assustar o user com "Erro na navegação"
+      Toast.info("Ligação interrompida. A retomar…");
+
+      // retry leve (1x) para evitar loops
+      setTimeout(() => {
+        // só tenta se não estiver já a navegar
+        if (!routing) handleRoute();
+      }, 500);
+
+      return;
+    }
+
+    // erros reais continuam a aparecer
     outlet.innerHTML = `<div class="card" style="margin:12px">
       <strong>Erro na navegação.</strong><br/>
       <small>${(e && e.message) || String(e)}</small>
@@ -206,8 +230,11 @@ function onSignedIn() {
   // Carregar tema visual do utilizador
   if (window.sb) loadTheme(window.sb);
 
-  handleRoute();
-  
+  // Em vez de pedir getSession de novo, carrega a rota atual diretamente
+  loadScreen(normalizeRoute(location.hash || "#/")).catch((e) => {
+    if (!isAbortError(e)) console.error(e);
+  });
+
   // Show wizard if new user
   setTimeout(() => Onboarding.init(), 1000);
   mountGuideButton();
@@ -286,14 +313,15 @@ function onSignedOut() {
     // Service Worker Update Toasts
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-         Toast.info("App atualizada! Recarregue se desejar.");
+        Toast.info("App atualizada! Recarregue se desejar.");
       });
     }
 
     // Network Status Toasts
-    window.addEventListener("online", () => Toast.success("Ligação recuperada 🟢"));
+    window.addEventListener("online", () =>
+      Toast.success("Ligação recuperada 🟢"),
+    );
     window.addEventListener("offline", () => Toast.error("Sem internet 🔴"));
-
   } catch (e) {
     console.error("Falha no arranque:", e);
   }

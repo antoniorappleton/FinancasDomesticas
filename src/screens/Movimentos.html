@@ -2,13 +2,17 @@
   <h2 class="section-title">Movimentos</h2>
 
   <!-- Filtros -->
-  <div class="filters-grid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
-    <label class="toggle">
-      <input id="flt-search" type="text" placeholder="Pesquisar descrição, categoria, localização…" />
+  <div class="filters-grid" style="display: flex; flex-wrap: wrap; gap: 8px">
+    <label class="toggle" style="flex: 1 1 200px">
+      <input
+        id="flt-search"
+        type="text"
+        placeholder="Pesquisar descrição, categoria, localização…"
+      />
       <span></span>
     </label>
 
-    <label class="toggle">
+    <label class="toggle" style="flex: 1 1 140px">
       <select id="flt-type">
         <option value="all">Todos os tipos</option>
         <option value="INCOME">Receita</option>
@@ -18,38 +22,105 @@
       <span></span>
     </label>
 
-    <label class="toggle">
+    <label class="toggle" style="flex: 1 1 140px">
       <select id="flt-status">
         <option value="all">Todos os status</option>
       </select>
       <span></span>
     </label>
 
-    <label class="toggle">
+    <label class="toggle" style="flex: 1 1 140px">
       <input id="flt-month" type="month" />
       <span></span>
     </label>
   </div>
 
-  <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap: wrap;">
+  <div
+    class="actions"
+    style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap"
+  >
     <button id="btn-refresh" class="btn">Atualizar</button>
     <a href="#/new" class="btn btn--primary">+ Novo Movimento</a>
   </div>
 </section>
 
-<section class="card" style="overflow:auto">
-  <div class="rounded-md" style="border:1px solid var(--border, #e5e7eb)">
-    <table style="width:100%; border-collapse:collapse">
-      <thead style="background:#f8fafc">
+<section class="card" style="overflow: auto">
+  <div class="rounded-md" style="border: 1px solid var(--border, #e5e7eb)">
+    <table style="width: 100%; border-collapse: collapse">
+      <thead style="background: #f8fafc">
         <tr>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Data</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Tipo</th>
-          <th style="text-align:right; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Valor</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Categoria</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Descrição</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Conta</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Status</th>
-          <th style="text-align:left; padding:10px; border-bottom:1px solid var(--border, #e5e7eb)">Localização</th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Data
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Tipo
+          </th>
+          <th
+            style="
+              text-align: right;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Valor
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Categoria
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Descrição
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Conta
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Status
+          </th>
+          <th
+            style="
+              text-align: left;
+              padding: 10px;
+              border-bottom: 1px solid var(--border, #e5e7eb);
+            "
+          >
+            Localização
+          </th>
         </tr>
       </thead>
       <tbody id="tx-tbody">
@@ -58,9 +129,9 @@
     </table>
   </div>
 
-  <div id="tx-summary" class="row-note" style="margin-top:8px"></div>
+  <div id="tx-summary" class="row-note" style="margin-top: 8px"></div>
 
-  <div class="actions" style="margin-top:10px">
+  <div class="actions" style="margin-top: 10px">
     <button id="btn-load-more" class="btn">Carregar mais</button>
   </div>
 </section>
@@ -76,32 +147,45 @@
       <button class="modal__close" data-close>&times;</button>
     </header>
 
-    <div class="form-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+    <div
+      class="form-grid"
+      style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px"
+    >
       <label>Data <input id="ed-date" type="date" required /></label>
-      <label>Valor (€) <input id="ed-amount" type="number" step="0.01" min="0.01" required /></label>
+      <label
+        >Valor (€)
+        <input id="ed-amount" type="number" step="0.01" min="0.01" required
+      /></label>
 
-      <label>Conta
+      <label
+        >Conta
         <select id="ed-account"></select>
       </label>
-      <label>Regularidade
+      <label
+        >Regularidade
         <select id="ed-regularity"></select>
       </label>
 
-      <label>Tipo
+      <label
+        >Tipo
         <select id="ed-type" disabled></select>
       </label>
-      <label>Categoria
+      <label
+        >Categoria
         <select id="ed-category"></select>
       </label>
 
-      <label>Método
+      <label
+        >Método
         <select id="ed-method"></select>
       </label>
-      <label>Status
+      <label
+        >Status
         <select id="ed-status"></select>
       </label>
 
-      <label>Natureza
+      <label
+        >Natureza
         <select id="ed-nature">
           <option value="">(usar predefinição da categoria)</option>
           <option value="fixed">Fixa</option>
@@ -109,24 +193,40 @@
         </select>
       </label>
 
-      <label style="grid-column:1/-1">Descrição
+      <label style="grid-column: 1/-1"
+        >Descrição
         <input id="ed-desc" type="text" />
       </label>
-      <label>Localização
+      <label
+        >Localização
         <input id="ed-loc" type="text" />
       </label>
-      <label>Notas
+      <label
+        >Notas
         <textarea id="ed-notes"></textarea>
       </label>
     </div>
 
     <div id="ed-hint" class="row-note"></div>
 
-    <div class="actions" style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px">
-      <button id="ed-delete" class="btn" style="border-color:#ef4444;color:#ef4444">Eliminar</button>
+    <div
+      class="actions"
+      style="
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 12px;
+      "
+    >
+      <button
+        id="ed-delete"
+        class="btn"
+        style="border-color: #ef4444; color: #ef4444"
+      >
+        Eliminar
+      </button>
       <button id="ed-cancel" class="btn">Cancelar</button>
       <button id="ed-save" class="btn btn--primary">Guardar</button>
     </div>
   </div>
-  
 </section>
