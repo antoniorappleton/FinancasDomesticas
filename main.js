@@ -1,6 +1,6 @@
 // main.js — Router SPA com base path dinâmico (localhost + GitHub Pages)
 import { initAuth } from "./src/lib/auth.js";
-import { mountGuideButton } from "./src/lib/guide.js";
+import Guide from "./src/lib/guide.js";
 import { loadTheme, applyTheme } from "./src/lib/theme.js";
 import { Onboarding } from "./src/lib/onboarding.js";
 import { Toast } from "./src/lib/ui.js";
@@ -151,6 +151,10 @@ async function loadScreen(route) {
     // ativa tab corrente
     setActiveTab();
 
+    // Atualiza o Guia Contextual
+    Guide.setRoute(route);
+    setTimeout(() => Guide.mountScreenButton(), 100); // ligeiro delay para garantir render
+
     // carrega controlador JS do ecrã
     if (r.js) {
       try {
@@ -237,7 +241,9 @@ function onSignedIn() {
 
   // Show wizard if new user
   setTimeout(() => Onboarding.init(), 1000);
-  mountGuideButton();
+  // Show wizard if new user
+  setTimeout(() => Onboarding.init(), 1000);
+  Guide.mountHeaderButton();
 }
 
 function onSignedOut() {
