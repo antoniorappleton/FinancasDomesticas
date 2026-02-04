@@ -1,5 +1,6 @@
 // main.js — Router SPA com base path dinâmico (localhost + GitHub Pages)
 import { initAuth } from "./src/lib/auth.js";
+import { mountGuideButton } from "./src/lib/guide.js";
 import { loadTheme, applyTheme } from "./src/lib/theme.js";
 import { Onboarding } from "./src/lib/onboarding.js";
 import { Toast } from "./src/lib/ui.js";
@@ -209,6 +210,7 @@ function onSignedIn() {
   
   // Show wizard if new user
   setTimeout(() => Onboarding.init(), 1000);
+  mountGuideButton();
 }
 
 function onSignedOut() {
