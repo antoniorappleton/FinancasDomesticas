@@ -1,94 +1,76 @@
 # Wisebudget365 — Gestão Doméstica
 
-**Wisebudget365** é uma Aplicação Web Progressiva (PWA) de gestão financeira pessoal, desenhada para ajudar famílias e indivíduos a controlar o seu orçamento doméstico de forma simples e intuitiva. A aplicação permite o registo de despesas, receitas, poupanças e transferências, oferecendo visualizações gráficas e relatórios para uma melhor tomada de decisão.
+**Wisebudget365** é uma Aplicação Web Progressiva (PWA) de gestão financeira pessoal e familiar, desenhada para proporcionar controlo total sobre o orçamento doméstico. Combinando simplicidade de utilização com funcionalidades avançadas de análise, a aplicação ajuda a tomar decisões financeiras mais informadas.
 
 ## 🚀 Funcionalidades Principais
 
-*   **Dashboard Financeiro**: Visão geral rápida do saldo atual, despesas recentes e gráficos de evolução.
-*   **Gestão de Transações**:
-    *   Registo de **Despesas** (com categorias e subcategorias).
-    *   Registo de **Receitas**.
-    *   Registo de **Poupanças**.
-    *   **Transferências** entre contas.
-    *   Suporte para despesas fixas/recorrentes.
-*   **Multi-Conta**: Gestão de diferentes contas bancárias ou carteiras (ex: Orde, Dinheiro Vivo, Poupança).
-*   **Categorização Avançada**: Sistema hierárquico de categorias (ex: Casa > Eletricidade).
-*   **Gestão de Objetivos**: Definição e acompanhamento de metas financeiras.
-*   **PWA (Progressive Web App)**: Funciona como uma aplicação nativa no telemóvel, com capacidade de instalação e funcionamento offline (via Service Worker).
-*   **Modo Offline**: Permite consultar dados e navegar na app mesmo sem internet (cache via Service Worker).
+### 📊 Visão e Análise
+
+- **Dashboard Holístico**: Visão geral imediata com saldo atual, gráficos de despesas vs receitas e evolução patrimonial.
+- **Projeção de Fluxo de Caixa**: Algoritmo inteligente que projeta o saldo futuro com base no histórico e nas despesas recorrentes, permitindo antecipar meses difíceis.
+- **Relatórios Visuais**: Gráficos interativos (via Chart.js) para analisar onde gasta o seu dinheiro.
+
+### 💰 Gestão Financeira Completa
+
+- **Gestão de Transações**:
+  - Registo rápido de **Despesas**, **Receitas**, **Transferências** e **Poupanças**.
+  - Distinção clara entre despesas Variáveis e Fixas.
+- **Importação Bancária**: Assistente para importar extratos bancários (CSV/Excel) com inferência automática de categorias e natureza da despesa.
+- **Multi-Conta**: Gestão centralizada de múltiplas contas (Conta à Ordem, Dinheiro, Cartão de Refeição, etc.).
+- **Categorização Hierárquica**: Sistema flexível de categorias e subcategorias (ex: Casa > Eletricidade) para organização detalhada.
+
+### 🎯 Metas e Investimentos
+
+- **Portfólio de Investimentos**: Acompanhamento de carteiras de investimento com atualização de valorização.
+- **Gestão de Objetivos**: Definição de metas financeiras (ex: "Fundo de Férias") com barra de progresso.
+
+### ⚙️ Experiência de Utilizador
+
+- **PWA (Progressive Web App)**: Instale a app no seu telemóvel ou computador. Funciona offline com sincronização automática quando recupera a ligação.
+- **Personalização Visual**: Temas customizáveis (alteração de fundo, cores, nível de desfoque/glassmorphism) sincronizados entre dispositivos.
+- **Onboarding Intuitivo**: Guia passo-a-passo para novos utilizadores configurarem a conta rapidamente.
+- **Notificações Inteligentes**: Alertas e lembretes via Firebase Cloud Messaging (FCM).
 
 ## 🛠️ Estrutura Técnica
 
-A aplicação segue uma arquitetura **Single Page Application (SPA)** moderna e leve, sem necessidade de *bundlers* complexos para o desenvolvimento base (utiliza módulos ES6 nativos).
+A aplicação segue uma arquitetura **Single Page Application (SPA)** leve e moderna.
 
 ### Tecnologias
 
-*   **Frontend**:
-    *   HTML5 & CSS3 (com Variáveis CSS e Utility Classes).
-    *   JavaScript (ES Modules).
-    *   [Chart.js](https://www.chartjs.org/) para visualização de dados.
-*   **Backend & Base de Dados**:
-    *   [Supabase](https://supabase.com/): Backend-as-a-Service (BaaS) que fornece base de dados PostgreSQL, Autenticação e API em tempo real.
-*   **Infraestrutura**:
-    *   Service Workers para capacidades PWA e cache offline.
+- **Frontend**:
+  - HTML5, CSS3 (Variáveis, Glassmorphism) & JavaScript (ES Modules).
+  - Arquitetura sem frameworks pesados, focada em performance.
+- **Backend & Base de Dados**:
+  - [Supabase](https://supabase.com/): PostgreSQL, Autenticação e Realtime.
+  - **RLS (Row Level Security)**: Segurança robusta onde cada utilizador acede apenas aos seus dados.
+- **Infraestrutura**:
+  - Service Workers para suporte Offline-First.
 
-### Organização do Código
+### Organização do Projeto
 
 ```
 /
-├── index.html          # Ponto de entrada ("Shell" da aplicação)
-├── styles.css          # Estilos globais e utilitários
-├── main.js             # Lógica principal, router e inicialização
-├── manifest.json       # Configuração PWA
-├── sw.js               # Service Worker (Cache e Offline)
+├── index.html          # Shell da aplicação
 ├── src/
-│   ├── lib/            # Bibliotecas e utilitários partilhados
-│   │   ├── repo.js     # Repositório de dados (camada de abstração)
-│   │   ├── helpers.js  # Funções auxiliares (formatação moeda, datas, etc.)
-│   │   └── ...
-│   └── screens/        # Lógica de cada ecrã (View Controllers)
-│       ├── dashboard.js
-│       ├── nova.js     # Ecrã de novo registo
-│       ├── settings.js
-│       └── ...
+│   ├── lib/            # Lógica Core (Autenticação, Repositório, Analytics)
+│   └── screens/        # Controladores de Ecrã (Dashboard, Metas, Settings)
+├── sw.js               # Service Worker
+└── ...
 ```
-
-## 🗄️ Base de Dados (Supabase / PostgreSQL)
-
-A base de dados é relacional e está alojada no Supabase. As principais tabelas são:
-
-### Tabelas Core
-*   **`transactions`**: Tabela central onde ficam registados todos os movimentos.
-    *   Colunas chave: `amount`, `date`, `description`, `type_id`, `account_id`, `category_id`.
-*   **`accounts`**: Contas financeiras do utilizador (ex: Conta à Ordem, Cofre).
-*   **`categories`**: Categorias de despesas/receitas. Suporta hierarquia (auto-relacionamento via `parent_id`).
-
-### Tabelas Auxiliares (Domínios)
-*   **`transaction_types`**: Define os tipos de movimento (`INCOME`, `EXPENSE`, `TRANSFER`, `SAVINGS`).
-*   **`regularities`**: Define a recorrência (`MONTHLY`, `YEARLY`, etc.) para despesas fixas.
-*   **`payment_methods`**: Métodos de pagamento (Dinheiro, Multibanco, Transferência).
-*   **`statuses`**: Estados da transação (Pago, Pendente, Agendado).
-
-### Autenticação & Segurança
-*   Utiliza **Supabase Auth** para gestão de utilizadores.
-*   Políticas **RLS (Row Level Security)** garantem que cada utilizador apenas acede aos seus próprios dados (`user_id`).
 
 ## ⚙️ Como Correr o Projeto
 
-1.  **Pré-requisitos**:
-    *   Instalar [Node.js](https://nodejs.org/) (apenas para utilizar o servidor de desenvolvimento local).
-
-2.  **Instalar dependências**:
+1.  **Pré-requisitos**: Node.js instalado (para servidor local).
+2.  **Instalação**:
     ```bash
     npm install
     ```
-
-3.  **Iniciar servidor local**:
+3.  **Execução**:
     ```bash
     npm run dev
     ```
-    Isto irá iniciar o `live-server` e abrir a aplicação no browser (normalmente em `http://127.0.0.1:5500`).
+    A app ficará disponível em `http://127.0.0.1:5500` (ou porta similar).
 
 ---
 
-*Desenvolvido no âmbito do curso de programação.*
+_Desenvolvido para simplificar a sua vida financeira._
