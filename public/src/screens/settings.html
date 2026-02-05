@@ -547,73 +547,6 @@
   }
 </style>
 
-<!-- ===== secção categorias ===== -->
-<section class="card">
-  <h2 class="section-title">Categorias</h2>
-  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
-  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
-</section>
-
-<!-- ===== APARÊNCIA ===== -->
-<section class="card">
-  <h2 class="section-title">Aparência</h2>
-  <p>Personalize as cores e o tema da aplicação.</p>
-  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
-</section>
-
-<!-- Sessão -->
-<section class="card" id="card-session" style="margin-top:12px">
-  <h2 class="section-title">Sessão</h2>
-  <div class="grid" style="grid-template-columns:2fr 1fr;gap:10px;align-items:end">
-    <div>
-      <div class="row-note">Autenticado como:</div>
-      <div id="sess-user-email" style="font-weight:700">—</div>
-    </div>
-    <div style="text-align:right">
-      <button id="btn-logout" class="btn">Terminar sessão</button>
-    </div>
-  </div>
-</section>
-
-<!-- Gerir os mini cards -->
-<section class="card">
-  <h2 class="section-title">Mini-cards ocultos</h2>
-  <p class="row-note">Aqui aparecem os mini-cards que ocultaste da Dashboard. Podes voltar a ativá-los.</p>
-  <div id="mini-shelf" class="mini-shelf" style="display:flex; gap:8px; flex-wrap:wrap"></div>
-</section>
-
-
-<!-- Alterar palavra-passe -->
-<section id="sec-password" class="card">
-  <h3 class="section-title">Alterar palavra-passe</h3>
-  <div class="grid" style="grid-template-columns:1fr;gap:10px">
-    <label>Nova palavra-passe
-      <input id="set-new-pass" type="password" autocomplete="new-password" />
-    </label>
-    <label>Confirmar nova palavra-passe
-      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
-    </label>
-  </div>
-  <div style="display:flex;gap:10px;margin-top:12px">
-    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
-  </div>
-  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
-</section>
-
-<!-- ===== GESTÃO DE DADOS (Delete) ===== -->
-<section class="card" style="border-color:var(--red-100)">
-  <h2 class="section-title">Gestão de Dados</h2>
-  <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
-  
-  <div class="grid" style="grid-template-columns:1fr auto; gap:10px; align-items:end; margin-top:12px">
-    <label>
-      Eliminar movimentos de:
-      <input id="del-month" type="month" />
-    </label>
-    <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
-  </div>
-</section>
-
 <!-- ===== MODAL/SECÇÃO IMPORTAÇÃO ===== -->
 <section class="card">
   <h2 class="section-title">Importação de Extrato (BETA)</h2>
@@ -640,25 +573,22 @@
 
   <p id="imp-info" class="row-note" style="margin-top:8px"></p>
 
-  <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
+  <div id="imp-review-area" class="card soft"
+    style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
       <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
       <div style="font-size:12px; color:var(--muted)">Assinale as transações a importar</div>
     </div>
-    
+
     <div style="max-height:400px; overflow-y:auto; padding-right:4px">
-        <div id="imp-list" style="display:grid; gap:8px"></div>
+      <div id="imp-list" style="display:grid; gap:8px"></div>
     </div>
 
     <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd; text-align:right">
-       <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
+      <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
     </div>
   </div>
 </section>
-
-
-
-
 
 <!-- ===== ORÇAMENTO DE ESTADO ===== -->
 <section class="card">
@@ -714,6 +644,73 @@
   </div>
 </div>
 </div>
+
+<!-- ===== secção categorias ===== -->
+<section class="card">
+  <h2 class="section-title">Categorias</h2>
+  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
+  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
+</section>
+
+<!-- ===== APARÊNCIA ===== -->
+<section class="card">
+  <h2 class="section-title">Aparência</h2>
+  <p>Personalize as cores e o tema da aplicação.</p>
+  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
+</section>
+
+<!-- Gerir os mini cards -->
+<section class="card">
+  <h2 class="section-title">Mini-cards ocultos</h2>
+  <p class="row-note">Aqui aparecem os mini-cards que ocultaste da Dashboard. Podes voltar a ativá-los.</p>
+  <div id="mini-shelf" class="mini-shelf" style="display:flex; gap:8px; flex-wrap:wrap"></div>
+</section>
+
+
+<!-- Alterar palavra-passe -->
+<section id="sec-password" class="card">
+  <h3 class="section-title">Alterar palavra-passe</h3>
+  <div class="grid" style="grid-template-columns:1fr;gap:10px">
+    <label>Nova palavra-passe
+      <input id="set-new-pass" type="password" autocomplete="new-password" />
+    </label>
+    <label>Confirmar nova palavra-passe
+      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
+    </label>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
+  </div>
+  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
+</section>
+
+<!-- ===== GESTÃO DE DADOS (Delete) ===== -->
+<section class="card" style="border-color:var(--red-100)">
+  <h2 class="section-title">Gestão de Dados</h2>
+  <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
+
+  <div class="grid" style="grid-template-columns:1fr auto; gap:10px; align-items:end; margin-top:12px">
+    <label>
+      Eliminar movimentos de:
+      <input id="del-month" type="month" />
+    </label>
+    <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
+  </div>
+</section>
+
+<!-- Sessão -->
+<section class="card" id="card-session" style="margin-top:12px">
+  <h2 class="section-title">Sessão</h2>
+  <div class="grid" style="grid-template-columns:2fr 1fr;gap:10px;align-items:end">
+    <div>
+      <div class="row-note">Autenticado como:</div>
+      <div id="sess-user-email" style="font-weight:700">—</div>
+    </div>
+    <div style="text-align:right">
+      <button id="btn-logout" class="btn">Terminar sessão</button>
+    </div>
+  </div>
+</section>
 
 <!-- ===== MODAL TEMA ===== -->
 <div id="theme-overlay" class="hidden rep-overlay" aria-hidden="true" tabindex="-1">
