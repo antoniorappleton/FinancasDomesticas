@@ -34,3 +34,10 @@ Este workflow descreve os passos para enviar alterações para a produção.
    ```bash
    firebase deploy --only hosting
    ```
+
+4. **Modo Automático (Recomendado)**
+   Podes fazer tudo isto de uma vez correndo o script:
+   ```powershell
+   .\deploy.bat
+   ```
+   (Vai pedir-te a mensagem de commit e faz o resto sozinho)

@@ -310,7 +310,9 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderTendencias() {
-    titleEl.textContent = "Tendências (12 meses + previsão próxima)";
+    const now = new Date();
+    const currentMonthName = now.toLocaleDateString("pt-PT", { month: "long" });
+    titleEl.textContent = `Tendências (12 meses anteriores + ${currentMonthName})`;
 
     const labels = [...(ds.labels12m || [])];
     const inc = ds.income12m ? [...ds.income12m] : [];
@@ -2492,7 +2494,7 @@ export async function init({ sb, outlet } = {}) {
         while (true) {
           const { data, error } = await sb
             .from("transactions")
-            .select("amount, category_id, categories(name,parent_id)")
+            .select("date, amount, category_id, categories(name,parent_id)")
             .eq("type_id", expId)
             .gte("date", from12Local)
             .range(page * size, (page + 1) * size - 1)
@@ -2503,6 +2505,16 @@ export async function init({ sb, outlet } = {}) {
           if (data.length < size) break;
           page++;
         }
+
+        // --- FILTER STRICTLY LAST 12 MONTHS --- 
+        // `from12Local` fetches from Start of Prev Year (can be 14-24 months)
+        // We filter here to ensure exactly 12 months for the "Annual Average" calculation.
+        const oneYearAgo = new Date();
+        oneYearAgo.setMonth(oneYearAgo.getMonth() - 12);
+        oneYearAgo.setDate(1); // Start of month 12 months ago
+        oneYearAgo.setHours(0,0,0,0);
+        
+        rows = rows.filter(r => new Date(r.date) >= oneYearAgo);
 
         const parentsMap = new Map();
         try {
