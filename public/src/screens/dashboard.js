@@ -23,7 +23,106 @@ import { trapFocus } from "../lib/helpers.js";
 import { Toast, Modal } from "../lib/ui.js";
 
 
-import { calculateRoutineFixedAverage, projectCashflow } from "../lib/analytics.js";
+import { calculateRoutineFixedAverage, projectCashflow, calculateFinancialHealth } from "../lib/analytics.js";
+
+// ===================== X-Ray Modal (New) =====================
+function setupXRayModal(rawData) {
+  const modal = document.getElementById("xray-modal");
+  const btnX = modal?.querySelector(".modal__close");
+  const btnClose = document.getElementById("xray-close");
+  const rangeSel = document.getElementById("xray-range");
+  const canvas = document.getElementById("xray-canvas");
+  
+  // Elements for Data
+  const scoreEl = document.getElementById("xray-score");
+  const phrasesEl = document.getElementById("xray-phrases");
+  const statsEl = document.getElementById("xray-stats");
+  
+  let chart = null;
+
+  const close = () => {
+      modal.hidden = true;
+      if (chart) { chart.destroy(); chart = null; }
+  };
+  
+  const open = () => {
+      modal.hidden = false;
+      render();
+  };
+
+  btnX?.addEventListener("click", close);
+  btnClose?.addEventListener("click", close);
+  rangeSel?.addEventListener("change", () => render());
+
+  // Global trigger
+  document.getElementById("xray-open-btn")?.addEventListener("click", open);
+
+  function render() {
+      if (!rawData) return;
+      
+      const range = rangeSel.value;
+      const { allHistoryMap, fixedVarByMonth } = rawData;
+      
+      const now = new Date();
+      // Current Month Key (e.g. 2026-02)
+      const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      const res = calculateFinancialHealth(range, allHistoryMap, fixedVarByMonth, currentMonthKey);
+      
+      // 1. Update Score
+      scoreEl.textContent = res.score;
+      // Colorize score
+      scoreEl.style.color = res.score >= 80 ? '#22c55e' : (res.score >= 50 ? '#eab308' : '#ef4444');
+
+      // 2. Phrases
+      phrasesEl.innerHTML = res.phrases.map(p => 
+          `<div class="xray-phrase x-${p.type}">${p.text}</div>`
+      ).join('');
+
+      // 3. Stats
+      statsEl.innerHTML = `
+        <div class="xray-stat-item">Poupança <span class="xray-stat-val" style="color:${res.metrics.savingsRate >= 20 ? '#16a34a' : '#ea580c'}">${res.metrics.savingsRate.toFixed(1)}%</span></div>
+        <div class="xray-stat-item">Fixo/Rec. <span class="xray-stat-val" style="color:${res.metrics.fixedRatio <= 50 ? '#16a34a' : '#ea580c'}">${res.metrics.fixedRatio.toFixed(1)}%</span></div>
+        <div class="xray-stat-item">Média Net <span class="xray-stat-val">${money(res.metrics.avgNet)}</span></div>
+        <div class="xray-stat-item">Volatilidade <span class="xray-stat-val">${money(res.metrics.volatility)}</span></div>
+      `;
+
+      // 4. Chart
+      if (chart) chart.destroy();
+      
+      chart = new Chart(canvas.getContext("2d"), {
+          type: 'bar',
+          data: {
+              labels: res.chart.labels,
+              datasets: [
+                  {
+                      type: 'bar',
+                      label: 'Net (Líquido)',
+                      data: res.chart.nets,
+                      backgroundColor: ctx => ctx.raw >= 0 ? '#22c55e' : '#ef4444',
+                      order: 2
+                  },
+                  {
+                      type: 'line',
+                      label: 'Acumulado',
+                      data: res.chart.cums,
+                      borderColor: '#3b82f6',
+                      borderWidth: 2,
+                      tension: 0.3,
+                      fill: false,
+                      order: 1
+                  }
+              ]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom' }, tooltip: toolMoney },
+              scales: { y: { ...axisMoney, beginAtZero: false } }
+          }
+      });
+  }
+}
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
@@ -2891,6 +2990,9 @@ export async function init({ sb, outlet } = {}) {
 
   // ====== Mini-cards + modal ======
   try {
+    const rawData = { allHistoryMap, fixedVarByMonth, annualFixedByMonth };
+    setupXRayModal(rawData);
+
     if (document.querySelector(".dash-mini")) {
       const fixed12m = monthly.map(
         (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0,
