@@ -1523,25 +1523,66 @@ function openXRay() {
   const modal = document.getElementById("xray-modal");
   if (!modal) return;
 
-  // We need to pass data to the calculator
-  // Ideally we re-use the analytics lib function
+  const { monthlyStats } = STATE.data.processed;
+  // Adapt data for calculateFinancialHealth
+  // It expects: (range, allHistoryMap, fixedVarByMonth, currentMonthKey)
+  // We will build a minimal map compatible with it.
 
-  // Mock for 2.0 Speed:
-  const scoreEl = document.getElementById("xray-score");
-  if (scoreEl) scoreEl.textContent = "85";
+  const allHistoryMap = new Map();
+  const fixedVarByMonth = new Map();
 
-  const body = document.getElementById("xray-body");
-  if (body) {
-    body.innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <div class="xray-score-circle" style="font-size:3em; font-weight:bold; color:#22c55e">85</div>
-                <p>Saúde Financeira Excelente</p>
-                <div class="xray-stats grid" style="margin-top:20px; text-align:left">
-                    <div>Poupança: <strong class="text-success">25%</strong></div>
-                    <div>Fixo/Receita: <strong class="text-success">40%</strong></div>
+  Object.entries(monthlyStats).forEach(([k, v]) => {
+    // allHistoryMap needs { net, income, expense, savings }
+    allHistoryMap.set(k, { ...v });
+    // fixedVarByMonth needs { fixed: 0, variable: 0 } -> We don't have this granular split in 2.0 MVP yet
+    // We will approximate or leave distinct logic later.
+    // For now, let's assume 50/50 for the score calculation to not crash.
+    fixedVarByMonth.set(k, {
+      fixed: v.expense * 0.5,
+      variable: v.expense * 0.5,
+    });
+  });
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+
+  try {
+    const res = calculateFinancialHealth(
+      "12", // 12 months default
+      allHistoryMap,
+      fixedVarByMonth,
+      currentMonthKey,
+    );
+
+    const scoreEl = document.getElementById("xray-score");
+    const body = document.getElementById("xray-body");
+
+    if (scoreEl) {
+      scoreEl.textContent = res.score;
+      scoreEl.style.color =
+        res.score >= 80 ? "#22c55e" : res.score >= 50 ? "#eab308" : "#ef4444";
+    }
+
+    if (body) {
+      const statsHtml = `
+                    <div>Poupança: <strong style="color:${res.metrics.savingsRate >= 20 ? "#16a34a" : "#ea580c"}">${res.metrics.savingsRate.toFixed(1)}%</strong></div>
+                    <div>Fixo/Receita: <strong style="color:${res.metrics.fixedRatio <= 50 ? "#16a34a" : "#ea580c"}">${res.metrics.fixedRatio.toFixed(1)}%</strong></div>
+            `;
+
+      body.innerHTML = `
+                <div style="text-align:center; padding: 20px;">
+                     <div style="font-size:1.2em; margin-bottom:10px">${res.phrases[0]?.text || "Análise concluída"}</div>
+                    <div style="font-size:3em; font-weight:bold; color:${res.score >= 80 ? "#22c55e" : res.score >= 50 ? "#eab308" : "#ef4444"}">${res.score}</div>
+                    <p style="opacity:0.7">${res.score >= 80 ? "Excelente" : "Atenção Necessária"}</p>
+                    <div class="xray-stats grid" style="margin-top:20px; text-align:left; gap:10px; display:flex; justify-content:center;">
+                        ${statsHtml}
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+    }
+  } catch (e) {
+    console.warn("XRay Calc Error", e);
+    if (body) body.innerHTML = "<p>Dados insuficientes para raio-X.</p>";
   }
 
   modal.hidden = false;
