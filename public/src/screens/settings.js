@@ -1104,55 +1104,6 @@ export async function init({ sb, outlet } = {}) {
       const toImport = parsedItems.filter((i) => i.selected);
       if (!toImport.length) return alert("Nenhuma transação selecionada.");
 
-      // Check Overwrite Logic
-      const overwrite = $("#imp-overwrite")?.checked;
-      if (overwrite) {
-        // 1. Detect Dominant Month
-        const months = {};
-        toImport.forEach(i => {
-           const m = i.date.substring(0, 7); // YYYY-MM
-           months[m] = (months[m] || 0) + 1;
-        });
-        // Sort by frequency
-        const sortedMonths = Object.entries(months).sort((a,b) => b[1] - a[1]);
-        const bestMonth = sortedMonths[0][0]; // "2026-02"
-        const count = sortedMonths[0][1];
-        
-        // Validation: if "best month" has less than 80% of items, warn user?
-        // simple approach: just use bestMonth
-        
-        // Confirmation
-        if (!confirm(`ATENÇÃO: Vai APAGAR todos os movimentos de ${bestMonth} desta conta antes de importar.\nconfirma?`)) {
-           return;
-        }
-
-        // Delete
-        const start = `${bestMonth}-01`;
-        const end = `${bestMonth}-31`; // Loose end date, works for string compare usually or use Date logic
-        
-        // Better last day calc
-        const [y, m] = bestMonth.split('-').map(Number);
-        const lastDay = new Date(y, m, 0).getDate();
-        const finalDate = `${bestMonth}-${lastDay}`;
-
-        const btn = $("#imp-confirm");
-        btn.disabled = true;
-        btn.textContent = "A limpar mês...";
-
-        const { error: delErr } = await sb
-           .from("transactions")
-           .delete()
-           .eq("account_id", accountId)
-           .gte("date", start)
-           .lte("date", finalDate);
-        
-        if (delErr) {
-            btn.disabled = false;
-            btn.textContent = "Confirmar Importação";
-            return alert("Erro ao apagar movimentos antigos: " + delErr.message);
-        }
-      }
-
       const btn = $("#imp-confirm");
       btn.disabled = true;
       btn.textContent = "A guardar...";

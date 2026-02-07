@@ -26,7 +26,7 @@ export async function init() {
     </section>
 
     <!-- UNIFIED MODAL -->
-    <dialog id="cat-modal" class="cat-dialog">
+    <dialog id="cat-modal" class="modal">
         <form id="cat-modal-form" method="dialog">
             <h3 id="modal-title">Nova Categoria</h3>
             
@@ -61,16 +61,45 @@ export async function init() {
     
     <style>
       .tree-view { display: flex; flex-direction: column; gap: 4px; }
-      /* ... tree styles ... */
-      
-      .cat-dialog { 
-        padding: 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
-        width: min(400px, 90vw); border: none; background: #fff; color: #111;
+      .tree-row { 
+          display: flex; align-items: center; justify-content: space-between; 
+          padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
       }
-      .cat-dialog::backdrop { background: rgba(0,0,0,0.5); }
+      .tree-row:hover { background: var(--bg); }
+      .tree-left { display: flex; align-items: center; gap: 8px; flex: 1; overflow: hidden; }
+      .tree-right { display: flex; align-items: center; gap: 4px; }
       
-      /* Ensure it's hidden when not open */
-      .cat-dialog:not([open]) { display: none; }
+      .tree-toggle { 
+          cursor: pointer; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+          transition: transform 0.2s; color: var(--muted);
+      }
+      .tree-toggle.collapsed { transform: rotate(-90deg); }
+      .tree-toggle.hidden { visibility: hidden; }
+
+      .tree-child-list { margin-left: 32px; display: flex; flex-direction: column; gap: 4px; border-left: 2px solid var(--border); padding-left: 8px; margin-top: 4px; margin-bottom: 8px;}
+      .tree-child-list.hidden { display: none; }
+      
+      .tree-child-row { 
+          display: flex; align-items: center; justify-content: space-between; 
+          padding: 6px 8px; border-radius: 6px; 
+      }
+      .tree-child-row:hover { background: var(--bg); }
+
+      .icon-btn { 
+          background: none; border: none; cursor: pointer; padding: 4px; 
+          color: var(--muted); border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      }
+      .icon-btn:hover { background: #e2e8f0; color: var(--text); }
+      .icon-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+      .badge-sys { font-size: 0.7rem; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+      .badge-kind { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 600; }
+      .bk-expense { color: #ef4444; background: #fee2e2; }
+      .bk-income { color: #16a34a; background: #dcfce7; }
+      .bk-savings { color: #2563eb; background: #dbeafe; }
+      
+      .modal { border:none; padding: 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: min(400px, 90vw); }
+      .modal::backdrop { background: rgba(0,0,0,0.5); }
     </style>
   `;
 
@@ -107,14 +136,9 @@ export async function init() {
   }
 
   async function reload() {
-    try {
-      await loadUsage();
-      treeData = await repo.refs.getTree(); // unified System + User logic
-      render();
-    } catch (e) {
-      console.error(e);
-      treeEl.innerHTML = `<div class="alert danger">Erro ao carregar categorias: ${e.message}</div>`;
-    }
+    await loadUsage();
+    treeData = await repo.getTree(); // unified System + User logic
+    render();
   }
 
   // --- RENDER ---
@@ -170,7 +194,7 @@ export async function init() {
 
     const badge = `<span class="badge-kind bk-${p.kind}">${kindLabel(p.kind)}</span>`;
     const sysLock = p.isSystem
-      ? `<svg width="14" height="14" style="margin-left:6px; color:var(--muted)" title="Categoria de Sistema (Bloqueada)"><use href="#i-lock"/></svg>`
+      ? `<svg width="14" height="14" style="margin-left:6px; color:var(--muted)"><use href="#i-eye-off"/></svg>`
       : "";
 
     // Actions: Add Child (Always allowed), Edit/Delete (Only if NOT system)

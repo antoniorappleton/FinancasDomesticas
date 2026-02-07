@@ -1,34 +1,21 @@
 <section class="card">
   <h2 class="section-title">
     Resumo do mês
-    <!-- Botão “olho” -->
-    <div style="float:right; display:flex; gap:8px">
-      <button id="xray-open-btn" class="icon-btn" title="Raio-X Financeiro" aria-label="Abrir Raio-X" style="
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 6px 8px;
-            border-radius: 10px;
-            color: var(--primary);
-            background: var(--surface-2);
-          ">
-        <svg aria-hidden="true" width="20" height="20">
-          <use href="#i-activity"></use>
-        </svg>
-      </button>
-
-      <button id="kpi-privacy-toggle" class="icon-btn" title="Ocultar/mostrar valores" aria-pressed="false"
-        aria-label="Ocultar valores" style="
-            display: inline-flex;
-            align-items: center;
-            padding: 6px 8px;
-            border-radius: 10px;
-          ">
-        <svg aria-hidden="true" width="20" height="20">
-          <use href="#i-eye"></use>
-        </svg>
-      </button>
-    </div>
+    <!-- Botão “olho” (novo) -->
+    <button id="kpi-privacy-toggle" class="icon-btn" title="Ocultar/mostrar valores" aria-pressed="false"
+      aria-label="Ocultar valores" style="
+        float: right;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-radius: 10px;
+      ">
+      <svg aria-hidden="true" width="20" height="20">
+        <use href="#i-eye"></use>
+      </svg>
+      <span class="sr-only"></span>
+    </button>
   </h2>
 
   <div class="grid kpi">
@@ -78,156 +65,6 @@
     </div>
   </div>
 </div>
-
-<!-- MODAL RAIO-X -->
-<div id="xray-modal" class="modal" hidden>
-  <div class="modal__card modal__card--wide">
-    <header class="modal__header">
-      <div style="display:flex; align-items:center; gap:10px">
-        <svg width="24" height="24" style="color:var(--primary)">
-          <use href="#i-activity" />
-        </svg>
-        <h3 class="modal__title">Raio-X Financeiro</h3>
-      </div>
-      <button class="modal__close" type="button" aria-label="Fechar">×</button>
-    </header>
-
-    <div style="margin-bottom:16px; display:flex; gap:10px; overflow-x:auto">
-      <select id="xray-range" style="padding:4px 8px; border-radius:6px; border:1px solid var(--border)">
-        <option value="12m" selected>Últimos 12 Meses</option>
-        <option value="6m">Últimos 6 Meses</option>
-        <option value="1m">Mês Anterior</option>
-      </select>
-    </div>
-
-    <div class="xray-grid">
-      <!-- Col A: Diagnosis -->
-      <div class="xray-col-a">
-        <div class="xray-score-box">
-          <div class="xray-score-val" id="xray-score">--</div>
-          <div class="xray-score-label">Saúde Financeira</div>
-        </div>
-        <div id="xray-phrases" class="xray-phrases">
-          <!-- Phrases injected here -->
-        </div>
-        <div id="xray-stats" class="xray-stats-grid">
-          <!-- Mini stats like Volatility -->
-        </div>
-      </div>
-
-      <!-- Col B: Chart -->
-      <div class="xray-col-b">
-        <div class="chart" style="height:300px">
-          <canvas id="xray-canvas"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <div class="actions" style="margin-top: 16px">
-      <button class="btn" id="xray-close">Fechar</button>
-    </div>
-  </div>
-</div>
-
-<style>
-  .modal__card--wide {
-    width: min(800px, 95vw);
-    max-width: 800px;
-  }
-
-  .xray-grid {
-    display: grid;
-    gap: 24px;
-  }
-
-  @media(min-width: 600px) {
-    .xray-grid {
-      grid-template-columns: 1fr 1.5fr;
-    }
-  }
-
-  .xray-score-box {
-    background: var(--surface-2);
-    padding: 12px;
-    border-radius: 8px;
-    text-align: center;
-    margin-bottom: 16px;
-    border: 1px solid var(--border);
-  }
-
-  .xray-score-val {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--primary);
-    line-height: 1;
-  }
-
-  .xray-score-label {
-    font-size: 0.8rem;
-    opacity: 0.7;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .xray-phrases {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 0.95rem;
-  }
-
-  .xray-phrase {
-    padding: 8px 10px;
-    border-radius: 6px;
-    background: var(--bg);
-    border-left: 3px solid #ccc;
-  }
-
-  .x-good {
-    border-color: #22c55e;
-    background: #f0fdf4;
-    color: #14532d;
-  }
-
-  .x-warn {
-    border-color: #eab308;
-    background: #fefce8;
-    color: #713f12;
-  }
-
-  .x-bad {
-    border-color: #ef4444;
-    background: #fef2f2;
-    color: #7f1d1d;
-  }
-
-  .x-info {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    color: #1e3a8a;
-  }
-
-  .xray-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 16px;
-    font-size: 0.85rem;
-  }
-
-  .xray-stat-item {
-    background: var(--bg);
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-  }
-
-  .xray-stat-val {
-    font-weight: bold;
-    font-family: monospace;
-    display: block;
-  }
-</style>
 
 <section class="card" data-collapsible data-key="upcoming-fixed">
   <h2 class="section-title">Próximas despesas (30 dias)</h2>
@@ -314,7 +151,6 @@
 </section>
 
 <section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Análise Detalhada por Categoria <small class="text-muted"
-      style="font-size:0.7em; font-weight:normal">(Últimos 12 Meses)</small></h2>
+  <h2 class="section-title">Análise Detalhada por Categoria</h2>
   <div id="cat-list" class="cat-list"></div>
 </section>

@@ -22,119 +22,8 @@ import { repo } from "../lib/repo.js";
 import { trapFocus } from "../lib/helpers.js";
 import { Toast, Modal } from "../lib/ui.js";
 
-import {
-  calculateRoutineFixedAverage,
-  projectCashflow,
-  calculateFinancialHealth,
-} from "../lib/analytics.js";
 
-// ===================== X-Ray Modal (New) =====================
-function setupXRayModal(rawData) {
-  const modal = document.getElementById("xray-modal");
-  const btnX = modal?.querySelector(".modal__close");
-  const btnClose = document.getElementById("xray-close");
-  const rangeSel = document.getElementById("xray-range");
-  const canvas = document.getElementById("xray-canvas");
-
-  // Elements for Data
-  const scoreEl = document.getElementById("xray-score");
-  const phrasesEl = document.getElementById("xray-phrases");
-  const statsEl = document.getElementById("xray-stats");
-
-  let chart = null;
-
-  const close = () => {
-    modal.hidden = true;
-    if (chart) {
-      chart.destroy();
-      chart = null;
-    }
-  };
-
-  const open = () => {
-    modal.hidden = false;
-    render();
-  };
-
-  btnX?.addEventListener("click", close);
-  btnClose?.addEventListener("click", close);
-  rangeSel?.addEventListener("change", () => render());
-
-  // Global trigger
-  document.getElementById("xray-open-btn")?.addEventListener("click", open);
-
-  function render() {
-    if (!rawData) return;
-
-    const range = rangeSel.value;
-    const { allHistoryMap, fixedVarByMonth } = rawData;
-
-    const now = new Date();
-    // Current Month Key (e.g. 2026-02)
-    const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-    const res = calculateFinancialHealth(
-      range,
-      allHistoryMap,
-      fixedVarByMonth,
-      currentMonthKey,
-    );
-
-    // 1. Update Score
-    scoreEl.textContent = res.score;
-    // Colorize score
-    scoreEl.style.color =
-      res.score >= 80 ? "#22c55e" : res.score >= 50 ? "#eab308" : "#ef4444";
-
-    // 2. Phrases
-    phrasesEl.innerHTML = res.phrases
-      .map((p) => `<div class="xray-phrase x-${p.type}">${p.text}</div>`)
-      .join("");
-
-    // 3. Stats
-    statsEl.innerHTML = `
-        <div class="xray-stat-item">Poupança <span class="xray-stat-val" style="color:${res.metrics.savingsRate >= 20 ? "#16a34a" : "#ea580c"}">${res.metrics.savingsRate.toFixed(1)}%</span></div>
-        <div class="xray-stat-item">Fixo/Rec. <span class="xray-stat-val" style="color:${res.metrics.fixedRatio <= 50 ? "#16a34a" : "#ea580c"}">${res.metrics.fixedRatio.toFixed(1)}%</span></div>
-        <div class="xray-stat-item">Média Net <span class="xray-stat-val">${money(res.metrics.avgNet)}</span></div>
-        <div class="xray-stat-item">Volatilidade <span class="xray-stat-val">${money(res.metrics.volatility)}</span></div>
-      `;
-
-    // 4. Chart
-    if (chart) chart.destroy();
-
-    chart = new Chart(canvas.getContext("2d"), {
-      type: "bar",
-      data: {
-        labels: res.chart.labels,
-        datasets: [
-          {
-            type: "bar",
-            label: "Net (Líquido)",
-            data: res.chart.nets,
-            backgroundColor: (ctx) => (ctx.raw >= 0 ? "#22c55e" : "#ef4444"),
-            order: 2,
-          },
-          {
-            type: "line",
-            label: "Acumulado",
-            data: res.chart.cums,
-            borderColor: "#3b82f6",
-            borderWidth: 2,
-            tension: 0.3,
-            fill: false,
-            order: 1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom" }, tooltip: toolMoney },
-        scales: { y: { ...axisMoney, beginAtZero: false } },
-      },
-    });
-  }
-}
+import { calculateRoutineFixedAverage, projectCashflow } from "../lib/analytics.js";
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
@@ -158,6 +47,7 @@ function setupDashboardModal(ds, rawData) {
       chart.destroy();
       chart = null;
     }
+    // Return focus
     document.getElementById("dash-modal-open")?.focus();
   };
   btnX?.addEventListener("click", close);
@@ -169,261 +59,6 @@ function setupDashboardModal(ds, rawData) {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !modal.hidden) close();
   });
-
-  // --- Bind Mini-Cards ---
-  document.querySelectorAll(".mini-card").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const type = btn.dataset.chart;
-      open();
-      renderChart(type);
-    });
-  });
-
-  function renderChart(type) {
-    if (chart) chart.destroy();
-    extraEl.innerHTML = "";
-    titleEl.textContent = "Detalhe";
-    const ctx = canvas.getContext("2d");
-
-    // Helper: Simple Bar
-    const mkBar = (labels, data, label, color) => ({
-      type: "bar",
-      data: {
-        labels,
-        datasets: [{ label, data, backgroundColor: color, borderRadius: 4 }],
-      },
-      options: { responsive: true, maintainAspectRatio: false },
-    });
-
-    if (type === "cashflow") {
-      titleEl.textContent = "Projeção Cashflow (Fixo)";
-      chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: ds.cfLabels,
-          datasets: [
-            {
-              type: "line",
-              label: "Acumulado",
-              data: ds.cfCum,
-              borderColor: "#2563eb",
-              tension: 0.3,
-              yAxisID: "y1",
-            },
-            {
-              type: "bar",
-              label: "Net Mensal",
-              data: ds.cfNet,
-              backgroundColor: (c) => (c.raw < 0 ? "#ef4444" : "#22c55e"),
-              yAxisID: "y",
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: { ...axisMoney, position: "left" },
-            y1: {
-              ...axisMoney,
-              position: "right",
-              grid: { drawOnChartArea: false },
-            },
-          },
-        },
-      });
-    } else if (type === "tendencias") {
-      titleEl.textContent = "Tendências (12 meses)";
-      chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: ds.labels12m,
-          datasets: [
-            {
-              label: "Receita",
-              data: ds.income12m,
-              borderColor: "#22c55e",
-              tension: 0.3,
-            },
-            {
-              label: "Despesa",
-              data: ds.expense12m,
-              borderColor: "#ef4444",
-              tension: 0.3,
-            },
-            {
-              label: "Poupança",
-              data: ds.savings12m,
-              borderColor: "#3b82f6",
-              tension: 0.3,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: axisMoney },
-        },
-      });
-    } else if (type === "fixvar_mes") {
-      titleEl.textContent = "Fixas vs Variáveis (Mês Atual)";
-      chart = new Chart(ctx, {
-        type: "doughnut",
-        data: {
-          labels: ["Fixas", "Variáveis"],
-          datasets: [
-            {
-              data: [ds.fixasMes, ds.variaveisMes],
-              backgroundColor: ["#f59e0b", "#3b82f6"],
-            },
-          ],
-        },
-        options: { responsive: true, maintainAspectRatio: false },
-      });
-      extraEl.innerHTML = `<div style="text-align:center; margin-top:10px">Total Fixo: ${money(ds.fixasMes)} | Total Var: ${money(ds.variaveisMes)}</div>`;
-    } else if (type === "fixvar_12m") {
-      titleEl.textContent = "Fixas vs Variáveis (12 meses)";
-      chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: ds.labels12m,
-          datasets: [
-            {
-              label: "Fixas",
-              data: ds.fixed12m,
-              backgroundColor: "#f59e0b",
-              stack: "stack0",
-            },
-            {
-              label: "Variáveis",
-              data: ds.variable12m,
-              backgroundColor: "#3b82f6",
-              stack: "stack0",
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: axisMoney },
-        },
-      });
-    } else if (type === "categorias") {
-      titleEl.textContent = "Despesas por Categoria (Top 10)";
-      chart = new Chart(ctx, {
-        type: "pie",
-        data: {
-          labels: ds.parentLabels,
-          datasets: [
-            {
-              data: ds.parentValues,
-              backgroundColor: palette(ds.parentLabels.length),
-            },
-          ],
-        },
-        options: { responsive: true, maintainAspectRatio: false },
-      });
-    } else if (type === "top_categorias") {
-      titleEl.textContent = "Top Categorias (Mês Atual)";
-      chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: ds.catLabelsMes,
-          datasets: [
-            {
-              label: "Valor",
-              data: ds.catValuesMes,
-              backgroundColor: palette(ds.catLabelsMes.length),
-            },
-          ],
-        },
-        options: {
-          indexAxis: "y",
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { x: axisMoney },
-        },
-      });
-    } else if (type === "gasto_diario") {
-      titleEl.textContent = "Gasto Diário Acumulado";
-      chart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: ds.dailyLabels,
-          datasets: [
-            {
-              label: "Real",
-              data: ds.dailyCumReal,
-              borderColor: "#3b82f6",
-              tension: 0.1,
-            },
-            {
-              label: "Previsão",
-              data: ds.dailyCumForecast,
-              borderColor: "#ec4899",
-              borderDash: [5, 5],
-              tension: 0.1,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: { y: axisMoney },
-        },
-      });
-    } else if (type === "metodos") {
-      titleEl.textContent = "Métodos de Pagamento";
-      chart = new Chart(
-        ctx,
-        mkBar(ds.methodsLabels, ds.methodsValues, "Valor", "#8b5cf6"),
-      );
-    } else if (type === "regularidades") {
-      titleEl.textContent = "Regularidade das Despesas";
-      chart = new Chart(
-        ctx,
-        mkBar(ds.regLabelsMes, ds.regTotalsMes, "Valor", "#10b981"),
-      );
-    } else if (type === "investimentos") {
-      titleEl.textContent = "Investimentos";
-      // Simple placeholder for investments if data exists
-      extraEl.innerHTML = `<p style="text-align:center">Consulte o ecrã de Portfólio para detalhes completos.</p>`;
-    }
-  }
-
-  // --- Render Category List (Análise Detalhada) ---
-  const catListContainer = document.getElementById("cat-list");
-  if (catListContainer && rawData) {
-    const { allHistoryMap } = rawData;
-    // Aggregate last 12 months by parent category
-    const agg = new Map();
-    for (const [mKey, monthData] of allHistoryMap.entries()) {
-      // monthData has .parents (Map)
-      if (monthData.parents) {
-        monthData.parents.forEach((val, catName) => {
-          agg.set(catName, (agg.get(catName) || 0) + val);
-        });
-      }
-    }
-    // Convert to array and sort
-    const sorted = Array.from(agg.entries()).sort((a, b) => b[1] - a[1]);
-
-    const html = sorted
-      .map(([name, val]) => {
-        const avg = val / 12;
-        return `
-            <div class="kpi-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
-                <div>
-                    <div style="font-weight:600">${name}</div>
-                    <div style="font-size:0.8em; opacity:0.7">Média: ${money(avg)}/mês</div>
-                </div>
-                <div style="font-weight:bold">${money(val)}</div>
-            </div>
-          `;
-      })
-      .join("");
-    catListContainer.innerHTML = html || "<p>Sem dados.</p>";
-  }
 
   const mount = (cfg) => {
     if (chart) chart.destroy();
@@ -455,32 +90,19 @@ function setupDashboardModal(ds, rawData) {
     // For this Turn, we will use a naive approach: If we don't have raw data, we assume 0 Annuals (Smoothing applies to total).
     // IF we have raw data (fallback path), we could do it.
     // Let's implement a 'annualFixedByMonth' map that we populate during the Data Fetch phase if possible.
-
+    
     // We will update Data Fetching below to populate 'annualFixedByMonth'.
-    const { allHistoryMap, fixedVarByMonth, annualFixedByMonth } =
-      rawData || {};
-    const targetYear = String(new Date().getFullYear());
+    const { allHistoryMap, fixedVarByMonth, annualFixedByMonth } = rawData || {};
+    const targetYear = String(new Date().getFullYear()); 
     const now = new Date();
-
+    
     const currentMonthKey = `${targetYear}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
+    
     // Calculate YTD Routine Average
-    const routineAvg = calculateRoutineFixedAverage(
-      fixedVarByMonth,
-      annualFixedByMonth,
-      targetYear,
-      currentMonthKey,
-    );
+    const routineAvg = calculateRoutineFixedAverage(fixedVarByMonth, annualFixedByMonth, targetYear, currentMonthKey);
 
     // Project
-    return projectCashflow(
-      targetYear,
-      allHistoryMap,
-      fixedVarByMonth,
-      annualFixedByMonth,
-      settings,
-      routineAvg,
-    );
+    return projectCashflow(targetYear, allHistoryMap, fixedVarByMonth, annualFixedByMonth, settings, routineAvg);
   }
 
   // ---------- Renderers ----------
@@ -491,7 +113,7 @@ function setupDashboardModal(ds, rawData) {
     // 1) Lê settings e constrói séries (com/sem override)
     // 1) Lê settings e constrói séries (com/sem override)
     // rawData is already available in closure and contains the maps we need
-
+    
     const settings = loadFixedSettings(targetYear);
     const series = rebuildSeriesWithOverrides(settings);
 
@@ -688,9 +310,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderTendencias() {
-    const now = new Date();
-    const currentMonthName = now.toLocaleDateString("pt-PT", { month: "long" });
-    titleEl.textContent = `Tendências (12 meses anteriores + ${currentMonthName})`;
+    titleEl.textContent = "Tendências (12 meses + previsão próxima)";
 
     const labels = [...(ds.labels12m || [])];
     const inc = ds.income12m ? [...ds.income12m] : [];
@@ -1204,480 +824,6 @@ function setupMiniCardHider(outletEl) {
   });
 }
 
-// =============================================================================
-// DATA LAYER
-// =============================================================================
-async function fetchData() {
-  const year = STATE.filters.year;
-  const month = STATE.filters.month;
-
-  // 1. Define Range: Entire Year (for charts) + Specific Month (for KPIs)
-  const startOfYear = `${year}-01-01`;
-  const endOfYear = `${year}-12-31`;
-
-  // 2. Fetch All Transactions for the Year
-  // We fetch strictly what we need for the dashboard to be fast
-  const q = repo.transactions
-    .query()
-    .gte("date", startOfYear)
-    .lte("date", endOfYear)
-    .order("date", { ascending: true });
-
-  const [txs, cats] = await Promise.all([q.exec(), repo.categories.getAll()]);
-
-  STATE.data.transactions = txs || [];
-  STATE.data.categories = cats || [];
-
-  // 3. Load Settings
-  try {
-    const stored = localStorage.getItem(`wb:fixed:${year}`);
-    STATE.data.fixedSettings = stored ? JSON.parse(stored) : {};
-  } catch (e) {
-    STATE.data.fixedSettings = {};
-  }
-}
-
-// =============================================================================
-// PRESENTATION LAYER - RENDERERS
-// =============================================================================
-function renderKPIs() {
-  const { kpi } = STATE.data.processed || {};
-  if (!kpi) return;
-
-  const safe = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = money(val);
-  };
-
-  // We need to match the IDs in the skeleton/HTML
-  // Note: The skeleton used "kpi-grid" and "kpi-shim". We should render the actual grid now.
-  const grid = document.getElementById("kpi-grid");
-  if (grid) {
-    grid.innerHTML = `
-            <div class="kpi kpi--income">
-                <div class="kpi__title">Receitas</div>
-                <div class="kpi__value">${money(kpi.income)}</div>
-            </div>
-            <div class="kpi kpi--expense">
-                <div class="kpi__title">Despesas</div>
-                <div class="kpi__value">${money(kpi.expense)}</div>
-            </div>
-            <div class="kpi kpi--savings">
-                <div class="kpi__title">Poupanças</div>
-                <div class="kpi__value">${money(kpi.savings)}</div>
-            </div>
-            <div class="kpi kpi--balance">
-                <div class="kpi__title">Saldo Líquido</div>
-                <div class="kpi__value" style="color: ${kpi.net >= 0 ? "var(--text)" : "#ef4444"}">${money(kpi.net)}</div>
-            </div>
-        `;
-  }
-}
-
-function renderMiniCardsCarousel() {
-  const track = document.getElementById("mini-track");
-  if (!track) return;
-
-  // Define Cards
-  const cards = [
-    { id: "cashflow", title: "Projeção Cashflow", hint: "Ver gráfico" },
-    { id: "tendencias", title: "Tendências (12m)", hint: "Ver gráfico" },
-    { id: "fixvar_mes", title: "Fixo vs Variável", hint: "Mês atual" },
-    { id: "categorias", title: "Top Categorias", hint: "Ano atual" },
-    { id: "gasto_diario", title: "Gasto Diário", hint: "Acumulado" },
-  ];
-
-  track.innerHTML = cards
-    .map(
-      (c) => `
-        <div class="carousel-item">
-            <button class="mini-card" data-chart="${c.id}">
-                <span class="mini-card__title">${c.title}</span>
-                <span class="mini-card__hint">${c.hint}</span>
-            </button>
-        </div>
-    `,
-    )
-    .join("");
-
-  // Re-bind clicks since we overwrote HTML
-  track.querySelectorAll(".mini-card").forEach((btn) => {
-    btn.addEventListener("click", () => openChartModal(btn.dataset.chart));
-  });
-}
-
-function renderCategoryList() {
-  const list = document.getElementById("cat-list");
-  if (!list) return;
-
-  const { catStats } = STATE.data.processed || {};
-  const data = catStats?.year || {};
-
-  // Sort by Value Desc
-  const sorted = Object.entries(data)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 10); // Top 10
-
-  if (sorted.length === 0) {
-    list.innerHTML = `<p class="muted">Sem despesas registadas.</p>`;
-    return;
-  }
-
-  list.innerHTML = sorted
-    .map(([name, val]) => {
-      const avg = val / 12; // Simple avg
-      return `
-            <div class="kpi-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
-                <div>
-                    <div style="font-weight:600">${name}</div>
-                    <div style="font-size:0.8em; opacity:0.7">Média: ${money(avg)}/mês</div>
-                </div>
-                <div style="font-weight:bold">${money(val)}</div>
-            </div>
-        `;
-    })
-    .join("");
-}
-
-function renderUpcomingFixed() {
-  const el = document.getElementById("upcoming-list");
-  // Placeholder (This usually requires more complex logic to predict next month fixed expenses)
-  // For now we leave it simple or empty.
-  if (el)
-    el.innerHTML = `<p class="muted" style="font-size:0.9em">Funcionalidade em migração...</p>`;
-}
-
-function openChartModal(type) {
-  const modal = document.getElementById("dash-modal");
-  const title = document.getElementById("dash-modal-title");
-  const canvas = document.getElementById("dash-modal-canvas");
-  const extraEl = document.getElementById("dash-modal-extra"); // For legends/totals
-  const ctx = canvas.getContext("2d");
-
-  // Clear previous
-  if (STATE.chartInstances.modal) STATE.chartInstances.modal.destroy();
-  extraEl.innerHTML = "";
-
-  // Prepare Data
-  const { monthlyStats, catStats, kpi } = STATE.data.processed;
-  const labels = Object.keys(monthlyStats).sort(); // keys are YYYY-MM
-  // Data arrays aligned with labels
-  const inc = labels.map((k) => monthlyStats[k].income);
-  const exp = labels.map((k) => monthlyStats[k].expense);
-  const sav = labels.map((k) => monthlyStats[k].savings);
-  const net = labels.map((k) => monthlyStats[k].net);
-
-  // Helpers
-  const mkBar = (lbls, dat, label, color) => ({
-    type: "bar",
-    data: {
-      labels: lbls,
-      datasets: [{ label, data: dat, backgroundColor: color, borderRadius: 4 }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: { y: axisMoney },
-    },
-  });
-
-  modal.hidden = false;
-  trapFocus(modal);
-
-  if (type === "cashflow") {
-    title.textContent = "Projeção Cashflow (Fixo)";
-    // Note: Real projection logic is complex. For 2.0 MVP we use a simplified view or the helper if available.
-    // We will fallback to a simple Net/Cumulative view of actuals + simple forecast.
-
-    // Calculate Cumulative
-    let cum = 0;
-    const cumData = net.map((n) => {
-      cum += n;
-      return cum;
-    });
-
-    STATE.chartInstances.modal = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            type: "line",
-            label: "Acumulado",
-            data: cumData,
-            borderColor: "#2563eb",
-            tension: 0.3,
-            yAxisID: "y1",
-          },
-          {
-            type: "bar",
-            label: "Net Mensal",
-            data: net,
-            backgroundColor: (c) => (c.raw < 0 ? "#ef4444" : "#22c55e"),
-            yAxisID: "y",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { ...axisMoney, position: "left" },
-          y1: {
-            ...axisMoney,
-            position: "right",
-            grid: { drawOnChartArea: false },
-          },
-        },
-      },
-    });
-  } else if (type === "tendencias") {
-    title.textContent = "Tendências (Ano)";
-    STATE.chartInstances.modal = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [
-          { label: "Receita", data: inc, borderColor: "#22c55e", tension: 0.3 },
-          { label: "Despesa", data: exp, borderColor: "#ef4444", tension: 0.3 },
-          {
-            label: "Poupança",
-            data: sav,
-            borderColor: "#3b82f6",
-            tension: 0.3,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: axisMoney },
-      },
-    });
-  } else if (type === "fixvar_mes") {
-    title.textContent = "Fixas vs Variáveis (Ano)";
-    // Simplified: We assume Expense = Total.
-    // Real Fix/Var requires sub-query or inference.
-    // For Dashboard 2.0 MVP we might skip deep drill-down or implement later.
-    extraEl.innerHTML =
-      "<p class='muted text-center'>Análise disponível brevemente (requer inferência).</p>";
-
-    // Render simple expense trend instead
-    STATE.chartInstances.modal = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          { label: "Despesa Total", data: exp, backgroundColor: "#ef4444" },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { y: axisMoney },
-      },
-    });
-  } else if (type === "categorias") {
-    title.textContent = "Top Categorias (Ano)";
-    const catData = catStats.year;
-    const top = Object.entries(catData)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
-
-    STATE.chartInstances.modal = new Chart(ctx, {
-      type: "pie",
-      data: {
-        labels: top.map((x) => x[0]),
-        datasets: [
-          { data: top.map((x) => x[1]), backgroundColor: palette(top.length) },
-        ],
-      },
-      options: { responsive: true, maintainAspectRatio: false },
-    });
-  } else if (type === "gasto_diario") {
-    title.textContent = "Gasto Diário (Mês Atual)";
-    // Requires filtering daily transactions for current month
-    // For now, placeholder message
-    extraEl.innerHTML =
-      "<p class='muted text-center'>Gráfico de gasto diário em reconstrução.</p>";
-
-    STATE.chartInstances.modal = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: ["D1", "D15", "D30"],
-        datasets: [
-          {
-            label: "Exemplo",
-            data: [0, 500, 1000],
-            borderColor: "#cbd5e1",
-            borderDash: [5, 5],
-          },
-        ],
-      },
-      options: { responsive: true, maintainAspectRatio: false },
-    });
-  }
-}
-
-function openXRay() {
-  const modal = document.getElementById("xray-modal");
-  if (!modal) return;
-
-  const { monthlyStats } = STATE.data.processed;
-  // Adapt data for calculateFinancialHealth
-  // It expects: (range, allHistoryMap, fixedVarByMonth, currentMonthKey)
-  // We will build a minimal map compatible with it.
-
-  const allHistoryMap = new Map();
-  const fixedVarByMonth = new Map();
-
-  Object.entries(monthlyStats).forEach(([k, v]) => {
-    // allHistoryMap needs { net, income, expense, savings }
-    allHistoryMap.set(k, { ...v });
-    // fixedVarByMonth needs { fixed: 0, variable: 0 } -> We don't have this granular split in 2.0 MVP yet
-    // We will approximate or leave distinct logic later.
-    // For now, let's assume 50/50 for the score calculation to not crash.
-    fixedVarByMonth.set(k, {
-      fixed: v.expense * 0.5,
-      variable: v.expense * 0.5,
-    });
-  });
-
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
-
-  try {
-    const res = calculateFinancialHealth(
-      "12", // 12 months default
-      allHistoryMap,
-      fixedVarByMonth,
-      currentMonthKey,
-    );
-
-    const scoreEl = document.getElementById("xray-score");
-    const body = document.getElementById("xray-body");
-
-    if (scoreEl) {
-      scoreEl.textContent = res.score;
-      scoreEl.style.color =
-        res.score >= 80 ? "#22c55e" : res.score >= 50 ? "#eab308" : "#ef4444";
-    }
-
-    if (body) {
-      const statsHtml = `
-                    <div>Poupança: <strong style="color:${res.metrics.savingsRate >= 20 ? "#16a34a" : "#ea580c"}">${res.metrics.savingsRate.toFixed(1)}%</strong></div>
-                    <div>Fixo/Receita: <strong style="color:${res.metrics.fixedRatio <= 50 ? "#16a34a" : "#ea580c"}">${res.metrics.fixedRatio.toFixed(1)}%</strong></div>
-            `;
-
-      body.innerHTML = `
-                <div style="text-align:center; padding: 20px;">
-                     <div style="font-size:1.2em; margin-bottom:10px">${res.phrases[0]?.text || "Análise concluída"}</div>
-                    <div style="font-size:3em; font-weight:bold; color:${res.score >= 80 ? "#22c55e" : res.score >= 50 ? "#eab308" : "#ef4444"}">${res.score}</div>
-                    <p style="opacity:0.7">${res.score >= 80 ? "Excelente" : "Atenção Necessária"}</p>
-                    <div class="xray-stats grid" style="margin-top:20px; text-align:left; gap:10px; display:flex; justify-content:center;">
-                        ${statsHtml}
-                    </div>
-                </div>
-            `;
-    }
-  } catch (e) {
-    console.warn("XRay Calc Error", e);
-    if (body) body.innerHTML = "<p>Dados insuficientes para raio-X.</p>";
-  }
-
-  modal.hidden = false;
-  trapFocus(modal);
-}
-
-// =============================================================================
-// LOGIC LAYER
-// =============================================================================
-function processData() {
-  const { transactions, categories } = STATE.data;
-  const { year, month } = STATE.filters;
-  const currentMonthKey = `${year}-${pad2(month)}`;
-
-  // 1. Map Categories for quick lookup
-  const catMap = new Map(categories.map((c) => [c.id, c]));
-
-  // 2. Aggregate Data
-  // We need:
-  // - Totals for Current Month (KPIs)
-  // - Totals per Month (Charts)
-  // - Totals by Category (Analysis)
-
-  const monthlyStats = {}; // "2024-01": { income: 0, expense: 0, savings: 0 }
-  const catStats = { month: {}, year: {} }; // Aggregation by category
-
-  // Initialize monthly keys
-  monthKeysBetween(`${year}-01`, `${year}-12`).forEach((k) => {
-    monthlyStats[k] = { income: 0, expense: 0, savings: 0, net: 0 };
-  });
-
-  let kpi = { income: 0, expense: 0, savings: 0, net: 0, trend: {} };
-
-  transactions.forEach((tx) => {
-    const d = new Date(tx.date);
-    const mKey = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
-    const cat = catMap.get(tx.category_id);
-    const typeId = tx.type_id;
-    const val = Number(tx.amount);
-
-    // Helper: Identify Type (Income=1, Expense=2, Savings=3 - assuming standard IDs)
-    // If repo doesn't provide constants, we might need to infer or hardcode based on known generated IDs
-    // For robustness, let's assume standard Wisebudget IDs if not imported:
-    // Income: 1, Expense: 2, Savings: 3.
-
-    if (!monthlyStats[mKey]) return; // Out of range safety
-
-    if (typeId === 1) monthlyStats[mKey].income += val;
-    else if (typeId === 2) monthlyStats[mKey].expense += val;
-    else if (typeId === 3) monthlyStats[mKey].savings += val;
-
-    // KPI for current month
-    if (mKey === currentMonthKey) {
-      if (typeId === 1) kpi.income += val;
-      else if (typeId === 2) kpi.expense += val;
-      else if (typeId === 3) kpi.savings += val;
-    }
-
-    // Category Aggregation
-    if (cat) {
-      const catName = cat.name;
-      const parentId = cat.parent_id;
-      const parentName = parentId ? catMap.get(parentId)?.name : catName;
-      const key = parentName || "Outros";
-
-      // Annual
-      if (typeId === 2) {
-        // Only expenses for category chart
-        catStats.year[key] = (catStats.year[key] || 0) + val;
-        if (mKey === currentMonthKey) {
-          catStats.month[key] = (catStats.month[key] || 0) + val;
-        }
-      }
-    }
-  });
-
-  // Calculate Nets
-  Object.keys(monthlyStats).forEach((k) => {
-    const m = monthlyStats[k];
-    m.net = m.income - m.expense - m.savings;
-  });
-
-  kpi.net = kpi.income - kpi.expense - kpi.savings;
-
-  // Save Processed Data
-  STATE.data.processed = {
-    monthlyStats,
-    catStats,
-    kpi,
-    currentMonthKey,
-  };
-
-  console.log("Stats Processed:", STATE.data.processed);
-}
-
 // =============================== DASHBOARD INIT ===============================
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
@@ -1688,26 +834,24 @@ export async function init({ sb, outlet } = {}) {
 
   function setupCarousel(box, track, dotsBox) {
     if (!box || !track) return;
-
+    
     // Identify target carousels
-    const isMini =
-      box.classList.contains("mini-carousel") || track.id === "mini-track";
+    const isMini = box.classList.contains("mini-carousel") || track.id === "mini-track";
     const isUpcoming = box.classList.contains("upcoming-carousel");
     const isMulti = isMini || isUpcoming;
 
     // Only count items that are NOT hidden
     const allItems = Array.from(track.querySelectorAll(".carousel-item"));
     const items = allItems.filter(
-      (i) =>
-        i.style.display !== "none" && getComputedStyle(i).display !== "none",
+      (i) => i.style.display !== "none" && getComputedStyle(i).display !== "none",
     );
     if (!items.length) return;
 
     let currentIdx = 0;
-
+    
     const getItemsPerView = () => {
       const w = window.innerWidth;
-
+      
       // Quick Analysis (Compact)
       if (isMini) {
         if (w >= 900) return 6;
@@ -1715,38 +859,38 @@ export async function init({ sb, outlet } = {}) {
         if (w >= 420) return 4;
         return 3;
       }
-
+      
       // Upcoming Expenses (Slightly Wider)
       if (isUpcoming) {
         if (w >= 900) return 5; // Wider than mini
         if (w >= 600) return 3; // Tablet: 3 instead of 5
         if (w >= 420) return 2; // Mobile Wide: 2 instead of 4
-        return 2; // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
+        return 2;               // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
       }
-
+      
       return 1; // Fallback for others
     };
 
     const showSlide = (idx) => {
       const perView = getItemsPerView();
-
+      
       // Update item widths if Multi
       if (isMulti) {
-        const basis = 100 / perView;
-        items.forEach((el) => {
-          el.style.flex = `0 0 ${basis}%`;
-          el.style.minWidth = `${basis}%`;
-          el.style.maxWidth = `${basis}%`;
-        });
+         const basis = 100 / perView;
+         items.forEach(el => {
+            el.style.flex = `0 0 ${basis}%`;
+            el.style.minWidth = `${basis}%`; 
+            el.style.maxWidth = `${basis}%`;
+         });
       }
 
       const total = items.length;
       let maxIdx = Math.max(0, total - perView);
-
+      
       // Cycle logic
-      if (idx > maxIdx) idx = 0;
+      if (idx > maxIdx) idx = 0; 
       if (idx < 0) idx = maxIdx;
-
+      
       currentIdx = idx;
 
       // Translate: step is 100% / perView * index
@@ -1755,9 +899,7 @@ export async function init({ sb, outlet } = {}) {
 
       if (dotsBox) {
         const allDots = dotsBox.querySelectorAll(".carousel-dot");
-        allDots.forEach((d, i) =>
-          d.classList.toggle("active", i === currentIdx),
-        );
+        allDots.forEach((d, i) => d.classList.toggle("active", i === currentIdx));
       }
     };
 
@@ -1765,15 +907,15 @@ export async function init({ sb, outlet } = {}) {
     const btnPrev = box.querySelector(".carousel-nav--prev");
     const btnNext = box.querySelector(".carousel-nav--next");
     if (btnPrev) {
-      // Clone to remove old listeners (simple way in this context) usually fine,
-      // but here we are inside init() so listeners are added once.
-      // We just add new listeners. If setupCarousel is called multiple times, this might stack.
-      // 'dashboard.js' seems to run init() once or cleanup.
-      // We will just add the listener.
-      btnPrev.onclick = () => showSlide(currentIdx - 1);
+        // Clone to remove old listeners (simple way in this context) usually fine, 
+        // but here we are inside init() so listeners are added once.
+        // We just add new listeners. If setupCarousel is called multiple times, this might stack.
+        // 'dashboard.js' seems to run init() once or cleanup. 
+        // We will just add the listener.
+        btnPrev.onclick = () => showSlide(currentIdx - 1);
     }
     if (btnNext) {
-      btnNext.onclick = () => showSlide(currentIdx + 1);
+        btnNext.onclick = () => showSlide(currentIdx + 1);
     }
 
     if (dotsBox) {
@@ -1791,7 +933,7 @@ export async function init({ sb, outlet } = {}) {
     // Auto-scroll (optional, keeping existing behavior)
     if (box._autoInterval) clearInterval(box._autoInterval);
     box._autoInterval = setInterval(() => showSlide(currentIdx + 1), 5000);
-
+    
     box.onmouseenter = () => clearInterval(box._autoInterval);
     box.onmouseleave = () => {
       clearInterval(box._autoInterval);
@@ -2203,20 +1345,13 @@ export async function init({ sb, outlet } = {}) {
           entry.incFixed += amt;
         } else if (isExp && isFixedExpense(r)) {
           entry.expFixed += Math.abs(amt);
-
+          
           // [NEW] Check if it is an ANNUAL Fixed Expense to separate it
           // Heuristic: Regularity code is 'YEARLY' or 'ANUAL'
           const regCode = (r.regularities?.code || "").toUpperCase();
           const regName = (r.regularities?.name_pt || "").toUpperCase();
-          if (
-            regCode === "YEARLY" ||
-            regCode === "ANNUAL" ||
-            regName.includes("ANUAL")
-          ) {
-            annualFixedByMonth.set(
-              k,
-              (annualFixedByMonth.get(k) || 0) + Math.abs(amt),
-            );
+          if (regCode === "YEARLY" || regCode === "ANNUAL" || regName.includes("ANUAL")) {
+             annualFixedByMonth.set(k, (annualFixedByMonth.get(k) || 0) + Math.abs(amt));
           }
         }
 
@@ -3357,7 +2492,7 @@ export async function init({ sb, outlet } = {}) {
         while (true) {
           const { data, error } = await sb
             .from("transactions")
-            .select("date, amount, category_id, categories(name,parent_id)")
+            .select("amount, category_id, categories(name,parent_id)")
             .eq("type_id", expId)
             .gte("date", from12Local)
             .range(page * size, (page + 1) * size - 1)
@@ -3368,16 +2503,6 @@ export async function init({ sb, outlet } = {}) {
           if (data.length < size) break;
           page++;
         }
-
-        // --- FILTER STRICTLY LAST 12 MONTHS ---
-        // `from12Local` fetches from Start of Prev Year (can be 14-24 months)
-        // We filter here to ensure exactly 12 months for the "Annual Average" calculation.
-        const oneYearAgo = new Date();
-        oneYearAgo.setMonth(oneYearAgo.getMonth() - 12);
-        oneYearAgo.setDate(1); // Start of month 12 months ago
-        oneYearAgo.setHours(0, 0, 0, 0);
-
-        rows = rows.filter((r) => new Date(r.date) >= oneYearAgo);
 
         const parentsMap = new Map();
         try {
@@ -3447,26 +2572,26 @@ export async function init({ sb, outlet } = {}) {
       g.total += Number(val || 0);
 
       // --- Empty State ---
-      const hasData = history.length > 0 || real.length > 0;
-      if (!hasData) {
-        if (document.getElementById("dash-empty")) {
-          document.getElementById("dash-empty").hidden = false;
-          document.getElementById("dash-content").hidden = true;
-
-          // Customize text based on user history (simulated check)
-          const isNewUser = !localStorage.getItem("wb:welcome_ts");
-          const msg = isNewUser
-            ? "Ainda não tens movimentos. Começa agora!"
-            : "Sem movimentos este mês.";
-
-          document.querySelector("#dash-empty h3").textContent = msg;
-        }
-        return;
-      }
+    const hasData = history.length > 0 || real.length > 0;
+    if (!hasData) {
       if (document.getElementById("dash-empty")) {
-        document.getElementById("dash-empty").hidden = true;
-        document.getElementById("dash-content").hidden = false;
+        document.getElementById("dash-empty").hidden = false;
+        document.getElementById("dash-content").hidden = true;
+        
+        // Customize text based on user history (simulated check)
+        const isNewUser = !localStorage.getItem("wb:welcome_ts");
+        const msg = isNewUser 
+            ? "Ainda não tens movimentos. Começa agora!" 
+            : "Sem movimentos este mês.";
+        
+        document.querySelector("#dash-empty h3").textContent = msg;
       }
+      return;
+    }
+    if (document.getElementById("dash-empty")) {
+       document.getElementById("dash-empty").hidden = true;
+       document.getElementById("dash-content").hidden = false;
+    }
       // Se tiver filhos explícitos (parts > 1) ou se quisermos mostrar sempre o item como child
       // Vamos adicionar à lista de children
       const count = Math.max(1, Number(catCount12m.get(fullName) || 0));
@@ -3675,6 +2800,8 @@ export async function init({ sb, outlet } = {}) {
   const fHash = outlet.querySelector("#footer-hash");
   if (fHash) fHash.textContent = "";
 
+
+
   // ====== Colapsáveis com SVG inline (após título) ======
   (function enhanceCollapsibles(root = document) {
     const LS_KEY = "wb:dash:collapsed";
@@ -3752,9 +2879,6 @@ export async function init({ sb, outlet } = {}) {
 
   // ====== Mini-cards + modal ======
   try {
-    const rawData = { allHistoryMap, fixedVarByMonth, annualFixedByMonth };
-    setupXRayModal(rawData);
-
     if (document.querySelector(".dash-mini")) {
       const fixed12m = monthly.map(
         (m) => fixedVarByMonth.get(m.key || m.label)?.fixed || 0,
@@ -3824,11 +2948,7 @@ export async function init({ sb, outlet } = {}) {
         monthlyCount: dsMini.labels12m?.length,
       });
 
-      setupDashboardModal(dsMini, {
-        allHistoryMap,
-        fixedVarByMonth,
-        annualFixedByMonth,
-      });
+      setupDashboardModal(dsMini, { allHistoryMap, fixedVarByMonth, annualFixedByMonth });
     }
   } catch (e) {
     console.warn("mini-cards wiring falhou:", e);
@@ -3841,6 +2961,8 @@ export async function init({ sb, outlet } = {}) {
 
     // 2. Destroy charts
     destroyCharts();
+
+
   };
 
   function onHashChange() {

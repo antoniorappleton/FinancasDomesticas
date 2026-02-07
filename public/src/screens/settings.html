@@ -2,8 +2,8 @@
 <section class="card">
   <h2 class="section-title">Relatórios</h2>
 
-  <!-- Filtro original (mantido) -->
-  <div class="grid" style="grid-template-columns: repeat(4, minmax(0,1fr)); gap:10px">
+  <!-- Filtro com classe responsiva -->
+  <div class="grid grid-responsive-4" style="gap:10px">
     <label>
       Tipo
       <select id="rpt-type">
@@ -545,61 +545,124 @@
     min-width: 0;
     box-sizing: border-box;
   }
+  /* NOVAS CLASSES RESPONSIVAS */
+  .grid-responsive-4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 10px;
+  }
+  
+  .grid-responsive-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .grid-responsive-session {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+    align-items: end;
+  }
+  
+  .grid-responsive-delete {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: end;
+    margin-top: 12px;
+  }
+  
+  .form-grid-responsive {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  /* MOBILE BREAKPOINTS */
+  @media (max-width: 600px) {
+    .grid-responsive-4,
+    .grid-responsive-2,
+    .grid-responsive-session,
+    .grid-responsive-delete,
+    .form-grid-responsive {
+      grid-template-columns: 1fr !important;
+    }
+    
+    .grid-responsive-session > div {
+      text-align: left !important;
+    }
+    
+    .rep-header {
+        gap: 16px;
+    }
+  }
 </style>
 
-<!-- ===== MODAL/SECÇÃO IMPORTAÇÃO ===== -->
+<!-- ===== secção categorias (2º) ===== -->
+<section class="card">
+  <h2 class="section-title">Categorias</h2>
+  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
+  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
+</section>
+
+<!-- ===== MODAL/SECÇÃO IMPORTAÇÃO (3º) ===== -->
 <section class="card">
   <h2 class="section-title">Importação de Extrato (BETA)</h2>
   <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
 
-  <div class="form-grid" style="margin-top:12px">
-    <label>
-      Ficheiro (PDF ou CSV)
-      <input id="imp-file" type="file" accept=".pdf,.csv,text/csv,application/pdf" />
-    </label>
-    <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
-    <label>
-      Conta Destino
-      <select id="imp-account">
-        <!-- preenchido via JS -->
-      </select>
-    </label>
-    <label style="display:flex; align-items:center; gap:8px; margin-top:28px; cursor:pointer">
-      <input type="checkbox" id="imp-overwrite" style="width:16px; height:16px" />
-      <span style="font-size:13px; color:var(--red-600); font-weight:600">Substituir movimentos deste mês (Apagar
-        existentes)</span>
-    </label>
-  </div>
+  <!-- WRAPPER ADICIONADO PARA OS INPUTS -->
+  <div class="card soft" style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; box-shadow:none; overflow:hidden; max-width:100%;">
+      <style>
+        /* Local fix for this card's children to ensure containment */
+        .card.soft * {
+          box-sizing: border-box;
+          max-width: 100%;
+        }
+      </style>
+      <div class="form-grid form-grid-responsive">
+        <label>
+          Ficheiro (PDF ou CSV)
+          <input id="imp-file" type="file" accept=".pdf,.csv,text/csv,application/pdf" style="background:#fff; width:100%" />
+        </label>
+        <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
+        <label>
+          Conta Destino
+          <select id="imp-account" style="background:#fff; width:100%">
+            <!-- preenchido via JS -->
+          </select>
+        </label>
+      </div>
 
-  <div class="actions" style="margin-top:8px">
-    <button id="imp-process" class="btn btn--primary">Processar Ficheiro</button>
-    <button id="imp-clear" class="btn">Limpar</button>
+      <div class="actions" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
+        <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
+        <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
+      </div>
   </div>
 
   <p id="imp-info" class="row-note" style="margin-top:8px"></p>
 
-  <div id="imp-review-area" class="card soft"
-    style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
+  <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
       <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
       <div style="font-size:12px; color:var(--muted)">Assinale as transações a importar</div>
     </div>
-
+    
     <div style="max-height:400px; overflow-y:auto; padding-right:4px">
-      <div id="imp-list" style="display:grid; gap:8px"></div>
+        <div id="imp-list" style="display:grid; gap:8px"></div>
     </div>
 
     <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd; text-align:right">
-      <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
+       <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
     </div>
   </div>
 </section>
 
-<!-- ===== ORÇAMENTO DE ESTADO ===== -->
+<!-- ===== ORÇAMENTO DE ESTADO (4º) ===== -->
 <section class="card">
   <h2 class="section-title">Orçamento de Estado</h2>
   <p>Gera um orçamento anual com base nas tuas despesas fixas do ano anterior.</p>
-  <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+  <div style="display:flex;gap:10px;align-items:center;margin-top:12px; flex-wrap:wrap">
     <label style="flex:1;max-width:150px">
       Ano Alvo
       <input id="bud-target-year" type="number" min="2020" max="2100" step="1" />
@@ -648,73 +711,19 @@
     </div>
   </div>
 </div>
-</div>
 
-<!-- ===== secção categorias ===== -->
-<section class="card">
-  <h2 class="section-title">Categorias</h2>
-  <p>Cria, edita ou remove as tuas categorias e subcategorias.</p>
-  <a href="#/categories" class="btn btn--primary">Gerir categorias</a>
-</section>
-
-<!-- ===== APARÊNCIA ===== -->
-<section class="card">
-  <h2 class="section-title">Aparência</h2>
-  <p>Personalize as cores e o tema da aplicação.</p>
-  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
-</section>
-
-<!-- Gerir os mini cards -->
+<!-- ===== Mini-cards ocultos (5º) ===== -->
 <section class="card">
   <h2 class="section-title">Mini-cards ocultos</h2>
   <p class="row-note">Aqui aparecem os mini-cards que ocultaste da Dashboard. Podes voltar a ativá-los.</p>
   <div id="mini-shelf" class="mini-shelf" style="display:flex; gap:8px; flex-wrap:wrap"></div>
 </section>
 
-
-<!-- Alterar palavra-passe -->
-<section id="sec-password" class="card">
-  <h3 class="section-title">Alterar palavra-passe</h3>
-  <div class="grid" style="grid-template-columns:1fr;gap:10px">
-    <label>Nova palavra-passe
-      <input id="set-new-pass" type="password" autocomplete="new-password" />
-    </label>
-    <label>Confirmar nova palavra-passe
-      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
-    </label>
-  </div>
-  <div style="display:flex;gap:10px;margin-top:12px">
-    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
-  </div>
-  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
-</section>
-
-<!-- ===== GESTÃO DE DADOS (Delete) ===== -->
-<section class="card" style="border-color:var(--red-100)">
-  <h2 class="section-title">Gestão de Dados</h2>
-  <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
-
-  <div class="grid" style="grid-template-columns:1fr auto; gap:10px; align-items:end; margin-top:12px">
-    <label>
-      Eliminar movimentos de:
-      <input id="del-month" type="month" />
-    </label>
-    <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
-  </div>
-</section>
-
-<!-- Sessão -->
-<section class="card" id="card-session" style="margin-top:12px">
-  <h2 class="section-title">Sessão</h2>
-  <div class="grid" style="grid-template-columns:2fr 1fr;gap:10px;align-items:end">
-    <div>
-      <div class="row-note">Autenticado como:</div>
-      <div id="sess-user-email" style="font-weight:700">—</div>
-    </div>
-    <div style="text-align:right">
-      <button id="btn-logout" class="btn">Terminar sessão</button>
-    </div>
-  </div>
+<!-- ===== APARÊNCIA (6º) ===== -->
+<section class="card">
+  <h2 class="section-title">Aparência</h2>
+  <p>Personalize as cores e o tema da aplicação.</p>
+  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
 </section>
 
 <!-- ===== MODAL TEMA ===== -->
@@ -747,7 +756,7 @@
           <small id="thm-bg-status" class="row-note" style="color:var(--muted)">Carregar ficheiro ou colar URL</small>
         </label>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Cor Película (Overlay)</span>
             <input type="color" id="thm-overlay-col" value="#000000"
@@ -774,7 +783,7 @@
       <div>
         <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Interface
           Base</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Fundo (Background)</span>
             <input type="color" id="thm-bg" value="#f0f2f5"
@@ -805,7 +814,7 @@
       <div>
         <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Tipografia
         </h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Texto Principal</span>
             <input type="color" id="thm-text" value="#1e293b"
@@ -823,7 +832,7 @@
       <div>
         <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Marca e
           Navegação</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Cabeçalho (Header)</span>
             <input type="color" id="thm-header" value="#0f172a"
@@ -841,7 +850,7 @@
       <div>
         <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Cores de
           Status</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Receita (Income)</span>
             <input type="color" id="thm-income" value="#16a34a"
@@ -869,7 +878,7 @@
       <div>
         <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Detalhes /
           Avançado</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+        <div class="grid grid-responsive-2" style="gap:12px">
           <label style="display:grid; font-size:13px; gap:4px">
             <span>Intensidade Sombra</span>
             <select id="thm-shadow" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1">
@@ -920,8 +929,50 @@
   </div>
 </div>
 
+<!-- ===== Alterar palavra-passe (7º) ===== -->
+<section id="sec-password" class="card">
+  <h3 class="section-title">Alterar palavra-passe</h3>
+  <div class="grid grid-responsive-4" style="gap:10px">
+    <label>Nova palavra-passe
+      <input id="set-new-pass" type="password" autocomplete="new-password" />
+    </label>
+    <label>Confirmar nova palavra-passe
+      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
+    </label>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px">
+    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
+  </div>
+  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
+</section>
 
+<!-- ===== Sessão (8º) ===== -->
+<section class="card" id="card-session" style="margin-top:12px">
+  <h2 class="section-title">Sessão</h2>
+  <div class="grid grid-responsive-session" style="gap:10px;align-items:end">
+    <div>
+      <div class="row-note">Autenticado como:</div>
+      <div id="sess-user-email" style="font-weight:700">—</div>
+    </div>
+    <div style="text-align:right">
+      <button id="btn-logout" class="btn">Terminar sessão</button>
+    </div>
+  </div>
+</section>
 
+<!-- ===== GESTÃO DE DADOS (Delete) (9º) ===== -->
+<section class="card" style="border-color:var(--red-100)">
+  <h2 class="section-title">Gestão de Dados</h2>
+  <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
+  
+  <div class="grid grid-responsive-delete" style="gap:10px; align-items:end; margin-top:12px">
+    <label>
+      Eliminar movimentos de:
+      <input id="del-month" type="month" />
+    </label>
+    <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
+  </div>
+</section>
 
 
 <script type="module" src="/src/main.js?v=v7"></script>
