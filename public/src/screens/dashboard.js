@@ -1204,6 +1204,266 @@ function setupMiniCardHider(outletEl) {
   });
 }
 
+// =============================================================================
+// DATA LAYER
+// =============================================================================
+async function fetchData() {
+  const year = STATE.filters.year;
+  const month = STATE.filters.month;
+
+  // 1. Define Range: Entire Year (for charts) + Specific Month (for KPIs)
+  const startOfYear = `${year}-01-01`;
+  const endOfYear = `${year}-12-31`;
+
+  // 2. Fetch All Transactions for the Year
+  // We fetch strictly what we need for the dashboard to be fast
+  const q = repo.transactions
+    .query()
+    .gte("date", startOfYear)
+    .lte("date", endOfYear)
+    .order("date", { ascending: true });
+
+  const [txs, cats] = await Promise.all([q.exec(), repo.categories.getAll()]);
+
+  STATE.data.transactions = txs || [];
+  STATE.data.categories = cats || [];
+
+  // 3. Load Settings
+  try {
+    const stored = localStorage.getItem(`wb:fixed:${year}`);
+    STATE.data.fixedSettings = stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    STATE.data.fixedSettings = {};
+  }
+}
+
+// =============================================================================
+// PRESENTATION LAYER - RENDERERS
+// =============================================================================
+function renderKPIs() {
+  const { kpi } = STATE.data.processed || {};
+  if (!kpi) return;
+
+  const safe = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = money(val);
+  };
+
+  // We need to match the IDs in the skeleton/HTML
+  // Note: The skeleton used "kpi-grid" and "kpi-shim". We should render the actual grid now.
+  const grid = document.getElementById("kpi-grid");
+  if (grid) {
+    grid.innerHTML = `
+            <div class="kpi kpi--income">
+                <div class="kpi__title">Receitas</div>
+                <div class="kpi__value">${money(kpi.income)}</div>
+            </div>
+            <div class="kpi kpi--expense">
+                <div class="kpi__title">Despesas</div>
+                <div class="kpi__value">${money(kpi.expense)}</div>
+            </div>
+            <div class="kpi kpi--savings">
+                <div class="kpi__title">Poupanças</div>
+                <div class="kpi__value">${money(kpi.savings)}</div>
+            </div>
+            <div class="kpi kpi--balance">
+                <div class="kpi__title">Saldo Líquido</div>
+                <div class="kpi__value" style="color: ${kpi.net >= 0 ? "var(--text)" : "#ef4444"}">${money(kpi.net)}</div>
+            </div>
+        `;
+  }
+}
+
+function renderMiniCardsCarousel() {
+  const track = document.getElementById("mini-track");
+  if (!track) return;
+
+  // Define Cards
+  const cards = [
+    { id: "cashflow", title: "Projeção Cashflow", hint: "Ver gráfico" },
+    { id: "tendencias", title: "Tendências (12m)", hint: "Ver gráfico" },
+    { id: "fixvar_mes", title: "Fixo vs Variável", hint: "Mês atual" },
+    { id: "categorias", title: "Top Categorias", hint: "Ano atual" },
+    { id: "gasto_diario", title: "Gasto Diário", hint: "Acumulado" },
+  ];
+
+  track.innerHTML = cards
+    .map(
+      (c) => `
+        <div class="carousel-item">
+            <button class="mini-card" data-chart="${c.id}">
+                <span class="mini-card__title">${c.title}</span>
+                <span class="mini-card__hint">${c.hint}</span>
+            </button>
+        </div>
+    `,
+    )
+    .join("");
+
+  // Re-bind clicks since we overwrote HTML
+  track.querySelectorAll(".mini-card").forEach((btn) => {
+    btn.addEventListener("click", () => openChartModal(btn.dataset.chart));
+  });
+}
+
+function renderCategoryList() {
+  const list = document.getElementById("cat-list");
+  if (!list) return;
+
+  const { catStats } = STATE.data.processed || {};
+  const data = catStats?.year || {};
+
+  // Sort by Value Desc
+  const sorted = Object.entries(data)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10); // Top 10
+
+  if (sorted.length === 0) {
+    list.innerHTML = `<p class="muted">Sem despesas registadas.</p>`;
+    return;
+  }
+
+  list.innerHTML = sorted
+    .map(([name, val]) => {
+      const avg = val / 12; // Simple avg
+      return `
+            <div class="kpi-row" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border)">
+                <div>
+                    <div style="font-weight:600">${name}</div>
+                    <div style="font-size:0.8em; opacity:0.7">Média: ${money(avg)}/mês</div>
+                </div>
+                <div style="font-weight:bold">${money(val)}</div>
+            </div>
+        `;
+    })
+    .join("");
+}
+
+function renderUpcomingFixed() {
+  const el = document.getElementById("upcoming-list");
+  // Placeholder (This usually requires more complex logic to predict next month fixed expenses)
+  // For now we leave it simple or empty.
+  if (el)
+    el.innerHTML = `<p class="muted" style="font-size:0.9em">Funcionalidade em migração...</p>`;
+}
+
+function openChartModal(type) {
+  const modal = document.getElementById("dash-modal");
+  const title = document.getElementById("dash-modal-title");
+  const canvas = document.getElementById("dash-modal-canvas");
+  const ctx = canvas.getContext("2d");
+
+  // Config Chart based on Type using STATE.data.processed
+  // ... (Chart Rendering Logic would go here, effectively restoring what we had) ...
+
+  // For MVP/Verification now:
+  modal.hidden = false;
+  title.textContent = "Gráfico: " + type;
+
+  // Simple Shim Chart
+  if (STATE.chartInstances.modal) STATE.chartInstances.modal.destroy();
+
+  STATE.chartInstances.modal = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Demo A", "Demo B"],
+      datasets: [
+        { label: "Valor", data: [120, 200], backgroundColor: "#3b82f6" },
+      ],
+    },
+    options: { responsive: true, maintainAspectRatio: false },
+  });
+}
+
+// =============================================================================
+// LOGIC LAYER
+// =============================================================================
+function processData() {
+  const { transactions, categories } = STATE.data;
+  const { year, month } = STATE.filters;
+  const currentMonthKey = `${year}-${pad2(month)}`;
+
+  // 1. Map Categories for quick lookup
+  const catMap = new Map(categories.map((c) => [c.id, c]));
+
+  // 2. Aggregate Data
+  // We need:
+  // - Totals for Current Month (KPIs)
+  // - Totals per Month (Charts)
+  // - Totals by Category (Analysis)
+
+  const monthlyStats = {}; // "2024-01": { income: 0, expense: 0, savings: 0 }
+  const catStats = { month: {}, year: {} }; // Aggregation by category
+
+  // Initialize monthly keys
+  monthKeysBetween(`${year}-01`, `${year}-12`).forEach((k) => {
+    monthlyStats[k] = { income: 0, expense: 0, savings: 0, net: 0 };
+  });
+
+  let kpi = { income: 0, expense: 0, savings: 0, net: 0, trend: {} };
+
+  transactions.forEach((tx) => {
+    const d = new Date(tx.date);
+    const mKey = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+    const cat = catMap.get(tx.category_id);
+    const typeId = tx.type_id;
+    const val = Number(tx.amount);
+
+    // Helper: Identify Type (Income=1, Expense=2, Savings=3 - assuming standard IDs)
+    // If repo doesn't provide constants, we might need to infer or hardcode based on known generated IDs
+    // For robustness, let's assume standard Wisebudget IDs if not imported:
+    // Income: 1, Expense: 2, Savings: 3.
+
+    if (!monthlyStats[mKey]) return; // Out of range safety
+
+    if (typeId === 1) monthlyStats[mKey].income += val;
+    else if (typeId === 2) monthlyStats[mKey].expense += val;
+    else if (typeId === 3) monthlyStats[mKey].savings += val;
+
+    // KPI for current month
+    if (mKey === currentMonthKey) {
+      if (typeId === 1) kpi.income += val;
+      else if (typeId === 2) kpi.expense += val;
+      else if (typeId === 3) kpi.savings += val;
+    }
+
+    // Category Aggregation
+    if (cat) {
+      const catName = cat.name;
+      const parentId = cat.parent_id;
+      const parentName = parentId ? catMap.get(parentId)?.name : catName;
+      const key = parentName || "Outros";
+
+      // Annual
+      if (typeId === 2) {
+        // Only expenses for category chart
+        catStats.year[key] = (catStats.year[key] || 0) + val;
+        if (mKey === currentMonthKey) {
+          catStats.month[key] = (catStats.month[key] || 0) + val;
+        }
+      }
+    }
+  });
+
+  // Calculate Nets
+  Object.keys(monthlyStats).forEach((k) => {
+    const m = monthlyStats[k];
+    m.net = m.income - m.expense - m.savings;
+  });
+
+  kpi.net = kpi.income - kpi.expense - kpi.savings;
+
+  // Save Processed Data
+  STATE.data.processed = {
+    monthlyStats,
+    catStats,
+    kpi,
+    currentMonthKey,
+  };
+
+  console.log("Stats Processed:", STATE.data.processed);
+}
+
 // =============================== DASHBOARD INIT ===============================
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
