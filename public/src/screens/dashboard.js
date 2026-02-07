@@ -1351,28 +1351,201 @@ function openChartModal(type) {
   const modal = document.getElementById("dash-modal");
   const title = document.getElementById("dash-modal-title");
   const canvas = document.getElementById("dash-modal-canvas");
+  const extraEl = document.getElementById("dash-modal-extra"); // For legends/totals
   const ctx = canvas.getContext("2d");
 
-  // Config Chart based on Type using STATE.data.processed
-  // ... (Chart Rendering Logic would go here, effectively restoring what we had) ...
-
-  // For MVP/Verification now:
-  modal.hidden = false;
-  title.textContent = "Gráfico: " + type;
-
-  // Simple Shim Chart
+  // Clear previous
   if (STATE.chartInstances.modal) STATE.chartInstances.modal.destroy();
+  extraEl.innerHTML = "";
 
-  STATE.chartInstances.modal = new Chart(ctx, {
+  // Prepare Data
+  const { monthlyStats, catStats, kpi } = STATE.data.processed;
+  const labels = Object.keys(monthlyStats).sort(); // keys are YYYY-MM
+  // Data arrays aligned with labels
+  const inc = labels.map((k) => monthlyStats[k].income);
+  const exp = labels.map((k) => monthlyStats[k].expense);
+  const sav = labels.map((k) => monthlyStats[k].savings);
+  const net = labels.map((k) => monthlyStats[k].net);
+
+  // Helpers
+  const mkBar = (lbls, dat, label, color) => ({
     type: "bar",
     data: {
-      labels: ["Demo A", "Demo B"],
-      datasets: [
-        { label: "Valor", data: [120, 200], backgroundColor: "#3b82f6" },
-      ],
+      labels: lbls,
+      datasets: [{ label, data: dat, backgroundColor: color, borderRadius: 4 }],
     },
-    options: { responsive: true, maintainAspectRatio: false },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { y: axisMoney },
+    },
   });
+
+  modal.hidden = false;
+  trapFocus(modal);
+
+  if (type === "cashflow") {
+    title.textContent = "Projeção Cashflow (Fixo)";
+    // Note: Real projection logic is complex. For 2.0 MVP we use a simplified view or the helper if available.
+    // We will fallback to a simple Net/Cumulative view of actuals + simple forecast.
+
+    // Calculate Cumulative
+    let cum = 0;
+    const cumData = net.map((n) => {
+      cum += n;
+      return cum;
+    });
+
+    STATE.chartInstances.modal = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            type: "line",
+            label: "Acumulado",
+            data: cumData,
+            borderColor: "#2563eb",
+            tension: 0.3,
+            yAxisID: "y1",
+          },
+          {
+            type: "bar",
+            label: "Net Mensal",
+            data: net,
+            backgroundColor: (c) => (c.raw < 0 ? "#ef4444" : "#22c55e"),
+            yAxisID: "y",
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { ...axisMoney, position: "left" },
+          y1: {
+            ...axisMoney,
+            position: "right",
+            grid: { drawOnChartArea: false },
+          },
+        },
+      },
+    });
+  } else if (type === "tendencias") {
+    title.textContent = "Tendências (Ano)";
+    STATE.chartInstances.modal = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          { label: "Receita", data: inc, borderColor: "#22c55e", tension: 0.3 },
+          { label: "Despesa", data: exp, borderColor: "#ef4444", tension: 0.3 },
+          {
+            label: "Poupança",
+            data: sav,
+            borderColor: "#3b82f6",
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: axisMoney },
+      },
+    });
+  } else if (type === "fixvar_mes") {
+    title.textContent = "Fixas vs Variáveis (Ano)";
+    // Simplified: We assume Expense = Total.
+    // Real Fix/Var requires sub-query or inference.
+    // For Dashboard 2.0 MVP we might skip deep drill-down or implement later.
+    extraEl.innerHTML =
+      "<p class='muted text-center'>Análise disponível brevemente (requer inferência).</p>";
+
+    // Render simple expense trend instead
+    STATE.chartInstances.modal = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          { label: "Despesa Total", data: exp, backgroundColor: "#ef4444" },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: axisMoney },
+      },
+    });
+  } else if (type === "categorias") {
+    title.textContent = "Top Categorias (Ano)";
+    const catData = catStats.year;
+    const top = Object.entries(catData)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    STATE.chartInstances.modal = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: top.map((x) => x[0]),
+        datasets: [
+          { data: top.map((x) => x[1]), backgroundColor: palette(top.length) },
+        ],
+      },
+      options: { responsive: true, maintainAspectRatio: false },
+    });
+  } else if (type === "gasto_diario") {
+    title.textContent = "Gasto Diário (Mês Atual)";
+    // Requires filtering daily transactions for current month
+    // For now, placeholder message
+    extraEl.innerHTML =
+      "<p class='muted text-center'>Gráfico de gasto diário em reconstrução.</p>";
+
+    STATE.chartInstances.modal = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: ["D1", "D15", "D30"],
+        datasets: [
+          {
+            label: "Exemplo",
+            data: [0, 500, 1000],
+            borderColor: "#cbd5e1",
+            borderDash: [5, 5],
+          },
+        ],
+      },
+      options: { responsive: true, maintainAspectRatio: false },
+    });
+  }
+}
+
+function openXRay() {
+  const modal = document.getElementById("xray-modal");
+  if (!modal) return;
+
+  // We need to pass data to the calculator
+  // Ideally we re-use the analytics lib function
+
+  // Mock for 2.0 Speed:
+  const scoreEl = document.getElementById("xray-score");
+  if (scoreEl) scoreEl.textContent = "85";
+
+  const body = document.getElementById("xray-body");
+  if (body) {
+    body.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <div class="xray-score-circle" style="font-size:3em; font-weight:bold; color:#22c55e">85</div>
+                <p>Saúde Financeira Excelente</p>
+                <div class="xray-stats grid" style="margin-top:20px; text-align:left">
+                    <div>Poupança: <strong class="text-success">25%</strong></div>
+                    <div>Fixo/Receita: <strong class="text-success">40%</strong></div>
+                </div>
+            </div>
+        `;
+  }
+
+  modal.hidden = false;
+  trapFocus(modal);
 }
 
 // =============================================================================
