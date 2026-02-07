@@ -1,5 +1,5 @@
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v20";
+const VERSION = "v35";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -12,7 +12,7 @@ const APP_SHELL = [
   withBase("/"),
   withBase("/index.html"),
   withBase("/styles.css"),
-  withBase("/main.js"),
+  withBase("/app.js"),
   withBase("/manifest.json"),
   withBase("/wisebudget.png"),
   withBase("/wisebudget_bk_wt.png"),
@@ -43,6 +43,11 @@ const APP_SHELL = [
   withBase("/src/lib/helpers.js"),
   withBase("/src/lib/categories-crud.js"),
   withBase("/src/lib/validators.js"),
+  withBase("/src/lib/analytics.js"),
+  withBase("/src/lib/ui.js"),
+  withBase("/src/lib/guide.js"),
+  withBase("/src/lib/theme.js"),
+  withBase("/src/lib/onboarding.js"),
 ];
 
 // Helpers
@@ -156,11 +161,18 @@ self.addEventListener("fetch", (event) => {
 
       const cached = await cache.match(req);
       if (cached) {
-        fetch(req)
-          .then((res) => {
-            if (res && res.ok) cache.put(req, res.clone());
+        // Background update (stale-while-revalidate logic)
+        // Força reload da rede para evitar HTTP cache stale
+        const bgReq = new Request(req, { cache: "reload" });
+        fetch(bgReq)
+          .then((networkRes) => {
+            if (networkRes && networkRes.ok) {
+              caches.open(CACHE_DYNAMIC).then((cache) => {
+                cache.put(req, networkRes.clone());
+              });
+            }
           })
-          .catch(() => {});
+          .catch(() => {}); // silenciar erros de bg update
         return cached;
       }
 
