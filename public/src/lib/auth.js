@@ -259,4 +259,40 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
       options: { emailRedirectTo: CONFIRM_URL },
     });
   };
+
+  return {
+    handlePasswordReset: () => {
+      const modal = document.getElementById("modal-reset-pw");
+      const form = document.getElementById("form-reset-pw");
+      if (!modal || !form) return;
+
+      modal.classList.remove("hidden");
+      modal.setAttribute("aria-hidden", "false");
+      setOverlay(false); // Hide login overlay if open
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const p1 = document.getElementById("reset-new-pw").value;
+        const p2 = document.getElementById("reset-conf-pw").value;
+
+        if (p1 !== p2) return Toast.error("As passwords não coincidem.");
+        if (p1.length < 6) return Toast.error("Mínimo 6 caracteres.");
+
+        try {
+          // Update password (user is logged in with recovery token)
+          const { error } = await sb.auth.updateUser({ password: p1 });
+          if (error) throw error;
+
+          Toast.success("Palavra-passe alterada com sucesso! 🔒");
+          modal.classList.add("hidden");
+          modal.setAttribute("aria-hidden", "true");
+          // Redirect to home/dashboard
+          window.location.hash = "#/";
+        } catch (err) {
+          console.error(err);
+          Toast.error(err.message || "Erro ao alterar palavra-passe.");
+        }
+      };
+    },
+  };
 }

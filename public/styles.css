@@ -3760,3 +3760,34 @@ td:nth-child(5) {
     transform: scale(1) translateY(0);
   }
 }
+
+/* === FIX: CONTRAST OVERRIDES === */
+/* Auth Modal / Card: Force dark text always */
+.auth-card,
+.modal__card {
+  color: #1e293b !important;
+}
+
+.auth-card input,
+.modal__card input {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.auth-card label,
+.modal__card label {
+  color: #1e293b !important;
+}
+
+/* Specific fix for Nova Transaction Type buttons inside cards */
+.card label.btn {
+  color: #1e293b !important;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+.card label.btn:has(input:checked) {
+  background-color: #e2e8f0;
+  border-color: #94a3b8;
+}

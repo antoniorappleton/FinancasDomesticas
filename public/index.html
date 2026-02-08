@@ -617,7 +617,65 @@
       </div>
     </div>
 
+    <!-- ===== MODAL DE RESET DE PASSWORD (GLOBAL) ===== -->
+    <div
+      id="modal-reset-pw"
+      class="modal hidden"
+      aria-hidden="true"
+      style="z-index: 10001"
+    >
+      <div class="modal__card" style="max-width: 400px; color: #1e293b">
+        <h2 class="section-title" style="color: #1e293b">
+          Redefinir Palavra-passe
+        </h2>
+        <p class="row-note" style="margin-bottom: 20px; color: #64748b">
+          Insere a tua nova palavra-passe abaixo.
+        </p>
+        <form
+          id="form-reset-pw"
+          class="grid grid-responsive-1"
+          style="gap: 16px"
+        >
+          <label style="color: #1e293b">
+            Nova palavra-passe
+            <input
+              type="password"
+              id="reset-new-pw"
+              minlength="6"
+              required
+              autocomplete="new-password"
+              style="
+                color: #1e293b;
+                background: #fff;
+                border: 1px solid #cbd5e1;
+              "
+            />
+          </label>
+          <label style="color: #1e293b">
+            Confirmar palavra-passe
+            <input
+              type="password"
+              id="reset-conf-pw"
+              minlength="6"
+              required
+              autocomplete="new-password"
+              style="
+                color: #1e293b;
+                background: #fff;
+                border: 1px solid #cbd5e1;
+              "
+            />
+          </label>
+          <div style="display: flex; gap: 10px; margin-top: 8px">
+            <button type="submit" class="btn btn--primary" style="width: 100%">
+              Alterar Palavra-passe
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=45"></script>
+    <script type="module" src="./main.js?v=46"></script>
   </body>
 </html>

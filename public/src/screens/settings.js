@@ -30,6 +30,22 @@ export async function init({ sb, outlet } = {}) {
   const getUserId = async () => (await sb.auth.getUser()).data?.user?.id;
 
   // ================= Helpers base =======================
+
+  // Check for password reset action
+  setTimeout(() => {
+    const params = new URLSearchParams(window.location.hash.split("?")[1]);
+    if (params.get("action") === "reset_password") {
+      const sec = document.getElementById("sec-password");
+      if (sec) {
+        sec.scrollIntoView({ behavior: "smooth" });
+        sec.style.border = "2px solid var(--ui-fab-bg)"; // Highlight
+        const inp = document.getElementById("set-new-pass");
+        if (inp) inp.focus();
+        Toast.info("Define a tua nova palavra-passe aqui.");
+      }
+    }
+  }, 500);
+
   const $ = (sel) =>
     (outlet && outlet.querySelector(sel)) || document.querySelector(sel);
 
