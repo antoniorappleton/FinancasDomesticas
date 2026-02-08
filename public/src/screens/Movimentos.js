@@ -5,14 +5,24 @@ import { repo } from "../lib/repo.js";
 // Badges UI helpers (simple enough to keep here or move to a ui-helper if reused elsewhere)
 const typeBadge = (code) => {
   const map = {
-    INCOME: { label: "Receita", style: "background:#ecfdf5;color:#065f46;border:1px solid #d1fae5" },
-    EXPENSE: { label: "Despesa", style: "background:#fef2f2;color:#7f1d1d;border:1px solid #fee2e2" },
-    SAVINGS: { label: "Poupança", style: "background:#eff6ff;color:#1e3a8a;border:1px solid #dbeafe" }
+    INCOME: {
+      label: "Receita",
+      style: "background:#ecfdf5;color:#065f46;border:1px solid #d1fae5",
+    },
+    EXPENSE: {
+      label: "Despesa",
+      style: "background:#fef2f2;color:#7f1d1d;border:1px solid #fee2e2",
+    },
+    SAVINGS: {
+      label: "Poupança",
+      style: "background:#eff6ff;color:#1e3a8a;border:1px solid #dbeafe",
+    },
   };
   if (map[code]) {
     return `<span class="badge" style="${map[code].style}">${map[code].label}</span>`;
   }
-  if (code?.startsWith("TRANSFER")) return `<span class="badge">Transferência</span>`;
+  if (code?.startsWith("TRANSFER"))
+    return `<span class="badge">Transferência</span>`;
   return `<span class="badge">Outro</span>`;
 };
 
@@ -72,7 +82,7 @@ export async function init(ctx = {}) {
   let page = 0;
   let all = [];
   let filtered = [];
-  
+
   // Cache de categorias para display (id -> label)
   const categoriesMap = new Map();
 
@@ -80,12 +90,14 @@ export async function init(ctx = {}) {
     if (categoriesMap.size) return;
     try {
       const cats = await repo.refs.allCategories();
-      const parents = new Map(cats.filter(c => !c.parent_id).map(c => [c.id, c.name]));
-      cats.forEach(c => {
-         const label = c.parent_id 
-          ? `${parents.get(c.parent_id) || '?'} > ${c.name}` 
+      const parents = new Map(
+        cats.filter((c) => !c.parent_id).map((c) => [c.id, c.name]),
+      );
+      cats.forEach((c) => {
+        const label = c.parent_id
+          ? `${parents.get(c.parent_id) || "?"} > ${c.name}`
           : c.name;
-         categoriesMap.set(c.id, { name: c.name, label });
+        categoriesMap.set(c.id, { name: c.name, label });
       });
     } catch (e) {
       console.error("Erro ao carregar categorias:", e);
@@ -102,8 +114,12 @@ export async function init(ctx = {}) {
       const data = await repo.refs.statuses();
       dom.fltStatus.innerHTML =
         `<option value="all">Todos os status</option>` +
-        data.map((s) => `<option value="${s.name_pt}">${s.name_pt}</option>`).join("");
-    } catch (e) { console.error(e); }
+        data
+          .map((s) => `<option value="${s.name_pt}">${s.name_pt}</option>`)
+          .join("");
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   async function fetchPage(reset = false) {
@@ -112,15 +128,15 @@ export async function init(ctx = {}) {
       all = [];
       dom.tbody.innerHTML = "";
     }
-    
+
     try {
       // Carregar categorias se necessário para exibir nomes corretos
       await ensureCategoriesLoaded();
 
       const data = await repo.transactions.list({
-        page, 
+        page,
         pageSize: PAGE_SIZE,
-        month: dom.fltMonth?.value || null
+        month: dom.fltMonth?.value || null,
       });
 
       if (!data || !data.length) {
@@ -130,7 +146,6 @@ export async function init(ctx = {}) {
         }
         return; // Fim da lista
       }
-
 
       const rows = data.map((tx) => ({
         id: tx.id,
@@ -180,7 +195,12 @@ export async function init(ctx = {}) {
       .map((r) => {
         // Lógica visual de cores
         const val = r.type_code === "EXPENSE" ? -r.amount : r.amount;
-        const color = r.type_code === "INCOME" ? "#16a34a" : r.type_code === "EXPENSE" ? "#ef4444" : "#2563eb";
+        const color =
+          r.type_code === "INCOME"
+            ? "#16a34a"
+            : r.type_code === "EXPENSE"
+              ? "#ef4444"
+              : "#2563eb";
 
         return `
       <tr class="tx-row" data-id="${r.id}" data-type="${r.type_code || ""}" style="cursor:pointer">
@@ -210,10 +230,14 @@ export async function init(ctx = {}) {
       .map((r) => `<option value="${r[value]}">${r[label]}</option>`)
       .join("");
   }
-  
+
   async function loadCategoriesForType(typeCode, selectedId) {
-    const kindMap = { INCOME: "income", EXPENSE: "expense", SAVINGS: "savings" };
-    const kind = kindMap[typeCode]; 
+    const kindMap = {
+      INCOME: "income",
+      EXPENSE: "expense",
+      SAVINGS: "savings",
+    };
+    const kind = kindMap[typeCode];
     if (!kind) {
       fillSelect(dom.ed.category, [], "label");
       return;
@@ -228,8 +252,12 @@ export async function init(ctx = {}) {
     }
   }
 
-  function openModal() { dom.modal?.removeAttribute("hidden"); }
-  function closeModal() { dom.modal?.setAttribute("hidden", ""); }
+  function openModal() {
+    dom.modal?.removeAttribute("hidden");
+  }
+  function closeModal() {
+    dom.modal?.setAttribute("hidden", "");
+  }
 
   async function openEdit(id) {
     try {
@@ -240,7 +268,7 @@ export async function init(ctx = {}) {
         repo.refs.paymentMethods(),
         repo.refs.statuses(),
         repo.refs.transactionTypes(),
-        repo.transactions.getById(id)
+        repo.transactions.getById(id),
       ]);
 
       fillSelect(dom.ed.account, accs, "name");
@@ -267,7 +295,7 @@ export async function init(ctx = {}) {
 
       const isTransfer = tcode && tcode.startsWith("TRANSFER");
       dom.ed.hint.textContent = isTransfer
-        ? "⚠️ Transferência: edição/remoção bloqueadas aqui."
+        ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px;"><use href="#i-info"/></svg> Transferência: edição/remoção bloqueadas aqui.'
         : "";
       dom.ed.save.disabled = !!isTransfer;
       dom.ed.del.disabled = !!isTransfer;
@@ -280,8 +308,12 @@ export async function init(ctx = {}) {
             date: dom.ed.date.value,
             amount: Number(dom.ed.amount.value || 0),
             account_id: dom.ed.account.value || null,
-            regularity_id: dom.ed.regularity.value ? Number(dom.ed.regularity.value) : null,
-            payment_method_id: dom.ed.method.value ? Number(dom.ed.method.value) : null,
+            regularity_id: dom.ed.regularity.value
+              ? Number(dom.ed.regularity.value)
+              : null,
+            payment_method_id: dom.ed.method.value
+              ? Number(dom.ed.method.value)
+              : null,
             status_id: dom.ed.status.value ? Number(dom.ed.status.value) : null,
             category_id: dom.ed.category.value || null,
             description: dom.ed.desc.value || null,
@@ -321,13 +353,21 @@ export async function init(ctx = {}) {
   }
 
   // --------- Eventos ---------
-  dom.btnRefresh?.addEventListener("click", () => { fetchPage(true).then(render); });
-  dom.btnMore?.addEventListener("click", () => { fetchPage(false).then(render); });
+  dom.btnRefresh?.addEventListener("click", () => {
+    fetchPage(true).then(render);
+  });
+  dom.btnMore?.addEventListener("click", () => {
+    fetchPage(false).then(render);
+  });
   dom.fltSearch?.addEventListener("input", render);
   dom.fltType?.addEventListener("change", render);
-  dom.fltStatus?.addEventListener("change", () => { fetchPage(true).then(render); });
-  dom.fltMonth?.addEventListener("change", () => { fetchPage(true).then(render); });
-  
+  dom.fltStatus?.addEventListener("change", () => {
+    fetchPage(true).then(render);
+  });
+  dom.fltMonth?.addEventListener("change", () => {
+    fetchPage(true).then(render);
+  });
+
   dom.modal?.addEventListener("click", (ev) => {
     if (ev.target?.hasAttribute?.("data-close")) closeModal();
   });
@@ -342,8 +382,6 @@ export async function init(ctx = {}) {
     }
     openEdit(tr.dataset.id);
   });
-
-
 
   // Init
   await fillStatusFilter();

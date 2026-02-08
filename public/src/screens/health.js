@@ -5,11 +5,12 @@
 
 import {
   calculateHealthMetrics,
-  getHealthStatus,
   buildHealthSeries,
+  getHealthStatus,
 } from "../lib/healthMetrics.js";
 import { makeChart } from "../lib/chart-loader.js";
 import { money } from "../lib/helpers.js";
+import Guide from "../lib/guide.js";
 
 let healthChart = null;
 let currentLayer = "net";
@@ -50,8 +51,10 @@ export async function init({ sb, outlet } = {}) {
     // 7. Render alerts (if any)
     renderAlerts(status.alerts);
 
-    // Setup help button
-    setupHelpButton();
+    // Contextual Help
+    // We let Guide.js handle the injection. We just ensure the route is set.
+    Guide.setRoute("#/health");
+    Guide.mountScreenButton();
 
     // 8. Update metric summary for initial layer
     updateMetricSummary(currentLayer, monthlyData);
@@ -509,29 +512,6 @@ function getStatusText(status, recommendation) {
     critical: `Crítico (${recommendation})`,
   };
   return labels[status] || recommendation;
-}
-
-// ===== Help Modal =====
-
-function setupHelpButton() {
-  const outlet = document.getElementById("outlet");
-  const helpBtn = outlet.querySelector(".screen-help-btn");
-  const modal = outlet.querySelector("#health-help-modal");
-
-  if (!helpBtn || !modal) return;
-
-  helpBtn.addEventListener("click", () => {
-    modal.classList.remove("hidden");
-    modal.setAttribute("aria-hidden", "false");
-  });
-
-  // Close on backdrop click
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      modal.classList.add("hidden");
-      modal.setAttribute("aria-hidden", "true");
-    }
-  });
 }
 
 // ===== Alerts =====

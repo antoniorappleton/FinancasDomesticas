@@ -20,13 +20,13 @@ export class Onboarding {
         
         <ul class="onboarding-steps">
           <li>
-            <strong>📊 Dashboard:</strong> Visão geral das tuas finanças.
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Dashboard:</strong> Visão geral das tuas finanças.
           </li>
           <li>
-            <strong>💶 Nova:</strong> Regista despesas e receitas.
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Nova:</strong> Regista despesas e receitas.
           </li>
           <li>
-            <strong>⚙️ Definições:</strong> Configura categorias e contas.
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cog'/></svg> Definições:</strong> Configura categorias e contas.
           </li>
         </ul>
 

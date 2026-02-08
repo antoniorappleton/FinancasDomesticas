@@ -2291,7 +2291,7 @@ export async function init({ sb, outlet } = {}) {
                         <span class="badge ${badgeClass}">${statusText}</span>
                         ${
                           u.avgDay !== u.next.getDate()
-                            ? '<span title="Ajustado pela média" class="uc-smart">✨ Smart</span>'
+                            ? '<span title="Ajustado pela média" class="uc-smart"><svg width="14" height="14" style="vertical-align: middle; margin-right: 2px;"><use href="#i-crystal"/></svg> Smart</span>'
                             : ""
                         }
                       </div>

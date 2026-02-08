@@ -186,7 +186,7 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
           email,
           options: { emailRedirectTo: CONFIRM_URL },
         });
-        Toast.success("Email reenviado ✔️");
+        Toast.success("Email reenviado");
       });
 
     document.getElementById("back-login")?.addEventListener("click", () => {

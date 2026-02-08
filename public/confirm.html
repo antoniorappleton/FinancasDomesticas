@@ -139,7 +139,9 @@
       const errUI = (err) => {
         box.className = "card error";
         box.innerHTML = `
-      <div class="title" style="font-size:3rem">⚠️</div>
+      <div class="title" style="font-size:3rem">
+        <svg width="48" height="48" style="fill: #f59e0b;"><use href="#i-info"/></svg>
+      </div>
       <div class="title" style="font-size:1.4rem">Link inválido ou expirado</div>
       <p style="color:#854d0e; margin:10px 0">Algo correu mal (${err?.message || "Erro desconhecido"}).<br>Pede um novo email de confirmação.</p>
       <a href="./index.html" class="btn secondary">Voltar à app</a>
@@ -218,7 +220,7 @@
             }
 
             return okUI(
-              type === "signup" ? "Email confirmado ✔" : "Ligação validada ✔",
+              type === "signup" ? "Email confirmado" : "Ligação validada",
             );
           }
 
