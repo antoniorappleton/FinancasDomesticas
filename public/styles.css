@@ -3821,6 +3821,29 @@ td:nth-child(5) {
   color: inherit !important;
 }
 
+/* === FIX: Forecast 2026 Modal (Extra Chart Panel) === */
+/* Force black text on all explanatory paragraphs and labels */
+#chart-cashflow-fixed-extra .muted,
+#chart-cashflow-fixed-extra .muted strong,
+#chart-cashflow-fixed-extra .muted span {
+  color: #1e293b !important;
+}
+
+/* Toggle button text */
+#fx26-toggle {
+  color: #1e293b !important;
+}
+
+/* Panel labels and inputs */
+#fx26-panel label,
+#fx26-panel span {
+  color: #1e293b !important;
+}
+
+#fx26-panel input[type="checkbox"]+span {
+  color: #1e293b !important;
+}
+
 .auth-card input,
 .modal__card input {
   color: #1e293b !important;
