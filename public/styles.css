@@ -3762,10 +3762,63 @@ td:nth-child(5) {
 }
 
 /* === FIX: CONTRAST OVERRIDES === */
-/* Auth Modal / Card: Force dark text always */
-.auth-card,
-.modal__card {
+/* Auth Modal: Force dark text always */
+.auth-card {
   color: #1e293b !important;
+}
+
+/* Mini Cards: Force dark text always (on white cards) */
+.mini-card {
+  color: #1e293b !important;
+}
+
+.mini-card__title {
+  color: #1e293b !important;
+}
+
+.mini-card__hint {
+  color: #64748b !important;
+}
+
+/* KPI Labels override: Force dark gray (on white cards) */
+.kpi__title {
+  color: #64748b !important;
+}
+
+/* === FIX: Bulk Expenses Modal (Nova) === */
+/* Force black text for the note and list items */
+#fixed-bulk-modal .row-note {
+  color: #1e293b !important;
+}
+
+.bulk-item-desc,
+.bulk-item-sub {
+  color: #1e293b !important;
+}
+
+/* The group title in bulk list is usually white on dark header, 
+   but if user wants "etiquetas" black, they might mean the items. 
+   I will leave group title as is (it has contrast) but ensure items are black. */
+
+/* === FIX: Upcoming Expenses (Dashboard) === */
+.upcoming-card {
+  color: #1e293b !important;
+}
+
+.uc-cat,
+.uc-amount {
+  color: #1e293b !important;
+}
+
+/* Dates "color of warning" (Assuming Amber/Orange) */
+.uc-date {
+  color: #f59e0b !important;
+  /* Amber-500 */
+}
+
+.uc-day,
+.uc-month {
+  color: inherit !important;
 }
 
 .auth-card input,
@@ -3775,8 +3828,7 @@ td:nth-child(5) {
   border-color: #cbd5e1 !important;
 }
 
-.auth-card label,
-.modal__card label {
+.auth-card label {
   color: #1e293b !important;
 }
 
