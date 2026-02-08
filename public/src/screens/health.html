@@ -1,0 +1,196 @@
+<section class="card health-score">
+  <div class="score-circle" data-status="good" id="health-score">
+    <span id="health-score-value">--</span>
+  </div>
+  <h2 id="health-status-text">Saúde Financeira</h2>
+  <p class="muted" id="health-status-subtitle">A calcular indicadores...</p>
+</section>
+
+<!-- Super Chart with Layer Toggles -->
+<section class="card">
+  <h2 class="section-title">Evolução Financeira (12 meses)</h2>
+
+  <div id="health-filters" class="chart-filters">
+    <button class="filter-btn active" data-layer="net" title="Saldo Mensal">
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-cash" />
+      </svg>
+      <span class="filter-label">Saldo</span>
+    </button>
+    <button
+      class="filter-btn"
+      data-layer="liquidity"
+      title="Liquidez Acumulada"
+    >
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-chart-line" />
+      </svg>
+      <span class="filter-label">Liquidez</span>
+    </button>
+    <button class="filter-btn" data-layer="effortFixed" title="Esforço Fixo %">
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-home" />
+      </svg>
+      <span class="filter-label">Esforço Fixo</span>
+    </button>
+    <button class="filter-btn" data-layer="effortTotal" title="Esforço Total %">
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-chart-down" />
+      </svg>
+      <span class="filter-label">Esforço Total</span>
+    </button>
+    <button
+      class="filter-btn"
+      data-layer="savingsRate"
+      title="Taxa de Poupança %"
+    >
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-piggy" />
+      </svg>
+      <span class="filter-label">Poupança</span>
+    </button>
+    <button class="filter-btn" data-layer="projection" title="Projeção 3 meses">
+      <svg class="filter-icon" width="20" height="20">
+        <use href="#i-crystal" />
+      </svg>
+      <span class="filter-label">Projeção</span>
+    </button>
+  </div>
+
+  <div
+    class="chart-container"
+    style="position: relative; height: 300px; margin-bottom: 16px"
+  >
+    <canvas id="health-chart"></canvas>
+  </div>
+
+  <!-- Current metric display -->
+  <div id="metric-summary" class="metric-summary">
+    <div class="metric-current">
+      <span class="metric-label">Este Mês</span>
+      <span class="metric-value" id="current-value">--</span>
+      <span class="metric-badge badge" id="current-badge">--</span>
+    </div>
+    <div class="metric-avg">
+      <span class="metric-label">Média 6 meses</span>
+      <span class="metric-value" id="avg-value">--</span>
+    </div>
+  </div>
+</section>
+
+<!-- Health Indicators Grid -->
+<section class="card">
+  <h2 class="section-title">Indicadores de Saúde</h2>
+  <div class="indicators-grid" id="indicators-grid">
+    <!-- Indicators will be rendered dynamically -->
+  </div>
+</section>
+
+<!-- Alerts Section (Dynamic) -->
+<section class="card" id="alerts-section" hidden>
+  <h2 class="section-title">Alertas e Recomendações</h2>
+  <div id="alerts-list" class="alerts-list">
+    <!-- Alerts will be rendered dynamically -->
+  </div>
+</section>
+
+<!-- Help Modal -->
+<div id="health-help-modal" class="modal hidden" aria-hidden="true">
+  <div class="modal__card" style="max-width: 600px; color: #1e293b">
+    <h2 class="section-title" style="color: #1e293b">
+      Indicadores de Saúde Financeira
+    </h2>
+
+    <div
+      style="display: flex; flex-direction: column; gap: 16px; margin: 20px 0"
+    >
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-home" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Esforço Fixo</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Percentagem do rendimento gasta em despesas fixas (renda, seguros,
+            subscrições). <strong>Meta: &lt; 40%</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-chart-down" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Esforço Total</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Percentagem total do rendimento gasta (fixas + variáveis).
+            <strong>Meta: &lt; 85%</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-piggy" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Taxa de Poupança</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Percentagem do rendimento que consegues poupar.
+            <strong>Meta: ≥ 10%</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-cash" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Liquidez</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Dinheiro disponível acumulado. Indica a tendência (subida, descida
+            ou estável) nos últimos meses.
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-target" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Saldos Negativos</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Número de meses consecutivos com saldo negativo.
+            <strong>Meta: 0 meses</strong>
+          </p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; align-items: start">
+        <svg width="24" height="24" style="flex-shrink: 0; margin-top: 2px">
+          <use href="#i-chart-line" />
+        </svg>
+        <div>
+          <h3 style="color: #1e293b; margin: 0 0 4px 0">Regularidade</h3>
+          <p style="color: #64748b; font-size: 0.9rem">
+            Identifica se as despesas são estáveis ou irregulares.
+            Irregularidade pode indicar gastos imprevistos ou falta de
+            planeamento.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <button
+      class="btn btn--primary"
+      onclick="
+        document.getElementById('health-help-modal').classList.add('hidden')
+      "
+    >
+      Fechar
+    </button>
+  </div>
+</div>
