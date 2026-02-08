@@ -22,8 +22,10 @@ import { repo } from "../lib/repo.js";
 import { trapFocus } from "../lib/helpers.js";
 import { Toast, Modal } from "../lib/ui.js";
 
-
-import { calculateRoutineFixedAverage, projectCashflow } from "../lib/analytics.js";
+import {
+  calculateRoutineFixedAverage,
+  projectCashflow,
+} from "../lib/analytics.js";
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
@@ -90,19 +92,32 @@ function setupDashboardModal(ds, rawData) {
     // For this Turn, we will use a naive approach: If we don't have raw data, we assume 0 Annuals (Smoothing applies to total).
     // IF we have raw data (fallback path), we could do it.
     // Let's implement a 'annualFixedByMonth' map that we populate during the Data Fetch phase if possible.
-    
+
     // We will update Data Fetching below to populate 'annualFixedByMonth'.
-    const { allHistoryMap, fixedVarByMonth, annualFixedByMonth } = rawData || {};
-    const targetYear = String(new Date().getFullYear()); 
+    const { allHistoryMap, fixedVarByMonth, annualFixedByMonth } =
+      rawData || {};
+    const targetYear = String(new Date().getFullYear());
     const now = new Date();
-    
+
     const currentMonthKey = `${targetYear}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    
+
     // Calculate YTD Routine Average
-    const routineAvg = calculateRoutineFixedAverage(fixedVarByMonth, annualFixedByMonth, targetYear, currentMonthKey);
+    const routineAvg = calculateRoutineFixedAverage(
+      fixedVarByMonth,
+      annualFixedByMonth,
+      targetYear,
+      currentMonthKey,
+    );
 
     // Project
-    return projectCashflow(targetYear, allHistoryMap, fixedVarByMonth, annualFixedByMonth, settings, routineAvg);
+    return projectCashflow(
+      targetYear,
+      allHistoryMap,
+      fixedVarByMonth,
+      annualFixedByMonth,
+      settings,
+      routineAvg,
+    );
   }
 
   // ---------- Renderers ----------
@@ -113,7 +128,7 @@ function setupDashboardModal(ds, rawData) {
     // 1) Lê settings e constrói séries (com/sem override)
     // 1) Lê settings e constrói séries (com/sem override)
     // rawData is already available in closure and contains the maps we need
-    
+
     const settings = loadFixedSettings(targetYear);
     const series = rebuildSeriesWithOverrides(settings);
 
@@ -546,7 +561,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   function renderCategorias() {
-    titleEl.textContent = "Distribuição de Despesas";
+    titleEl.textContent = "Distribuição de Despesas (últimos 12 meses)";
     const total = (ds.parentValues || []).reduce((a, b) => a + b, 0) || 1;
     mount({
       type: "pie",
@@ -686,7 +701,7 @@ function setupDashboardModal(ds, rawData) {
   }
 
   async function renderInvestimentos() {
-    titleEl.textContent = "Investimentos por categoria";
+    titleEl.textContent = "Investimentos por categoria (valor atual)";
     const agg = await repo.portfolios.aggregate();
     const labels = agg.kinds;
     const dataNow = labels.map((k) => agg.byKind.get(k)?.current || 0);
@@ -834,24 +849,26 @@ export async function init({ sb, outlet } = {}) {
 
   function setupCarousel(box, track, dotsBox) {
     if (!box || !track) return;
-    
+
     // Identify target carousels
-    const isMini = box.classList.contains("mini-carousel") || track.id === "mini-track";
+    const isMini =
+      box.classList.contains("mini-carousel") || track.id === "mini-track";
     const isUpcoming = box.classList.contains("upcoming-carousel");
     const isMulti = isMini || isUpcoming;
 
     // Only count items that are NOT hidden
     const allItems = Array.from(track.querySelectorAll(".carousel-item"));
     const items = allItems.filter(
-      (i) => i.style.display !== "none" && getComputedStyle(i).display !== "none",
+      (i) =>
+        i.style.display !== "none" && getComputedStyle(i).display !== "none",
     );
     if (!items.length) return;
 
     let currentIdx = 0;
-    
+
     const getItemsPerView = () => {
       const w = window.innerWidth;
-      
+
       // Quick Analysis (Compact)
       if (isMini) {
         if (w >= 900) return 6;
@@ -859,38 +876,38 @@ export async function init({ sb, outlet } = {}) {
         if (w >= 420) return 4;
         return 3;
       }
-      
+
       // Upcoming Expenses (Slightly Wider)
       if (isUpcoming) {
         if (w >= 900) return 5; // Wider than mini
         if (w >= 600) return 3; // Tablet: 3 instead of 5
         if (w >= 420) return 2; // Mobile Wide: 2 instead of 4
-        return 2;               // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
+        return 2; // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
       }
-      
+
       return 1; // Fallback for others
     };
 
     const showSlide = (idx) => {
       const perView = getItemsPerView();
-      
+
       // Update item widths if Multi
       if (isMulti) {
-         const basis = 100 / perView;
-         items.forEach(el => {
-            el.style.flex = `0 0 ${basis}%`;
-            el.style.minWidth = `${basis}%`; 
-            el.style.maxWidth = `${basis}%`;
-         });
+        const basis = 100 / perView;
+        items.forEach((el) => {
+          el.style.flex = `0 0 ${basis}%`;
+          el.style.minWidth = `${basis}%`;
+          el.style.maxWidth = `${basis}%`;
+        });
       }
 
       const total = items.length;
       let maxIdx = Math.max(0, total - perView);
-      
+
       // Cycle logic
-      if (idx > maxIdx) idx = 0; 
+      if (idx > maxIdx) idx = 0;
       if (idx < 0) idx = maxIdx;
-      
+
       currentIdx = idx;
 
       // Translate: step is 100% / perView * index
@@ -899,7 +916,9 @@ export async function init({ sb, outlet } = {}) {
 
       if (dotsBox) {
         const allDots = dotsBox.querySelectorAll(".carousel-dot");
-        allDots.forEach((d, i) => d.classList.toggle("active", i === currentIdx));
+        allDots.forEach((d, i) =>
+          d.classList.toggle("active", i === currentIdx),
+        );
       }
     };
 
@@ -907,15 +926,15 @@ export async function init({ sb, outlet } = {}) {
     const btnPrev = box.querySelector(".carousel-nav--prev");
     const btnNext = box.querySelector(".carousel-nav--next");
     if (btnPrev) {
-        // Clone to remove old listeners (simple way in this context) usually fine, 
-        // but here we are inside init() so listeners are added once.
-        // We just add new listeners. If setupCarousel is called multiple times, this might stack.
-        // 'dashboard.js' seems to run init() once or cleanup. 
-        // We will just add the listener.
-        btnPrev.onclick = () => showSlide(currentIdx - 1);
+      // Clone to remove old listeners (simple way in this context) usually fine,
+      // but here we are inside init() so listeners are added once.
+      // We just add new listeners. If setupCarousel is called multiple times, this might stack.
+      // 'dashboard.js' seems to run init() once or cleanup.
+      // We will just add the listener.
+      btnPrev.onclick = () => showSlide(currentIdx - 1);
     }
     if (btnNext) {
-        btnNext.onclick = () => showSlide(currentIdx + 1);
+      btnNext.onclick = () => showSlide(currentIdx + 1);
     }
 
     if (dotsBox) {
@@ -933,7 +952,7 @@ export async function init({ sb, outlet } = {}) {
     // Auto-scroll (optional, keeping existing behavior)
     if (box._autoInterval) clearInterval(box._autoInterval);
     box._autoInterval = setInterval(() => showSlide(currentIdx + 1), 5000);
-    
+
     box.onmouseenter = () => clearInterval(box._autoInterval);
     box.onmouseleave = () => {
       clearInterval(box._autoInterval);
@@ -1345,13 +1364,20 @@ export async function init({ sb, outlet } = {}) {
           entry.incFixed += amt;
         } else if (isExp && isFixedExpense(r)) {
           entry.expFixed += Math.abs(amt);
-          
+
           // [NEW] Check if it is an ANNUAL Fixed Expense to separate it
           // Heuristic: Regularity code is 'YEARLY' or 'ANUAL'
           const regCode = (r.regularities?.code || "").toUpperCase();
           const regName = (r.regularities?.name_pt || "").toUpperCase();
-          if (regCode === "YEARLY" || regCode === "ANNUAL" || regName.includes("ANUAL")) {
-             annualFixedByMonth.set(k, (annualFixedByMonth.get(k) || 0) + Math.abs(amt));
+          if (
+            regCode === "YEARLY" ||
+            regCode === "ANNUAL" ||
+            regName.includes("ANUAL")
+          ) {
+            annualFixedByMonth.set(
+              k,
+              (annualFixedByMonth.get(k) || 0) + Math.abs(amt),
+            );
           }
         }
 
@@ -2563,7 +2589,10 @@ export async function init({ sb, outlet } = {}) {
     for (const [fullName, val] of catAgg12m.entries()) {
       const parts = fullName.split(" > ");
       const parentName = parts[0];
-      const childName = parts.length > 1 ? parts[1] : parentName; // se só tiver 1, é o próprio pai
+      // Se for apenas "Pai" (sem filho), ou se o filho tiver o mesmo nome do pai, chamamos de "Geral"
+      // para não parecer duplicado na lista visual.
+      let childName = parts.length > 1 ? parts[1] : "Geral";
+      if (childName === parentName) childName = "Geral";
 
       if (!grouped.has(parentName)) {
         grouped.set(parentName, { total: 0, children: [] });
@@ -2571,27 +2600,6 @@ export async function init({ sb, outlet } = {}) {
       const g = grouped.get(parentName);
       g.total += Number(val || 0);
 
-      // --- Empty State ---
-    const hasData = history.length > 0 || real.length > 0;
-    if (!hasData) {
-      if (document.getElementById("dash-empty")) {
-        document.getElementById("dash-empty").hidden = false;
-        document.getElementById("dash-content").hidden = true;
-        
-        // Customize text based on user history (simulated check)
-        const isNewUser = !localStorage.getItem("wb:welcome_ts");
-        const msg = isNewUser 
-            ? "Ainda não tens movimentos. Começa agora!" 
-            : "Sem movimentos este mês.";
-        
-        document.querySelector("#dash-empty h3").textContent = msg;
-      }
-      return;
-    }
-    if (document.getElementById("dash-empty")) {
-       document.getElementById("dash-empty").hidden = true;
-       document.getElementById("dash-content").hidden = false;
-    }
       // Se tiver filhos explícitos (parts > 1) ou se quisermos mostrar sempre o item como child
       // Vamos adicionar à lista de children
       const count = Math.max(1, Number(catCount12m.get(fullName) || 0));
@@ -2800,8 +2808,6 @@ export async function init({ sb, outlet } = {}) {
   const fHash = outlet.querySelector("#footer-hash");
   if (fHash) fHash.textContent = "";
 
-
-
   // ====== Colapsáveis com SVG inline (após título) ======
   (function enhanceCollapsibles(root = document) {
     const LS_KEY = "wb:dash:collapsed";
@@ -2948,7 +2954,11 @@ export async function init({ sb, outlet } = {}) {
         monthlyCount: dsMini.labels12m?.length,
       });
 
-      setupDashboardModal(dsMini, { allHistoryMap, fixedVarByMonth, annualFixedByMonth });
+      setupDashboardModal(dsMini, {
+        allHistoryMap,
+        fixedVarByMonth,
+        annualFixedByMonth,
+      });
     }
   } catch (e) {
     console.warn("mini-cards wiring falhou:", e);
@@ -2961,8 +2971,6 @@ export async function init({ sb, outlet } = {}) {
 
     // 2. Destroy charts
     destroyCharts();
-
-
   };
 
   function onHashChange() {

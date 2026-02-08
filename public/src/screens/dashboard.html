@@ -2,15 +2,21 @@
   <h2 class="section-title">
     Resumo do mês
     <!-- Botão “olho” (novo) -->
-    <button id="kpi-privacy-toggle" class="icon-btn" title="Ocultar/mostrar valores" aria-pressed="false"
-      aria-label="Ocultar valores" style="
+    <button
+      id="kpi-privacy-toggle"
+      class="icon-btn"
+      title="Ocultar/mostrar valores"
+      aria-pressed="false"
+      aria-label="Ocultar valores"
+      style="
         float: right;
         display: inline-flex;
         align-items: center;
         gap: 6px;
         padding: 6px 8px;
         border-radius: 10px;
-      ">
+      "
+    >
       <svg aria-hidden="true" width="20" height="20">
         <use href="#i-eye"></use>
       </svg>
@@ -58,7 +64,11 @@
     </div>
 
     <!-- espaço extra para legendas/listas quando necessário -->
-    <div id="dash-modal-extra" class="rpt-legend" style="margin-top: 10px"></div>
+    <div
+      id="dash-modal-extra"
+      class="rpt-legend"
+      style="margin-top: 10px"
+    ></div>
 
     <div class="actions" style="margin-top: 10px">
       <button class="btn" id="dash-modal-close">Fechar</button>
@@ -77,70 +87,114 @@
   <div class="carousel-container mini-carousel">
     <div class="carousel-track dash-mini" id="mini-track">
       <div class="carousel-item">
-        <button class="mini-card" data-chart="cashflow" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="cashflow"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Projeção Cashflow 2026 (Fixo)</span>
           <span class="mini-card__hint">Abrir gráfico</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="tendencias" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="tendencias"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Tendências (12 meses)</span>
           <span class="mini-card__hint">Abrir gráfico</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="fixvar_mes" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="fixvar_mes"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Fixas vs Variáveis (mês atual)</span>
           <span class="mini-card__hint">Abrir donut</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="fixvar_12m" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="fixvar_12m"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Fixas vs Variáveis (12 meses)</span>
           <span class="mini-card__hint">Abrir barras</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="categorias" aria-controls="dash-modal">
-          <span class="mini-card__title">Despesas por categoria (ano atual)</span>
+        <button
+          class="mini-card"
+          data-chart="categorias"
+          aria-controls="dash-modal"
+        >
+          <span class="mini-card__title"
+            >Despesas por categoria (ano atual)</span
+          >
           <span class="mini-card__hint">Abrir pizza</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="top_categorias" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="top_categorias"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Top categorias (mês atual)</span>
           <span class="mini-card__hint">Abrir barras</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="gasto_diario" aria-controls="dash-modal">
-          <span class="mini-card__title">Gasto diário acumulado (mês atual)</span>
+        <button
+          class="mini-card"
+          data-chart="gasto_diario"
+          aria-controls="dash-modal"
+        >
+          <span class="mini-card__title"
+            >Gasto diário acumulado (mês atual)</span
+          >
           <span class="mini-card__hint">Abrir linha</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="metodos" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="metodos"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Métodos de pagamento (4 meses)</span>
           <span class="mini-card__hint">Abrir barras</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="regularidades" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="regularidades"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Regularidades (mês atual)</span>
           <span class="mini-card__hint">Abrir barras</span>
         </button>
       </div>
 
       <div class="carousel-item">
-        <button class="mini-card" data-chart="investimentos" aria-controls="dash-modal">
+        <button
+          class="mini-card"
+          data-chart="investimentos"
+          aria-controls="dash-modal"
+        >
           <span class="mini-card__title">Investimentos</span>
           <span class="mini-card__hint">Por categoria</span>
         </button>
@@ -151,6 +205,8 @@
 </section>
 
 <section class="card" data-collapsible data-key="cashflow">
-  <h2 class="section-title">Análise Detalhada por Categoria</h2>
+  <h2 class="section-title">
+    Análise Detalhada por Categoria (últimos 12 meses)
+  </h2>
   <div id="cat-list" class="cat-list"></div>
 </section>

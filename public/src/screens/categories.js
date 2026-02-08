@@ -120,7 +120,9 @@ export async function init() {
 
   function renderItem(item, isParent, childCount = 0, isExpanded = false) {
     const icon = getIconFor(item.name);
-    const locked = item.isSystem;
+    // Fallback: check user_id if isSystem is missing
+    const isSystem = item.isSystem || item.user_id === null;
+    const locked = isSystem;
 
     // Determine colors based on kind
     let colorVar = "var(--muted)";
@@ -133,8 +135,10 @@ export async function init() {
       : "font-size:14px; color:var(--text); opacity:0.9;";
     const iconSize = isParent ? "20px" : "18px";
     const boxSize = isParent ? "40px" : "32px";
+
+    // Explicit visible lock icon
     const lockedIcon = locked
-      ? `<span class="material-symbols-outlined" style="font-size:14px; color:var(--muted); margin-left:6px;">lock</span>`
+      ? `<span class="material-symbols-outlined" title="Categoria de Sistema (Não editável)" style="font-size:16px; color:var(--muted); margin-left:8px; opacity:0.6;">lock</span>`
       : "";
 
     // Chevron logic
