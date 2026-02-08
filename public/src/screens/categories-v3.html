@@ -1,0 +1,338 @@
+<section class="card" style="min-height: 80vh">
+  <div
+    style="
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    "
+  >
+    <h2 class="section-title" style="margin-bottom: 0">Categorias</h2>
+  </div>
+
+  <!-- Controls: Tabs style for Kind + Search -->
+  <div class="grid" style="gap: 16px; margin-bottom: 24px">
+    <!-- Custom Segmented Control using native styles -->
+    <div
+      style="
+        display: flex;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 4px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+      "
+    >
+      <label
+        style="
+          flex: 1;
+          text-align: center;
+          padding: 8px;
+          cursor: pointer;
+          border-radius: 8px;
+          margin: 0;
+        "
+        id="tab-expense"
+      >
+        <input
+          type="radio"
+          name="cat-type"
+          value="expense"
+          checked
+          class="hidden"
+          onchange="
+            window.dispatchEvent(
+              new CustomEvent('cat:filter', { detail: 'expense' }),
+            )
+          "
+        />
+        <span style="font-weight: 600; font-size: 14px">Despesas</span>
+      </label>
+      <label
+        style="
+          flex: 1;
+          text-align: center;
+          padding: 8px;
+          cursor: pointer;
+          border-radius: 8px;
+          margin: 0;
+        "
+        id="tab-income"
+      >
+        <input
+          type="radio"
+          name="cat-type"
+          value="income"
+          class="hidden"
+          onchange="
+            window.dispatchEvent(
+              new CustomEvent('cat:filter', { detail: 'income' }),
+            )
+          "
+        />
+        <span style="font-weight: 600; font-size: 14px">Receitas</span>
+      </label>
+      <label
+        style="
+          flex: 1;
+          text-align: center;
+          padding: 8px;
+          cursor: pointer;
+          border-radius: 8px;
+          margin: 0;
+        "
+        id="tab-savings"
+      >
+        <input
+          type="radio"
+          name="cat-type"
+          value="savings"
+          class="hidden"
+          onchange="
+            window.dispatchEvent(
+              new CustomEvent('cat:filter', { detail: 'savings' }),
+            )
+          "
+        />
+        <span style="font-weight: 600; font-size: 14px">Poupança</span>
+      </label>
+    </div>
+
+    <!-- Search with Icon -->
+    <div style="position: relative">
+      <span
+        class="material-symbols-outlined"
+        style="position: absolute; left: 12px; top: 12px; color: var(--muted)"
+        >search</span
+      >
+      <input
+        type="text"
+        id="cat-search"
+        placeholder="Procurar categorias..."
+        style="padding-left: 42px; width: 100%"
+      />
+    </div>
+  </div>
+
+  <!-- List Container -->
+  <div id="cat-list-container">
+    <div
+      style="
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+        opacity: 0.7;
+      "
+    >
+      A carregar...
+    </div>
+  </div>
+</section>
+
+<!-- Extended FAB for better mobile UX -->
+<div
+  style="
+    position: fixed;
+    bottom: calc(var(--footer-h) + 20px);
+    right: 20px;
+    z-index: 90;
+  "
+>
+  <button
+    id="btn-add-global"
+    class="btn btn--primary"
+    style="
+      border-radius: 16px;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    "
+  >
+    <span class="material-symbols-outlined">add_circle</span>
+    <span style="font-weight: 600">Nova</span>
+  </button>
+</div>
+
+<!-- Native Modal Structure (matches settings.html) -->
+<div id="cat-modal-overlay" class="rpt-overlay hidden" aria-hidden="true">
+  <div class="rpt-modal" style="width: min(400px, 92vw); padding: 0">
+    <!-- Header -->
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      "
+    >
+      <h3
+        id="modal-title"
+        style="
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+          font-family: var(--font-head);
+        "
+      >
+        Nova Categoria
+      </h3>
+      <button
+        onclick="
+          document.getElementById('cat-modal-overlay').classList.add('hidden')
+        "
+        style="
+          background: none;
+          border: none;
+          font-size: 24px;
+          cursor: pointer;
+          color: var(--muted);
+        "
+      >
+        &times;
+      </button>
+    </div>
+
+    <!-- Body -->
+    <div style="padding: 20px">
+      <form id="cat-modal-form" style="display: grid; gap: 16px">
+        <input type="hidden" id="modal-id" />
+        <input type="hidden" id="modal-parent-id" />
+
+        <label>
+          <span
+            style="
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: var(--muted);
+              font-weight: 700;
+            "
+            >Nome</span
+          >
+          <input
+            id="modal-name"
+            required
+            type="text"
+            placeholder="Ex: Alimentação"
+            style="width: 100%"
+          />
+        </label>
+
+        <label>
+          <span
+            style="
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              color: var(--muted);
+              font-weight: 700;
+            "
+            >Tipo</span
+          >
+          <select id="modal-kind" style="width: 100%">
+            <option value="expense">Despesa</option>
+            <option value="income">Receita</option>
+            <option value="savings">Poupança</option>
+          </select>
+        </label>
+
+        <div id="modal-parent-section" class="hidden">
+          <label>
+            <span
+              style="
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                color: var(--muted);
+                font-weight: 700;
+              "
+              >Categoria Pai</span
+            >
+            <div
+              id="modal-parent-name"
+              style="
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 12px;
+                color: var(--text);
+                border: 1px solid var(--border);
+              "
+            ></div>
+          </label>
+        </div>
+
+        <div class="actions" style="display: flex; gap: 12px; margin-top: 12px">
+          <button
+            type="button"
+            onclick="
+              document
+                .getElementById('cat-modal-overlay')
+                .classList.add('hidden')
+            "
+            class="btn"
+            style="flex: 1"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            id="modal-save"
+            class="btn btn--primary"
+            style="flex: 1"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Scoped helpers for active tab state */
+  input[name="cat-type"]:checked + span {
+    color: var(--primary, #065f46);
+  }
+  label:has(input[name="cat-type"]:checked) {
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* List Items */
+  .cat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+    border-radius: 8px;
+  }
+  .cat-item:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+  .cat-item .icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.05);
+  }
+  .cat-item .actions-reveal {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .cat-item:hover .actions-reveal {
+    opacity: 1;
+  }
+  /* Mobile always show actions or use a menu, but for now hover is fine desktop, tap mobile */
+  @media (max-width: 768px) {
+    .cat-item .actions-reveal {
+      opacity: 1;
+    }
+  }
+</style>

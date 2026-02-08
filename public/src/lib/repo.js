@@ -572,6 +572,29 @@ export const portfolios = {
   },
 };
 
+// Tree View for Categories
+async function getTree() {
+  const u = await requireUser();
+  const { data, error } = await window.sb
+    .from("categories")
+    .select("*")
+    .or(`user_id.is.null,user_id.eq.${u.id}`)
+    .order("name");
+
+  if (error) throw error;
+
+  const parents = data
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return parents.map((p) => ({
+    ...p,
+    children: data
+      .filter((c) => c.parent_id === p.id)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  }));
+}
+
 export const repo = {
   refs,
   accounts,
@@ -580,6 +603,7 @@ export const repo = {
   portfolios,
   idByCode,
   accountCurrency,
+  getTree,
 };
 
 // Globals for legacy compatibility
