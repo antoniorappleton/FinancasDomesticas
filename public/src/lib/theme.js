@@ -11,6 +11,9 @@ export const DEFAULT_THEME = {
   header_bg_rgba: "rgba(15,23,42,0.85)",
   menu_bg_rgba: "rgba(15,23,42,0.90)",
   fab_bg: "#0ea5e9",
+
+  text_main: "#0f172a",
+  text_secondary: "#64748b",
 };
 
 /**
@@ -42,6 +45,10 @@ export function applyTheme(settings) {
   root.style.setProperty("--ui-header-bg", s.header_bg_rgba);
   root.style.setProperty("--ui-menu-bg", s.menu_bg_rgba);
   root.style.setProperty("--ui-fab-bg", s.fab_bg);
+
+  // Typography
+  if (s.text_main) root.style.setProperty("--text", s.text_main);
+  if (s.text_secondary) root.style.setProperty("--muted", s.text_secondary);
 }
 
 /**
@@ -75,6 +82,12 @@ export async function loadTheme(sb) {
   }
 
   if (data) {
+    // FALLBACK: If DB lacks text fields (schema mismatch), keep local values
+    const local = JSON.parse(localStorage.getItem("wb:visuals") || "{}");
+    if (!data.text_main && local.text_main) data.text_main = local.text_main;
+    if (!data.text_secondary && local.text_secondary)
+      data.text_secondary = local.text_secondary;
+
     applyTheme(data);
     localStorage.setItem("wb:visuals", JSON.stringify(data));
   }

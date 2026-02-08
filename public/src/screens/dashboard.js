@@ -2589,10 +2589,10 @@ export async function init({ sb, outlet } = {}) {
     for (const [fullName, val] of catAgg12m.entries()) {
       const parts = fullName.split(" > ");
       const parentName = parts[0];
-      // Se for apenas "Pai" (sem filho), ou se o filho tiver o mesmo nome do pai, chamamos de "Geral"
-      // para não parecer duplicado na lista visual.
-      let childName = parts.length > 1 ? parts[1] : "Geral";
-      if (childName === parentName) childName = "Geral";
+      // Se for apenas "Pai" (sem filho), ou se o filho tiver o mesmo nome do pai, chamamos de "(Sem subcategoria)"
+      // para explicitar que são movimentos diretos na categoria pai.
+      let childName = parts.length > 1 ? parts[1] : "(Sem subcategoria)";
+      if (childName === parentName) childName = "(Sem subcategoria)";
 
       if (!grouped.has(parentName)) {
         grouped.set(parentName, { total: 0, children: [] });

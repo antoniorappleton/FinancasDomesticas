@@ -2334,8 +2334,6 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
-
-
   // ===== GESTÃO DE DADOS (Delete) =====
   $("#btn-del-month")?.addEventListener("click", async () => {
     const val = $("#del-month")?.value;
@@ -2620,6 +2618,10 @@ export async function init({ sb, outlet } = {}) {
     // Header & Footer
     headerBg: $("#thm-header"),
     fabBg: $("#thm-fab"),
+
+    // Typography
+    textMain: $("#thm-text"),
+    textSec: $("#thm-muted"),
   };
 
   const { DEFAULT_THEME, applyTheme } = await import("../lib/theme.js");
@@ -2732,6 +2734,10 @@ export async function init({ sb, outlet } = {}) {
       // For strict correctness, we should store hex in DB if we want 1:1 input mapping, but DB says RGBA.
       // We'll set the input to the fallback hex or try to parse.
       // Simplified: Just set the color if valid hex, else default.
+
+      // Typography
+      if (inputs.textMain) inputs.textMain.value = s.text_main || "#0f172a";
+      if (inputs.textSec) inputs.textSec.value = s.text_secondary || "#64748b";
     } catch (e) {
       console.warn("Theme load to GUI error", e);
     }
@@ -2779,6 +2785,8 @@ export async function init({ sb, outlet } = {}) {
       header_bg_rgba,
       menu_bg_rgba,
       fab_bg,
+      text_main: inputs.textMain?.value || "#0f172a",
+      text_secondary: inputs.textSec?.value || "#64748b",
     };
   }
 
