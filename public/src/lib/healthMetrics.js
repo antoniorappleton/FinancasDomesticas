@@ -78,6 +78,24 @@ export function calculateHealthMetrics(monthlyData, settings = {}) {
     avgNet,
   );
 
+  // Emergency Fund calculations
+  const last6Fixed = monthlyData
+    .slice(-6)
+    .map((m) => Math.abs(Number(m.fixed)) || 0);
+  const avgFixedExpenses =
+    last6Fixed.reduce((a, b) => a + b, 0) / last6Fixed.length;
+
+  const emergencyFund = {
+    avgFixedExpenses: Number(avgFixedExpenses.toFixed(2)),
+    threeMonths: Number((avgFixedExpenses * 3).toFixed(2)),
+    sixMonths: Number((avgFixedExpenses * 6).toFixed(2)),
+    nineMonths: Number((avgFixedExpenses * 9).toFixed(2)),
+    currentCoverage:
+      avgFixedExpenses > 0
+        ? Number((liquidityAccumulated / avgFixedExpenses).toFixed(1))
+        : 0,
+  };
+
   return {
     // Current values
     income,
@@ -101,6 +119,9 @@ export function calculateHealthMetrics(monthlyData, settings = {}) {
     topCategoryWeight,
     irregularSpending,
 
+    // Emergency Fund
+    emergencyFund,
+
     // Projections
     projected3Months,
     monthsUntilNegative,
@@ -121,6 +142,9 @@ export function getHealthStatus(metrics) {
       metrics.liquidityTrend,
       metrics.liquidityAccumulated,
     ),
+    emergencyFundStatus: classifyEmergencyFund(
+      metrics.emergencyFund.currentCoverage,
+    ),
   };
 
   // Calculate overall health score (0-100)
@@ -129,14 +153,16 @@ export function getHealthStatus(metrics) {
     effortTotal: getScoreFromStatus(statuses.effortTotalStatus),
     savingsRate: getScoreFromStatus(statuses.savingsRateStatus),
     liquidity: getScoreFromStatus(statuses.liquidityStatus),
+    emergencyFund: getScoreFromStatus(statuses.emergencyFundStatus),
   };
 
   const overallScore = Math.round(
     (scores.effortFixed +
       scores.effortTotal +
       scores.savingsRate +
-      scores.liquidity) /
-      4,
+      scores.liquidity +
+      scores.emergencyFund) /
+      5,
   );
 
   const overallHealth =
@@ -191,6 +217,16 @@ export function getHealthStatus(metrics) {
       type: "liquidityRisk",
       severity: "high",
       message: `Projeção: liquidez negativa em ${metrics.monthsUntilNegative} ${metrics.monthsUntilNegative === 1 ? "mês" : "meses"}.`,
+    });
+  }
+
+  if (metrics.emergencyFund.currentCoverage < 3) {
+    const needed =
+      metrics.emergencyFund.threeMonths - metrics.liquidityAccumulated;
+    alerts.push({
+      type: "emergencyFund",
+      severity: metrics.emergencyFund.currentCoverage < 1 ? "high" : "medium",
+      message: `Fundo de emergência insuficiente (${metrics.emergencyFund.currentCoverage.toFixed(1)} meses). Recomenda-se 3-6 meses de despesas fixas${needed > 0 ? ` (faltam ${money(needed)})` : ""}.`,
     });
   }
 
@@ -310,6 +346,13 @@ function getEmptyMetrics() {
     consecutiveNegativeMonths: 0,
     topCategoryWeight: { name: "N/A", percentage: 0 },
     irregularSpending: false,
+    emergencyFund: {
+      avgFixedExpenses: 0,
+      threeMonths: 0,
+      sixMonths: 0,
+      nineMonths: 0,
+      currentCoverage: 0,
+    },
     projected3Months: [],
     monthsUntilNegative: null,
   };
@@ -388,6 +431,13 @@ function classifyLiquidity(trend, accumulated) {
   if (trend === "up" && accumulated > 0) return "excellent";
   if (trend === "stable" && accumulated > 0) return "healthy";
   if (trend === "down" && accumulated > 0) return "risk";
+  return "critical";
+}
+
+function classifyEmergencyFund(coverage) {
+  if (coverage >= 9) return "excellent";
+  if (coverage >= 6) return "healthy";
+  if (coverage >= 3) return "risk";
   return "critical";
 }
 

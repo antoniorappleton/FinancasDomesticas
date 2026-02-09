@@ -437,6 +437,14 @@ function renderIndicators(metrics, status) {
       statusText: `Tendência: ${metrics.liquidityTrend === "up" ? "↑ Subida" : metrics.liquidityTrend === "down" ? "↓ Descida" : "→ Estável"}`,
     },
     {
+      icon: "account_balance",
+      title: "Fundo de Emergência",
+      value: `${metrics.emergencyFund.currentCoverage.toFixed(1)} meses`,
+      status: status.emergencyFundStatus,
+      barWidth: 0,
+      statusText: `Recomendado: 3-6 meses (${money(metrics.emergencyFund.threeMonths)} - ${money(metrics.emergencyFund.sixMonths)})`,
+    },
+    {
       icon: "warning",
       title: "Saldos Negativos",
       value: `${metrics.consecutiveNegativeMonths} ${metrics.consecutiveNegativeMonths === 1 ? "mês" : "meses"}`,
