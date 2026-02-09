@@ -439,10 +439,10 @@ function renderIndicators(metrics, status) {
     {
       icon: "account_balance",
       title: "Fundo de Emergência",
-      value: `${metrics.emergencyFund.currentCoverage.toFixed(1)} meses`,
-      status: status.emergencyFundStatus,
+      value: `${(metrics.emergencyFund?.currentCoverage ?? 0).toFixed(1)} meses`,
+      status: status.emergencyFundStatus || "critical",
       barWidth: 0,
-      statusText: `Recomendado: 3-6 meses (${money(metrics.emergencyFund.threeMonths)} - ${money(metrics.emergencyFund.sixMonths)})`,
+      statusText: `Recomendado: 3-6 meses (${money(metrics.emergencyFund?.threeMonths ?? 0)} - ${money(metrics.emergencyFund?.sixMonths ?? 0)})`,
     },
     {
       icon: "warning",

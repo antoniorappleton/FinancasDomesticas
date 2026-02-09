@@ -143,7 +143,7 @@ export function getHealthStatus(metrics) {
       metrics.liquidityAccumulated,
     ),
     emergencyFundStatus: classifyEmergencyFund(
-      metrics.emergencyFund.currentCoverage,
+      metrics.emergencyFund?.currentCoverage ?? 0,
     ),
   };
 
@@ -220,7 +220,7 @@ export function getHealthStatus(metrics) {
     });
   }
 
-  if (metrics.emergencyFund.currentCoverage < 3) {
+  if (metrics.emergencyFund && metrics.emergencyFund.currentCoverage < 3) {
     const needed =
       metrics.emergencyFund.threeMonths - metrics.liquidityAccumulated;
     alerts.push({
