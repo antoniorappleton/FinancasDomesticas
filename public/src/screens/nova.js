@@ -757,4 +757,242 @@ export async function init({ outlet } = {}) {
   })();
 
   // ===== Importar PDF/CSV =====
+  
+  // ===== ASSISTENTE IA (VOZ & TEXTO) =====
+  setupAIAssistant(outlet, TYPE_ID, $, toast);
+}
+
+/**
+ * AI Assistant for quick text/voice entries
+ */
+function setupAIAssistant(outlet, TYPE_ID, $, toast) {
+  const card = outlet?.querySelector(".card");
+  if (!card) return;
+
+  // 1. Injetar Painel (Sem innerHTML no outlet)
+  const aiPanel = document.createElement("div");
+  aiPanel.id = "ai-assistant-panel";
+  aiPanel.className = "ai-panel";
+  aiPanel.innerHTML = `
+    <div class="ai-header">
+      <span>Assistente WiseBudget</span>
+      <span style="font-size: 0.8em; font-weight: 400; opacity: 0.7;">Voz ou Texto</span>
+    </div>
+    <div class="ai-controls">
+      <div class="ai-input-wrapper">
+        <input type="text" id="ai-text-input" class="ai-input" placeholder="Ex: Gastei 15€ em almoço hoje...">
+      </div>
+      <button id="ai-mic-btn" class="ai-mic-btn" title="Falar">
+         <span class="material-symbols-outlined">mic</span>
+      </button>
+    </div>
+    <div id="ai-status" class="ai-status"></div>
+  `;
+  // Inserir no topo do card, antes do título "Nova transação"
+  card.insertBefore(aiPanel, card.firstChild);
+
+  const input = aiPanel.querySelector("#ai-text-input");
+  const micBtn = aiPanel.querySelector("#ai-mic-btn");
+  const statusEl = aiPanel.querySelector("#ai-status");
+
+  // Recognition setup
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  if (Speech) {
+    recognition = new Speech();
+    recognition.lang = "pt-PT";
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      micBtn.classList.add("ai-listening");
+      statusEl.textContent = "A ouvir...";
+    };
+
+    recognition.onresult = (e) => {
+      const transcript = Array.from(e.results)
+        .map((r) => r[0].transcript)
+        .join("");
+      input.value = transcript;
+      if (e.results[0].isFinal) {
+        processCommand(transcript);
+      }
+    };
+
+    recognition.onerror = () => {
+      micBtn.classList.remove("ai-listening");
+      statusEl.textContent = "Erro na voz. Tenta escrever.";
+    };
+
+    recognition.onend = () => {
+      micBtn.classList.remove("ai-listening");
+      if (statusEl.textContent === "A ouvir...") statusEl.textContent = "";
+    };
+  }
+
+  micBtn.onclick = () => {
+    if (!recognition) return toast("Voz não suportada neste browser", false);
+    if (micBtn.classList.contains("ai-listening")) {
+      recognition.stop();
+    } else {
+      recognition.start();
+    }
+  };
+
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      processCommand(input.value);
+    }
+  };
+
+  async function processCommand(cmd) {
+    if (!cmd || cmd.length < 3) return;
+    statusEl.innerHTML = "<small>A processar...</small>";
+    
+    try {
+      const data = parseFinancialCommand(cmd);
+      if (!data.amount) throw new Error("Não percebi o valor.");
+
+      // 2. Preencher Campos (Regra 1 e 2)
+      // Tipo (Rádio)
+      const typeRadio = document.querySelector(`input[name="tx-type"][value="${data.type}"]`);
+      if (typeRadio) {
+        typeRadio.checked = true;
+        typeRadio.dispatchEvent(new Event("change"));
+      }
+
+      // Valor
+      const amountEl = $("tx-amount");
+      if (amountEl) {
+        amountEl.value = data.amount;
+        amountEl.dispatchEvent(new Event("input"));
+      }
+
+      // Descrição
+      const descEl = $("tx-desc");
+      if (descEl) {
+        descEl.value = data.description;
+        descEl.dispatchEvent(new Event("input"));
+      }
+
+      // Data (inclui "dia X")
+      const dateEl = $("tx-date");
+      if (dateEl && data.date) {
+        dateEl.value = data.date;
+        dateEl.dispatchEvent(new Event("change"));
+      }
+
+      // 3. Categoria (Regra 3 - Match Avançado)
+      if (data.subject) {
+        await matchCategory(data.subject, data.type);
+      }
+
+      statusEl.innerHTML = `<div class="ai-feedback">Comando aceite: <strong>${data.type === 'INCOME' ? 'Receita' : 'Despesa'}</strong> de <strong>${data.amount}€</strong></div>`;
+      
+      // Auto-save: Disparar clique no Guardar existente
+      setTimeout(() => {
+        const saveBtn = $("tx-save");
+        if (saveBtn) saveBtn.click();
+        input.value = "";
+      }, 1500);
+
+    } catch (err) {
+      statusEl.textContent = "Erro: " + err.message;
+    }
+  }
+
+  /**
+   * Parse natural language to financial data
+   */
+  function parseFinancialCommand(text) {
+    const s = text.toLowerCase();
+    const result = {
+      type: "EXPENSE",
+      amount: null,
+      description: "",
+      subject: "",
+      date: new Date().toISOString().slice(0, 10)
+    };
+
+    // 1. Tipo
+    if (s.includes("recebi") || s.includes("ganhei") || s.includes("ordenado") || s.includes("receita")) {
+      result.type = "INCOME";
+    }
+
+    // 2. Valor (Procura número seguido de €, eur, euro ou espaço)
+    const amountMatch = s.match(/(\d+([.,]\d{1,2})?)\s*(€|eur|euro|reais)?/);
+    if (amountMatch) {
+      result.amount = amountMatch[1].replace(",", ".");
+    }
+
+    // 3. Data (Relativa)
+    const now = new Date();
+    if (s.includes("ontem")) {
+      now.setDate(now.getDate() - 1);
+      result.date = now.toISOString().slice(0, 10);
+    } else if (s.includes("anteontem")) {
+      now.setDate(now.getDate() - 2);
+      result.date = now.toISOString().slice(0, 10);
+    } else if (s.includes("amanhã")) {
+      now.setDate(now.getDate() + 1);
+      result.date = now.toISOString().slice(0, 10);
+    }
+    
+    // Suporte "dia X"
+    const dayMatch = s.match(/dia\s+(\d{1,2})/);
+    if (dayMatch) {
+      const d = parseInt(dayMatch[1]);
+      if (d > 0 && d <= 31) {
+        const target = new Date(now.getFullYear(), now.getMonth(), d);
+        result.date = target.toISOString().slice(0, 10);
+      }
+    }
+
+    // 4. Descrição / Sujeito
+    // Remove o valor e palavras de ligação
+    let clean = s.replace(amountMatch ? amountMatch[0] : "", "");
+    clean = clean.replace(/\b(gastei|paguei|recebi|ganhei|ontem|hoje|amanhã|dia\s+\d+|no|na|em|de|com|um|uma|euros?|eur|€)\b/g, " ");
+    result.description = clean.trim().replace(/\s+/g, " ");
+    result.subject = result.description.split(" ")[0]; // Primeira palavra para keyword match
+
+    return result;
+  }
+
+  /**
+   * Match category by traversing the UI options (Regra 3)
+   */
+  async function matchCategory(subject, type) {
+    const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+    
+    // Categorias são carregadas assincronamente, mas nesta fase já devem estar lá
+    if (type === "EXPENSE") {
+      const parentSelect = $("cat-parent");
+      const childSelect = $("cat-child");
+      if (!parentSelect) return;
+
+      // Tenta match em Subcategorias primeiro (filhos)
+      // Nota: No sistema atual, os filhos só carregam quando o pai muda.
+      // ESTRATÉGIA: Percorrer todos os pais e tentar match.
+      // Se não der, manter o que está.
+      
+      const options = Array.from(parentSelect.options);
+      for (const opt of options) {
+        if (coll.compare(opt.text, subject) === 0 || opt.text.toLowerCase().includes(subject)) {
+          parentSelect.value = opt.value;
+          parentSelect.dispatchEvent(new Event("change"));
+          return;
+        }
+      }
+    } else {
+      const legacySelect = $("tx-category");
+      if (!legacySelect) return;
+      const options = Array.from(legacySelect.options);
+      for (const opt of options) {
+        if (coll.compare(opt.text, subject) === 0 || opt.text.toLowerCase().includes(subject)) {
+          legacySelect.value = opt.value;
+          legacySelect.dispatchEvent(new Event("change"));
+          return;
+        }
+      }
+    }
+  }
 }
