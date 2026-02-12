@@ -4,16 +4,16 @@ export const DEFAULT_THEME = {
   bg_blur_px: 0,
   overlay_color: "rgba(0,0,0,0.35)",
 
-  card_bg_rgba: "rgba(255,255,255,0.92)",
+  card_bg_rgba: "rgba(255,255,255,0.15)", // Premium Glass (Dark mode feel by default)
   card_border_rgba: "rgba(255,255,255,0.12)",
-  card_blur_px: 0,
+  card_blur_px: 12,
 
   header_bg_rgba: "rgba(15,23,42,0.85)",
   menu_bg_rgba: "rgba(15,23,42,0.90)",
   fab_bg: "#0ea5e9",
 
-  text_main: "#0f172a",
-  text_secondary: "#64748b",
+  text_main: "#f8fafc",
+  text_secondary: "#94a3b8",
 };
 
 /**

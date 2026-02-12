@@ -3767,17 +3767,18 @@ td:nth-child(5) {
   color: #1e293b !important;
 }
 
-/* Mini Cards: Force dark text always (on white cards) */
+/* Mini Cards: Adapt to theme variables */
 .mini-card {
-  color: #1e293b !important;
+  color: var(--text) !important;
+  background: var(--ui-card-bg) !important;
 }
 
 .mini-card__title {
-  color: #1e293b !important;
+  color: var(--text) !important;
 }
 
 .mini-card__hint {
-  color: #64748b !important;
+  color: var(--muted) !important;
 }
 
 /* KPI Labels override: Force dark gray (on white cards) */
