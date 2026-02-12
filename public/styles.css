@@ -37,7 +37,7 @@
 
   /* Structural UI Vars */
   --ui-card-bg: #ffffff;
-  --ui-card-border: rgba(255, 255, 255, 0.12);
+  --ui-card-border: rgba(0, 0, 0, 0.12);
   --ui-card-blur: 0px;
 
   --ui-header-bg: rgba(15, 23, 42, 0.85);
@@ -3770,7 +3770,9 @@ td:nth-child(5) {
 /* Mini Cards: Adapt to theme variables */
 .mini-card {
   color: var(--text) !important;
-  background: var(--ui-card-bg) !important;
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .mini-card__title {
@@ -3870,12 +3872,13 @@ td:nth-child(5) {
 
 /* === AI ASSISTANT STYLES === */
 .ai-panel {
-  background: var(--ui-card-bg);
+  background: #ffffff !important;
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 16px;
-  backdrop-filter: blur(var(--ui-card-blur));
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   display: flex;
   flex-direction: column;
   gap: 10px;

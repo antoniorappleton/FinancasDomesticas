@@ -111,20 +111,41 @@ export async function saveTheme(sb, settings) {
   } = await sb.auth.getUser();
   if (!user) throw new Error("Utilizador não autenticado");
 
-  // 1. Optimistic Update
+  // 1. Optimistic Update (Local first)
+  const fullSettings = { ...DEFAULT_THEME, ...settings };
+  applyTheme(fullSettings);
+  localStorage.setItem("wb:visuals", JSON.stringify(fullSettings));
+
+  // 2. Persist to Supabase (Whitelist columns to avoid PGRST204)
+  // These are the columns currently known to exist in user_settings
+  const allowed = [
+    "user_id",
+    "bg_image_url",
+    "bg_color",
+    "bg_blur_px",
+    "overlay_color",
+    "card_bg_rgba",
+    "card_border_rgba",
+    "card_blur_px",
+    "header_bg_rgba",
+    "menu_bg_rgba",
+    "fab_bg",
+    "updated_at",
+  ];
+
   const payload = {
     user_id: user.id,
-    ...settings,
     updated_at: new Date().toISOString(),
   };
 
-  applyTheme(payload);
-  localStorage.setItem("wb:visuals", JSON.stringify(payload));
+  // Only copy if key is in whitelist AND present in settings
+  allowed.forEach((key) => {
+    if (key in settings) payload[key] = settings[key];
+  });
 
-  // 2. Persist to Supabase
   const { error } = await sb.from("user_settings").upsert(payload);
   if (error) {
     console.error("Failed to sync theme to DB:", error);
-    throw error;
+    // Don't throw, let the user continue with local theme even if sync fails
   }
 }
