@@ -264,46 +264,6 @@ function onSignedOut() {
 /* ===================== Arranque ===================== */
 (async function boot() {
   try {
-    // Carregar tema guardado
-    try {
-      const saved = JSON.parse(localStorage.getItem("wb:theme") || "null");
-      if (saved) {
-        const root = document.documentElement;
-        if (saved.bg) {
-          root.style.setProperty("--bg", saved.bg);
-          root.style.setProperty(
-            "--bg-grad",
-            `linear-gradient(135deg, ${saved.bg} 0%, ${saved.bg} 100%)`,
-          );
-        }
-        if (saved.header) {
-          root.style.setProperty(
-            "--footer-grad",
-            `linear-gradient(180deg, ${saved.header}, ${saved.header})`,
-          );
-        }
-        if (saved.fab) {
-          root.style.setProperty("--primary", saved.fab);
-          root.style.setProperty("--fab-bg", saved.fab);
-        }
-        if (saved.card) root.style.setProperty("--surface", saved.card);
-        if (saved.text) root.style.setProperty("--text", saved.text);
-
-        if (saved.muted) root.style.setProperty("--muted", saved.muted);
-        if (saved.border) root.style.setProperty("--border", saved.border);
-        if (saved.income) root.style.setProperty("--income", saved.income);
-        if (saved.expense) root.style.setProperty("--expense", saved.expense);
-        if (saved.savings) root.style.setProperty("--savings", saved.savings);
-        if (saved.balance) root.style.setProperty("--balance", saved.balance);
-
-        if (saved.dark) {
-          document.body.classList.add("dark-mode");
-          if (!saved.muted) root.style.setProperty("--muted", "#9ca3af");
-          if (!saved.border) root.style.setProperty("--border", "#374151");
-        }
-      }
-    } catch {}
-
     // Pré-carregar tema visual global (novo sistema)
     try {
       const visualSaved = JSON.parse(

@@ -46,6 +46,13 @@ export function applyTheme(settings) {
   root.style.setProperty("--ui-menu-bg", s.menu_bg_rgba);
   root.style.setProperty("--ui-fab-bg", s.fab_bg);
 
+  // Backward compatibility & Extras
+  root.style.setProperty("--primary", s.fab_bg);
+  root.style.setProperty("--footer-grad", s.header_bg_rgba); 
+  root.style.setProperty("--bg", s.bg_color);
+  root.style.setProperty("--surface", s.card_bg_rgba);
+  root.style.setProperty("--border", s.card_border_rgba);
+
   // Typography
   if (s.text_main) root.style.setProperty("--text", s.text_main);
   if (s.text_secondary) root.style.setProperty("--muted", s.text_secondary);
