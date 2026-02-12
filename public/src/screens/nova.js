@@ -959,40 +959,67 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
 
   /**
    * Match category by traversing the UI options (Regra 3)
+   * Agora suporta Pai e Filho para Despesas
    */
   async function matchCategory(subject, type) {
-    const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+    if (!subject) return;
+    const kind = type.toLowerCase();
     
-    // Categorias são carregadas assincronamente, mas nesta fase já devem estar lá
-    if (type === "EXPENSE") {
-      const parentSelect = $("cat-parent");
-      const childSelect = $("cat-child");
-      if (!parentSelect) return;
-
-      // Tenta match em Subcategorias primeiro (filhos)
-      // Nota: No sistema atual, os filhos só carregam quando o pai muda.
-      // ESTRATÉGIA: Percorrer todos os pais e tentar match.
-      // Se não der, manter o que está.
+    try {
+      // 1. Procurar na BD para ter a hierarquia completa
+      const { data: allCats, error } = await sb
+        .from("categories")
+        .select("id, name, parent_id")
+        .eq("kind", kind);
       
-      const options = Array.from(parentSelect.options);
-      for (const opt of options) {
-        if (coll.compare(opt.text, subject) === 0 || opt.text.toLowerCase().includes(subject)) {
-          parentSelect.value = opt.value;
+      if (error || !allCats) return;
+
+      const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+      
+      // Tentar match exato ou parcial
+      const match = allCats.find(c => 
+        coll.compare(c.name, subject) === 0 || 
+        c.name.toLowerCase().includes(subject.toLowerCase())
+      );
+
+      if (!match) return;
+
+      if (kind === "expense") {
+        const parentSelect = $("cat-parent");
+        const childSelect = $("cat-child");
+        if (!parentSelect) return;
+
+        if (match.parent_id) {
+          // É uma subcategoria (Filho)
+          parentSelect.value = match.parent_id;
           parentSelect.dispatchEvent(new Event("change"));
-          return;
+          
+          // Esperar um pouco para a subcategoria carregar (async)
+          // No nova.js original, $("cat-parent").onchange é async
+          // Vamos Poll ou simplesmente esperar
+          for(let i=0; i<10; i++) {
+            await new Promise(r => setTimeout(r, 100));
+            const foundChild = Array.from(childSelect.options).find(o => o.value === match.id);
+            if (foundChild) {
+              childSelect.value = match.id;
+              childSelect.dispatchEvent(new Event("change"));
+              break;
+            }
+          }
+        } else {
+          // É uma categoria principal (Pai)
+          parentSelect.value = match.id;
+          parentSelect.dispatchEvent(new Event("change"));
         }
+      } else {
+        // Income / Savings
+        const legacySelect = $("tx-category");
+        if (!legacySelect) return;
+        legacySelect.value = match.id;
+        legacySelect.dispatchEvent(new Event("change"));
       }
-    } else {
-      const legacySelect = $("tx-category");
-      if (!legacySelect) return;
-      const options = Array.from(legacySelect.options);
-      for (const opt of options) {
-        if (coll.compare(opt.text, subject) === 0 || opt.text.toLowerCase().includes(subject)) {
-          legacySelect.value = opt.value;
-          legacySelect.dispatchEvent(new Event("change"));
-          return;
-        }
-      }
+    } catch (e) {
+      console.warn("Match category failed:", e);
     }
   }
 }
