@@ -1,5 +1,5 @@
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v56";
+const VERSION = "v57";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");

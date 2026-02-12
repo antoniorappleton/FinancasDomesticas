@@ -3966,3 +3966,70 @@ td:nth-child(5) {
   border: 1px solid rgba(34, 197, 94, 0.2);
   margin-top: 4px;
 }
+/* ===== White Analytical Cards: Independent of theme ===== */
+:root {
+  --white-card-bg: #ffffff;
+  --white-card-text: #1e293b;
+  --white-card-muted: #64748b;
+}
+
+/* Force white background for the cards identified by the user */
+/* 1. KPIs (Resumo do mês) */
+.kpi-section, 
+section.card:has(#kpi-income) {
+  background: var(--white-card-bg) !important;
+  color: var(--white-card-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 2. Próximas despesas */
+section.card:has(#upcoming-fixed-list) {
+  background: var(--white-card-bg) !important;
+  color: var(--white-card-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 3. Análises rápidas (The section containing mini-cards) */
+section.card:has(.mini-carousel) {
+  background: var(--white-card-bg) !important;
+  color: var(--white-card-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 4. Mini-cards themselves (Patch from user) */
+.mini-card {
+  background: var(--white-card-bg) !important;
+  color: var(--white-card-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.mini-card__title { color: var(--white-card-text) !important; }
+.mini-card__hint { color: var(--white-card-muted) !important; }
+
+/* 5. Detailed Breakdown / Charts */
+section.card:has(#cat-list) {
+  background: var(--white-card-bg) !important;
+  color: var(--white-card-text) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Override KPI titles specifically inside these white cards */
+.kpi-section .kpi__title,
+section.card:has(#kpi-income) .kpi__title {
+  color: var(--white-card-muted) !important;
+}
+
+/* Version Tag Styles */
+.version-tag {
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.6;
+  padding: 8px 0;
+  text-align: center;
+  font-family: monospace;
+}

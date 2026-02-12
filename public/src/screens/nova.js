@@ -818,9 +818,10 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       micBtn.classList.remove("ai-listening");
-      statusEl.textContent = "Erro na voz. Tenta escrever.";
+      const msg = e?.error ? `Erro na voz: ${e.error}` : "Erro na voz. Tenta escrever.";
+      statusEl.textContent = msg;
     };
 
     recognition.onend = () => {
@@ -829,8 +830,27 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
     };
   }
 
-  micBtn.onclick = () => {
+  micBtn.onclick = async () => {
     if (!recognition) return toast("Voz não suportada neste browser", false);
+
+    // 1) Speech + mic em muitos Android falha fora de HTTPS
+    if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+      toast("⚠️ Voz precisa de HTTPS (site seguro).", false);
+      statusEl.textContent = "Abre em HTTPS / PWA para usar voz.";
+      return;
+    }
+
+    // 2) Força o pedido de permissão ao microfone (ajuda MUITO no Android)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+    } catch (err) {
+      toast("Sem permissão de microfone. Ativa nas definições do browser.", false);
+      statusEl.textContent = "Permissão de microfone bloqueada.";
+      return;
+    }
+
+    // 3) Toggle start/stop
     if (micBtn.classList.contains("ai-listening")) {
       recognition.stop();
     } else {
