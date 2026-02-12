@@ -2261,6 +2261,12 @@ export async function init({ sb, outlet } = {}) {
             <div class="carousel-track" id="upcoming-track">
               ${upcoming
                 .map((u) => {
+                  const displayName = String(u.name || "")
+                    .split(">")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .at(-1) || "";
+
                   let badgeClass = "badge-ok";
                   let statusText = `${u.daysLeft} dias`;
                   if (u.daysLeft === 0) {
@@ -2283,7 +2289,7 @@ export async function init({ sb, outlet } = {}) {
                           )}</span>
                         </div>
                         <div class="uc-info">
-                          <div class="uc-cat" title="${u.name}">${u.name}</div>
+                          <div class="uc-cat" title="${u.name}">${displayName}</div>
                           <div class="uc-amount">${money(u.amount)}</div>
                         </div>
                       </div>
