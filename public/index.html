@@ -1,409 +1,256 @@
 <!doctype html>
 <html lang="pt-PT">
-  <head>
-    <script>
-      window.APP_VERSION = "v52";
-    </script>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width,initial-scale=1,viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#000000" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <title>Wisebudget® — Gestão Doméstica</title>
 
-    <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
-    <script>
-      (function () {
-        if (!location.search.includes("sw=off")) return;
-        (async () => {
-          try {
-            if ("serviceWorker" in navigator) {
-              const regs = await navigator.serviceWorker.getRegistrations();
-              await Promise.all(regs.map((r) => r.unregister()));
-            }
-            if (window.caches?.keys) {
-              const keys = await caches.keys();
-              await Promise.all(keys.map((k) => caches.delete(k)));
-            }
-          } finally {
-            location.replace(location.pathname);
+<head>
+  <script>
+    window.APP_VERSION = "v56";
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Wisebudget® — Gestão Doméstica</title>
+
+  <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
+  <script>
+    (function () {
+      if (!location.search.includes("sw=off")) return;
+      (async () => {
+        try {
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
           }
-        })();
+          if (window.caches?.keys) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+        } finally {
+          location.replace(location.pathname);
+        }
       })();
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./styles.css" />
-    <link rel="stylesheet" href="./health.css" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-      rel="stylesheet"
-    />
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./health.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
 
-    <link rel="manifest" href="./manifest.json?v=12" />
+  <link rel="manifest" href="./manifest.json?v=12" />
 
-    <!-- PDF.js (CDN) for Import -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-      // Configure worker immediately
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      }
-    </script>
-  </head>
+  <!-- PDF.js (CDN) for Import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Configure worker immediately
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  </script>
+</head>
 
-  <body>
-    <a href="#app-main" class="skip-link">Saltar para o conteúdo principal</a>
+<body>
+  <a href="#app-main" class="skip-link">Saltar para o conteúdo principal</a>
 
-    <!-- Splash mínimo 3s -->
-    <!-- Splash Electrico -->
-    <div id="wb-splash" class="wb-splash electric-mode" aria-hidden="true">
-      <div class="elec-bg-glow"></div>
+  <!-- Splash mínimo 3s -->
+  <!-- Splash Electrico -->
+  <div id="wb-splash" class="wb-splash electric-mode" aria-hidden="true">
+    <div class="elec-bg-glow"></div>
 
-      <!-- Logo Card -->
-      <div class="elec-glass-card">
-        <div class="elec-house">
-          <!-- Generated Bars -->
-          <!-- 1. Primary -->
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar primary"
-              style="height: 12%; animation-delay: 0ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar primary"
-              style="height: 20%; animation-delay: 75ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar primary"
-              style="height: 28%; animation-delay: 150ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar primary"
-              style="height: 36%; animation-delay: 225ms"
-            ></div>
-          </div>
-          <!-- 2. Gradient -->
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar gradient"
-              style="height: 24%; animation-delay: 300ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar gradient"
-              style="height: 12%; animation-delay: 375ms"
-            ></div>
-          </div>
-          <!-- 3. Secondary -->
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 20%; animation-delay: 450ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 28%; animation-delay: 525ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 36%; animation-delay: 600ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 44%; animation-delay: 675ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 52%; animation-delay: 750ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 60%; animation-delay: 825ms"
-            ></div>
-          </div>
-          <div class="elec-bar-slot">
-            <div class="elec-guide-line"></div>
-            <div
-              class="elec-bar secondary"
-              style="height: 64%; animation-delay: 900ms"
-            ></div>
-          </div>
+    <!-- Logo Card -->
+    <div class="elec-glass-card">
+      <div class="elec-house">
+        <!-- Generated Bars -->
+        <!-- 1. Primary -->
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar primary" style="height: 12%; animation-delay: 0ms"></div>
         </div>
-      </div>
-
-      <!-- Text -->
-      <div style="text-align: center; z-index: 10">
-        <h1 class="elec-title">
-          <span>Wise</span><span class="highlight">budget</span>
-        </h1>
-        <p class="elec-subtitle">Gestão Financeira</p>
-      </div>
-
-      <!-- Loader -->
-      <div class="elec-loader-box" style="z-index: 10">
-        <div class="elec-track">
-          <div id="elec-prog" class="elec-progress"></div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar primary" style="height: 20%; animation-delay: 75ms"></div>
         </div>
-        <div class="elec-status">
-          <span id="elec-stat">A Inicializar</span>
-          <span id="elec-pct">0%</span>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar primary" style="height: 28%; animation-delay: 150ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar primary" style="height: 36%; animation-delay: 225ms"></div>
+        </div>
+        <!-- 2. Gradient -->
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar gradient" style="height: 24%; animation-delay: 300ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar gradient" style="height: 12%; animation-delay: 375ms"></div>
+        </div>
+        <!-- 3. Secondary -->
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 20%; animation-delay: 450ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 28%; animation-delay: 525ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 36%; animation-delay: 600ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 44%; animation-delay: 675ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 52%; animation-delay: 750ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 60%; animation-delay: 825ms"></div>
+        </div>
+        <div class="elec-bar-slot">
+          <div class="elec-guide-line"></div>
+          <div class="elec-bar secondary" style="height: 64%; animation-delay: 900ms"></div>
         </div>
       </div>
     </div>
 
-    <!-- Sprite de ícones essenciais -->
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      width="0"
-      height="0"
-      style="position: absolute; left: -9999px; top: -9999px"
-    >
-      <symbol id="i-home" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z"
-        />
-      </symbol>
-      <symbol id="i-list" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
-      </symbol>
-      <symbol id="i-plus" viewBox="0 0 24 24">
-        <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
-      </symbol>
-      <symbol id="i-cog" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z"
-        />
-      </symbol>
-      <symbol id="i-target" viewBox="0 0 24 24">
-        <circle
-          cx="12"
-          cy="12"
-          r="9"
-          stroke="currentColor"
-          stroke-width="2"
-          fill="none"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r="5"
-          stroke="currentColor"
-          stroke-width="2"
-          fill="none"
-        />
-        <circle cx="12" cy="12" r="1.8" fill="currentColor" />
-      </symbol>
-      <symbol id="i-info" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z"
-        />
-      </symbol>
-      <symbol id="i-receipt" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M5 2h14a1 1 0 0 1 1 1v19l-3-2-3 2-3-2-3 2-3-2V3a1 1 0 0 1 1-1Zm2 5h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z"
-        />
-      </symbol>
-      <symbol id="i-register" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M4 6h2v2H4V6Zm0 5h2v2H4v-2Zm0 5h2v2H4v-2Zm4-10h12v2H8V6Zm0 5h12v2H8v-2Zm0 5h12v2H8v-2Z"
-        />
-      </symbol>
-      <!-- NOVOS: olho aberto / olho fechado -->
-      <symbol id="i-eye" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M12 5c5.5 0 10 4.5 11 7-1 2.5-5.5 7-11 7S2 14.5 1 12c1-2.5 5.5-7 11-7Zm0 3.5A3.5 3.5 0 1 0 15.5 12 3.5 3.5 0 0 0 12 8.5Z"
-        />
-      </symbol>
-      <symbol id="i-eye-off" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M3 4.3 4.3 3 21 19.7 19.7 21l-3.1-3.1A12.6 12.6 0 0 1 12 19c-6 0-10.4-4.8-11-7 .5-1.2 2-3.4 4.4-5.1L3 4.3Zm18.9 7.7c-.4 1-1.6 2.7-3.5 4.2L7.8 5.6C9.2 5 10.6 4.7 12 4.7c6 0 10.4 4.8 11 7Z"
-        />
-      </symbol>
-      <symbol id="i-chevron-up" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M6.7 15.3 12 10l5.3 5.3 1.4-1.4L12 7.2 5.3 13.9z"
-        />
-      </symbol>
-      <symbol id="i-chevron-down" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M6.7 8.7 12 14l5.3-5.3 1.4 1.4L12 16.8 5.3 10.1z"
-        />
-      </symbol>
-      <symbol id="i-activity" viewBox="0 0 24 24">
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M22 12h-4l-3 9-6-16-3 7H2"
-        />
-      </symbol>
-      <symbol id="i-cash" viewBox="0 0 24 24">
-        <rect
-          x="2"
-          y="6"
-          width="20"
-          height="12"
-          rx="2"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        />
-        <circle cx="12" cy="12" r="3" fill="currentColor" />
-      </symbol>
-      <symbol id="i-chart-line" viewBox="0 0 24 24">
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M3 17l6-6 4 4 8-8M21 7v6h-6"
-        />
-      </symbol>
-      <symbol id="i-chart-down" viewBox="0 0 24 24">
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M3 7l6 6 4-4 8 8M21 17v-6h-6"
-        />
-      </symbol>
-      <symbol id="i-piggy" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M13 7c-2.8 0-5 2.2-5 5v1H6v2h2v2c0 .6.4 1 1 1h8c.6 0 1-.4 1-1v-2h2v-2h-2v-1c0-2.8-2.2-5-5-5zm-1 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0z"
-        />
-        <circle cx="15.5" cy="10.5" r="1" fill="currentColor" />
-      </symbol>
-      <symbol id="i-crystal" viewBox="0 0 24 24">
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z"
-        />
-      </symbol>
-      <symbol id="i-heart" viewBox="0 0 24 24">
-        <path
-          fill="currentColor"
-          d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-        />
-      </symbol>
-    </svg>
+    <!-- Text -->
+    <div style="text-align: center; z-index: 10">
+      <h1 class="elec-title">
+        <span>Wise</span><span class="highlight">budget</span>
+      </h1>
+      <p class="elec-subtitle">Gestão Financeira</p>
+    </div>
 
-    <header class="app-header">
-      <div class="app-header__inner">
-        <a class="brand" href="#/" aria-label="Ir para o dashboard">
-          <img
-            src="wisebudget.png"
-            alt=""
-            class="brand__logo"
-            aria-hidden="true"
-          />
-          <span class="brand__text">
-            <span class="brand__title">Wisebudget®</span>
-            <span class="brand__subtitle"
-              >Aplicação de ajuda à gestão doméstica</span
-            >
-          </span>
-        </a>
-        <nav class="top-nav" aria-label="Navegação principal"></nav>
+    <!-- Loader -->
+    <div class="elec-loader-box" style="z-index: 10">
+      <div class="elec-track">
+        <div id="elec-prog" class="elec-progress"></div>
       </div>
-    </header>
+      <div class="elec-status">
+        <span id="elec-stat">A Inicializar</span>
+        <span id="elec-pct">0%</span>
+      </div>
+    </div>
+  </div>
 
-    <main id="app-main" tabindex="-1">
-      <div id="outlet" class="outlet"></div>
-    </main>
+  <!-- Sprite de ícones essenciais -->
+  <svg aria-hidden="true" focusable="false" width="0" height="0"
+    style="position: absolute; left: -9999px; top: -9999px">
+    <symbol id="i-home" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.8Z" />
+    </symbol>
+    <symbol id="i-list" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M4 6h16v2H4zM4 11h16v2H4zM4 16h16v2H4z" />
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z" />
+    </symbol>
+    <symbol id="i-cog" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm9 3.5a7.3 7.3 0 0 0-.1-1l2-1.6-2-3.4-2.4.8a7.7 7.7 0 0 0-1.7-1l-.3-2.5H9.5l-.3 2.5a7.7 7.7 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.6a7.3 7.3 0 0 0 0 2l-2 1.6 2 3.4 2.4-.8a7.7 7.7 0 0 0 1.7 1l.3 2.5h5.1l.3-2.5a7.7 7.7 0 0 0 1.7-1l2.4.8 2-3.4-2-1.6c.1-.3.1-.7.1-1Z" />
+    </symbol>
+    <symbol id="i-target" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none" />
+      <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" fill="none" />
+      <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+    </symbol>
+    <symbol id="i-info" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-6h2v6Zm0-8h-2V7h2v2Z" />
+    </symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M5 2h14a1 1 0 0 1 1 1v19l-3-2-3 2-3-2-3 2-3-2V3a1 1 0 0 1 1-1Zm2 5h10v2H7V7Zm0 4h10v2H7v-2Zm0 4h6v2H7v-2Z" />
+    </symbol>
+    <symbol id="i-register" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M4 6h2v2H4V6Zm0 5h2v2H4v-2Zm0 5h2v2H4v-2Zm4-10h12v2H8V6Zm0 5h12v2H8v-2Zm0 5h12v2H8v-2Z" />
+    </symbol>
+    <!-- NOVOS: olho aberto / olho fechado -->
+    <symbol id="i-eye" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M12 5c5.5 0 10 4.5 11 7-1 2.5-5.5 7-11 7S2 14.5 1 12c1-2.5 5.5-7 11-7Zm0 3.5A3.5 3.5 0 1 0 15.5 12 3.5 3.5 0 0 0 12 8.5Z" />
+    </symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M3 4.3 4.3 3 21 19.7 19.7 21l-3.1-3.1A12.6 12.6 0 0 1 12 19c-6 0-10.4-4.8-11-7 .5-1.2 2-3.4 4.4-5.1L3 4.3Zm18.9 7.7c-.4 1-1.6 2.7-3.5 4.2L7.8 5.6C9.2 5 10.6 4.7 12 4.7c6 0 10.4 4.8 11 7Z" />
+    </symbol>
+    <symbol id="i-chevron-up" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M6.7 15.3 12 10l5.3 5.3 1.4-1.4L12 7.2 5.3 13.9z" />
+    </symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M6.7 8.7 12 14l5.3-5.3 1.4 1.4L12 16.8 5.3 10.1z" />
+    </symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        d="M22 12h-4l-3 9-6-16-3 7H2" />
+    </symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24">
+      <rect x="2" y="6" width="20" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" />
+    </symbol>
+    <symbol id="i-chart-line" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        d="M3 17l6-6 4 4 8-8M21 7v6h-6" />
+    </symbol>
+    <symbol id="i-chart-down" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        d="M3 7l6 6 4-4 8 8M21 17v-6h-6" />
+    </symbol>
+    <symbol id="i-piggy" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M13 7c-2.8 0-5 2.2-5 5v1H6v2h2v2c0 .6.4 1 1 1h8c.6 0 1-.4 1-1v-2h2v-2h-2v-1c0-2.8-2.2-5-5-5zm-1 7a1 1 0 1 1 2 0 1 1 0 0 1-2 0z" />
+      <circle cx="15.5" cy="10.5" r="1" fill="currentColor" />
+    </symbol>
+    <symbol id="i-crystal" viewBox="0 0 24 24">
+      <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        d="M12 2l3 7h6l-5 4 2 7-6-4-6 4 2-7-5-4h6z" />
+    </symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24">
+      <path fill="currentColor"
+        d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+    </symbol>
+  </svg>
 
-    <!-- Overlay de Autenticação -->
-    <section
-      id="screen-login"
-      class="auth-overlay hidden"
-      aria-modal="true"
-      role="dialog"
-      aria-labelledby="auth-title"
-    >
-      <div class="auth-card">
-        <h2 id="auth-title">Entrar</h2>
+  <header class="app-header">
+    <div class="app-header__inner">
+      <a class="brand" href="#/" aria-label="Ir para o dashboard">
+        <img src="wisebudget.png" alt="" class="brand__logo" aria-hidden="true" />
+        <span class="brand__text">
+          <span class="brand__title">Wisebudget®</span>
+          <span class="brand__subtitle">Aplicação de ajuda à gestão doméstica</span>
+        </span>
+      </a>
+      <nav class="top-nav" aria-label="Navegação principal"></nav>
+    </div>
+  </header>
 
-        <form id="auth-form" autocomplete="on">
-          <label
-            >Email
-            <input
-              id="auth-email"
-              type="email"
-              autocomplete="username"
-              required
-            />
-          </label>
-          <label style="position: relative"
-            >Palavra-passe
-            <input
-              id="auth-password"
-              type="password"
-              autocomplete="current-password"
-              required
-              style="padding-right: 40px"
-            />
-            <button
-              type="button"
-              id="toggle-pw"
-              class="btn-icon"
-              style="
+  <main id="app-main" tabindex="-1">
+    <div id="outlet" class="outlet"></div>
+  </main>
+
+  <!-- Overlay de Autenticação -->
+  <section id="screen-login" class="auth-overlay hidden" aria-modal="true" role="dialog" aria-labelledby="auth-title">
+    <div class="auth-card">
+      <h2 id="auth-title">Entrar</h2>
+
+      <form id="auth-form" autocomplete="on">
+        <label>Email
+          <input id="auth-email" type="email" autocomplete="username" required />
+        </label>
+        <label style="position: relative">Palavra-passe
+          <input id="auth-password" type="password" autocomplete="current-password" required
+            style="padding-right: 40px" />
+          <button type="button" id="toggle-pw" class="btn-icon" style="
                 position: absolute;
                 right: 10px;
                 bottom: 8px;
@@ -413,341 +260,293 @@
                 cursor: pointer;
                 color: var(--muted);
                 display: flex;
-              "
-              title="Mostrar/Ocultar"
-            >
-              <svg class="icon" aria-hidden="true">
-                <use href="#i-eye"></use>
-              </svg>
-            </button>
-          </label>
-          <label id="row-confirm-pw" class="hidden" style="position: relative">
-            Confirmar Palavra-passe
-            <input
-              id="auth-confirm-pw"
-              type="password"
-              autocomplete="new-password"
-              style="padding-right: 40px"
-            />
-          </label>
-          <button id="auth-submit" type="submit" class="btn btn--primary">
-            Entrar
+              " title="Mostrar/Ocultar">
+            <svg class="icon" aria-hidden="true">
+              <use href="#i-eye"></use>
+            </svg>
           </button>
-          <p class="row-note" style="margin-top: 10px">
-            <button id="auth-forgot" type="button" class="link">
-              Esqueci-me da palavra-passe
-            </button>
-          </p>
-        </form>
-
-        <form id="reset-form" class="hidden" autocomplete="on">
-          <label
-            >Email
-            <input
-              id="reset-email"
-              type="email"
-              inputmode="email"
-              placeholder="o.teu@email.com"
-              required
-            />
-          </label>
-          <button id="reset-submit" type="submit" class="btn btn--primary">
-            Enviar link de recuperação
-          </button>
-          <p class="row-note" style="margin-top: 8px">
-            Enviaremos um email com um link para definires uma nova
-            palavra-passe.
-          </p>
-          <p class="row-note" style="margin-top: 8px">
-            <button id="reset-back" type="button" class="link">
-              Voltar ao login
-            </button>
-          </p>
-        </form>
-
-        <p class="auth-switch">
-          <span id="auth-help">Ainda não tens conta?</span>
-          <button id="auth-toggle" class="link" type="button">
-            Criar conta
+        </label>
+        <label id="row-confirm-pw" class="hidden" style="position: relative">
+          Confirmar Palavra-passe
+          <input id="auth-confirm-pw" type="password" autocomplete="new-password" style="padding-right: 40px" />
+        </label>
+        <button id="auth-submit" type="submit" class="btn btn--primary">
+          Entrar
+        </button>
+        <p class="row-note" style="margin-top: 10px">
+          <button id="auth-forgot" type="button" class="link">
+            Esqueci-me da palavra-passe
           </button>
         </p>
-      </div>
-    </section>
+      </form>
 
-    <!-- Script do modal de reset -->
-    <script type="module">
-      const authForm = document.getElementById("auth-form");
-      const resetForm = document.getElementById("reset-form");
-      const authTitle = document.getElementById("auth-title");
-      const authForgot = document.getElementById("auth-forgot");
-      const resetEmailEl = document.getElementById("reset-email");
-      const resetBack = document.getElementById("reset-back");
+      <form id="reset-form" class="hidden" autocomplete="on">
+        <label>Email
+          <input id="reset-email" type="email" inputmode="email" placeholder="o.teu@email.com" required />
+        </label>
+        <button id="reset-submit" type="submit" class="btn btn--primary">
+          Enviar link de recuperação
+        </button>
+        <p class="row-note" style="margin-top: 8px">
+          Enviaremos um email com um link para definires uma nova
+          palavra-passe.
+        </p>
+        <p class="row-note" style="margin-top: 8px">
+          <button id="reset-back" type="button" class="link">
+            Voltar ao login
+          </button>
+        </p>
+      </form>
 
-      // Toggle Password Visibility
-      document.getElementById("toggle-pw")?.addEventListener("click", (e) => {
-        const btn = e.currentTarget;
-        const input = document.getElementById("auth-password");
-        const iconUse = btn.querySelector("use");
+      <p class="auth-switch">
+        <span id="auth-help">Ainda não tens conta?</span>
+        <button id="auth-toggle" class="link" type="button">
+          Criar conta
+        </button>
+      </p>
+    </div>
+  </section>
 
-        if (input.type === "password") {
-          input.type = "text";
-          iconUse.setAttribute("href", "#i-eye-off");
-        } else {
-          input.type = "password";
-          iconUse.setAttribute("href", "#i-eye");
-        }
-      });
+  <!-- Script do modal de reset -->
+  <script type="module">
+    const authForm = document.getElementById("auth-form");
+    const resetForm = document.getElementById("reset-form");
+    const authTitle = document.getElementById("auth-title");
+    const authForgot = document.getElementById("auth-forgot");
+    const resetEmailEl = document.getElementById("reset-email");
+    const resetBack = document.getElementById("reset-back");
 
-      authForgot?.addEventListener("click", () => {
-        authForm?.classList.add("hidden");
-        resetForm?.classList.remove("hidden");
-        authTitle.textContent = "Recuperar palavra-passe";
-        const loginEmail = (
-          document.getElementById("auth-email")?.value || ""
-        ).trim();
-        if (loginEmail) resetEmailEl.value = loginEmail;
-        resetEmailEl?.focus();
-      });
+    // Toggle Password Visibility
+    document.getElementById("toggle-pw")?.addEventListener("click", (e) => {
+      const btn = e.currentTarget;
+      const input = document.getElementById("auth-password");
+      const iconUse = btn.querySelector("use");
 
-      resetBack?.addEventListener("click", () => {
-        resetForm?.classList.add("hidden");
-        authForm?.classList.remove("hidden");
-        authTitle.textContent = "Entrar";
-      });
-
-      resetForm?.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const email = (resetEmailEl?.value || "").trim();
-        if (!email) return alert("Indica o teu email.");
-        try {
-          const { error } = await window.sb.auth.resetPasswordForEmail(email, {
-            redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`,
-          });
-          if (error) throw error;
-          alert("✅ Enviámos um email com o link de recuperação.");
-          resetBack?.click();
-        } catch (err) {
-          alert(
-            err?.message || "Não foi possível enviar o email de recuperação.",
-          );
-        }
-      });
-    </script>
-
-    <link rel="manifest" href="manifest.json" />
-    <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    ></script>
-    <script>
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    </script>
-    <!-- Supabase e singleton window.sb -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script>
-      window.sb = supabase.createClient(
-        window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
-        window.SUPABASE_ANON_KEY ||
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA",
-      );
-    </script>
-
-    <!-- Service Worker -->
-    <script>
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .register("./sw.js", { scope: "./" })
-          .catch(console.error);
+      if (input.type === "password") {
+        input.type = "text";
+        iconUse.setAttribute("href", "#i-eye-off");
+      } else {
+        input.type = "password";
+        iconUse.setAttribute("href", "#i-eye");
       }
-    </script>
+    });
 
-    <!-- Chart.js (global para ecrãs) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    authForgot?.addEventListener("click", () => {
+      authForm?.classList.add("hidden");
+      resetForm?.classList.remove("hidden");
+      authTitle.textContent = "Recuperar palavra-passe";
+      const loginEmail = (
+        document.getElementById("auth-email")?.value || ""
+      ).trim();
+      if (loginEmail) resetEmailEl.value = loginEmail;
+      resetEmailEl?.focus();
+    });
 
-    <!-- Splash: esconder após app pronta ou timeout -->
-    <script>
-      (function () {
-        // Animation Logic
-        const splash = document.getElementById("wb-splash");
-        const bar = document.getElementById("elec-prog");
-        const stat = document.getElementById("elec-stat");
-        const pctEl = document.getElementById("elec-pct");
+    resetBack?.addEventListener("click", () => {
+      resetForm?.classList.add("hidden");
+      authForm?.classList.remove("hidden");
+      authTitle.textContent = "Entrar";
+    });
 
-        const START_TIME = Date.now();
-        const MIN_DURATION = 5000; // 5 seconds forced minimum
+    resetForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = (resetEmailEl?.value || "").trim();
+      if (!email) return alert("Indica o teu email.");
+      try {
+        const { error } = await window.sb.auth.resetPasswordForEmail(email, {
+          redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`,
+        });
+        if (error) throw error;
+        alert("✅ Enviámos um email com o link de recuperação.");
+        resetBack?.click();
+      } catch (err) {
+        alert(
+          err?.message || "Não foi possível enviar o email de recuperação.",
+        );
+      }
+    });
+  </script>
 
-        let progress = 0;
-        let isDone = false;
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  </script>
+  <!-- Supabase e singleton window.sb -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.sb = supabase.createClient(
+      window.SUPABASE_URL || "https://brakxcumzdleufrpyipm.supabase.co",
+      window.SUPABASE_ANON_KEY ||
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA",
+    );
+  </script>
 
-        // Animate bar
-        const interval = setInterval(() => {
-          if (isDone) return;
-          // Progress roughly over 5s
-          progress += 100 / (MIN_DURATION / 50);
-          if (progress > 95 && !splash.dataset.ready) progress = 95;
-          if (progress > 100) progress = 100;
+  <!-- Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("./sw.js", { scope: "./" })
+        .catch(console.error);
+    }
+  </script>
 
-          if (bar) bar.style.width = progress + "%";
-          if (pctEl) pctEl.innerText = Math.floor(progress) + "%";
+  <!-- Chart.js (global para ecrãs) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
-          if (stat) {
-            if (progress < 30) stat.innerText = "A LIGAR MOTORES...";
-            else if (progress < 60) stat.innerText = "A CARREGAR DADOS...";
-            else if (progress < 90) stat.innerText = "A SINCRONIZAR...";
-            else stat.innerText = "PRONTO";
-          }
-        }, 50);
+  <!-- Splash: esconder após app pronta ou timeout -->
+  <script>
+    (function () {
+      // Animation Logic
+      const splash = document.getElementById("wb-splash");
+      const bar = document.getElementById("elec-prog");
+      const stat = document.getElementById("elec-stat");
+      const pctEl = document.getElementById("elec-pct");
 
-        const attemptHide = () => {
-          if (isDone) return;
-          const elapsed = Date.now() - START_TIME;
-          const remaining = MIN_DURATION - elapsed;
+      const START_TIME = Date.now();
+      const MIN_DURATION = 5000; // 5 seconds forced minimum
 
-          if (remaining > 0) {
-            setTimeout(attemptHide, remaining);
-            return;
-          }
+      let progress = 0;
+      let isDone = false;
 
-          finalize();
-        };
+      // Animate bar
+      const interval = setInterval(() => {
+        if (isDone) return;
+        // Progress roughly over 5s
+        progress += 100 / (MIN_DURATION / 50);
+        if (progress > 95 && !splash.dataset.ready) progress = 95;
+        if (progress > 100) progress = 100;
 
-        const finalize = () => {
-          splash.dataset.ready = "1";
+        if (bar) bar.style.width = progress + "%";
+        if (pctEl) pctEl.innerText = Math.floor(progress) + "%";
 
-          if (bar) bar.style.width = "100%";
-          if (pctEl) pctEl.innerText = "100%";
-          if (stat) stat.innerText = "PRONTO";
+        if (stat) {
+          if (progress < 30) stat.innerText = "A LIGAR MOTORES...";
+          else if (progress < 60) stat.innerText = "A CARREGAR DADOS...";
+          else if (progress < 90) stat.innerText = "A SINCRONIZAR...";
+          else stat.innerText = "PRONTO";
+        }
+      }, 50);
 
+      const attemptHide = () => {
+        if (isDone) return;
+        const elapsed = Date.now() - START_TIME;
+        const remaining = MIN_DURATION - elapsed;
+
+        if (remaining > 0) {
+          setTimeout(attemptHide, remaining);
+          return;
+        }
+
+        finalize();
+      };
+
+      const finalize = () => {
+        splash.dataset.ready = "1";
+
+        if (bar) bar.style.width = "100%";
+        if (pctEl) pctEl.innerText = "100%";
+        if (stat) stat.innerText = "PRONTO";
+
+        setTimeout(() => {
+          isDone = true;
+          clearInterval(interval);
+          splash.classList.add("is-hiding");
           setTimeout(() => {
-            isDone = true;
-            clearInterval(interval);
-            splash.classList.add("is-hiding");
-            setTimeout(() => {
-              splash.style.display = "none";
-            }, 500);
-          }, 800);
-        };
+            splash.style.display = "none";
+          }, 500);
+        }, 800);
+      };
 
-        // Listeners for "Ready" signals
-        window.addEventListener("app:ready", attemptHide, { once: true });
-        window.addEventListener("load", attemptHide, { once: true });
+      // Listeners for "Ready" signals
+      window.addEventListener("app:ready", attemptHide, { once: true });
+      window.addEventListener("load", attemptHide, { once: true });
 
-        // Failsafe max time (e.g. 10s) if no events fire
-        setTimeout(attemptHide, 10000);
-      })();
-    </script>
+      // Failsafe max time (e.g. 10s) if no events fire
+      setTimeout(attemptHide, 10000);
+    })();
+  </script>
 
-    <!-- FAB (opcional; podes remover se usares só o footer) -->
-    <div class="fab-nav" aria-live="polite">
-      <button
-        id="fabToggle"
-        class="fab-nav__toggle"
-        aria-label="Abrir menu"
-        aria-expanded="false"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4" />
-        </svg>
+  <!-- FAB (opcional; podes remover se usares só o footer) -->
+  <div class="fab-nav" aria-live="polite">
+    <button id="fabToggle" class="fab-nav__toggle" aria-label="Abrir menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4" />
+      </svg>
+    </button>
+    <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
+      <button class="fab-item" data-to="#/" aria-label="Dashboard">
+        <svg>
+          <use href="#i-home" />
+        </svg><span class="fab-label">Dashboard</span>
       </button>
-      <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
-        <button class="fab-item" data-to="#/" aria-label="Dashboard">
-          <svg>
-            <use href="#i-home" /></svg
-          ><span class="fab-label">Dashboard</span>
-        </button>
-        <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos">
-          <svg>
-            <use href="#i-target" /></svg
-          ><span class="fab-label">Objetivos</span>
-        </button>
-        <button class="fab-item" data-to="#/health" aria-label="Saúde">
-          <svg>
-            <use href="#i-activity" /></svg
-          ><span class="fab-label">Saúde</span>
-        </button>
-        <button
-          class="fab-item"
-          data-to="#/transactions"
-          aria-label="Transações"
-        >
-          <svg>
-            <use href="#i-receipt" /></svg
-          ><span class="fab-label">Transações</span>
-        </button>
-        <button class="fab-item" data-to="#/new" aria-label="Nova">
-          <svg>
-            <use href="#i-plus" /></svg
-          ><span class="fab-label">Nova</span>
-        </button>
-        <button class="fab-item" data-to="#/settings" aria-label="Definições">
-          <svg>
-            <use href="#i-cog" /></svg
-          ><span class="fab-label">Definições</span>
-        </button>
-      </div>
+      <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos">
+        <svg>
+          <use href="#i-target" />
+        </svg><span class="fab-label">Objetivos</span>
+      </button>
+      <button class="fab-item" data-to="#/health" aria-label="Saúde">
+        <svg>
+          <use href="#i-activity" />
+        </svg><span class="fab-label">Saúde</span>
+      </button>
+      <button class="fab-item" data-to="#/transactions" aria-label="Transações">
+        <svg>
+          <use href="#i-receipt" />
+        </svg><span class="fab-label">Transações</span>
+      </button>
+      <button class="fab-item" data-to="#/new" aria-label="Nova">
+        <svg>
+          <use href="#i-plus" />
+        </svg><span class="fab-label">Nova</span>
+      </button>
+      <button class="fab-item" data-to="#/settings" aria-label="Definições">
+        <svg>
+          <use href="#i-cog" />
+        </svg><span class="fab-label">Definições</span>
+      </button>
     </div>
+  </div>
 
-    <!-- ===== MODAL DE RESET DE PASSWORD (GLOBAL) ===== -->
-    <div
-      id="modal-reset-pw"
-      class="modal hidden"
-      aria-hidden="true"
-      style="z-index: 10001"
-    >
-      <div class="modal__card" style="max-width: 400px; color: #1e293b">
-        <h2 class="section-title" style="color: #1e293b">
-          Redefinir Palavra-passe
-        </h2>
-        <p class="row-note" style="margin-bottom: 20px; color: #64748b">
-          Insere a tua nova palavra-passe abaixo.
-        </p>
-        <form
-          id="form-reset-pw"
-          class="grid grid-responsive-1"
-          style="gap: 16px"
-        >
-          <label style="color: #1e293b">
-            Nova palavra-passe
-            <input
-              type="password"
-              id="reset-new-pw"
-              minlength="6"
-              required
-              autocomplete="new-password"
-              style="
+  <!-- ===== MODAL DE RESET DE PASSWORD (GLOBAL) ===== -->
+  <div id="modal-reset-pw" class="modal hidden" aria-hidden="true" style="z-index: 10001">
+    <div class="modal__card" style="max-width: 400px; color: #1e293b">
+      <h2 class="section-title" style="color: #1e293b">
+        Redefinir Palavra-passe
+      </h2>
+      <p class="row-note" style="margin-bottom: 20px; color: #64748b">
+        Insere a tua nova palavra-passe abaixo.
+      </p>
+      <form id="form-reset-pw" class="grid grid-responsive-1" style="gap: 16px">
+        <label style="color: #1e293b">
+          Nova palavra-passe
+          <input type="password" id="reset-new-pw" minlength="6" required autocomplete="new-password" style="
                 color: #1e293b;
                 background: #fff;
                 border: 1px solid #cbd5e1;
-              "
-            />
-          </label>
-          <label style="color: #1e293b">
-            Confirmar palavra-passe
-            <input
-              type="password"
-              id="reset-conf-pw"
-              minlength="6"
-              required
-              autocomplete="new-password"
-              style="
+              " />
+        </label>
+        <label style="color: #1e293b">
+          Confirmar palavra-passe
+          <input type="password" id="reset-conf-pw" minlength="6" required autocomplete="new-password" style="
                 color: #1e293b;
                 background: #fff;
                 border: 1px solid #cbd5e1;
-              "
-            />
-          </label>
-          <div style="display: flex; gap: 10px; margin-top: 8px">
-            <button type="submit" class="btn btn--primary" style="width: 100%">
-              Alterar Palavra-passe
-            </button>
-          </div>
-        </form>
-      </div>
+              " />
+        </label>
+        <div style="display: flex; gap: 10px; margin-top: 8px">
+          <button type="submit" class="btn btn--primary" style="width: 100%">
+            Alterar Palavra-passe
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Router/App -->
-    <script type="module" src="./main.js?v=50"></script>
-  </body>
+  <!-- Router/App -->
+  <script type="module" src="./main.js?v=50"></script>
+</body>
+
 </html>
