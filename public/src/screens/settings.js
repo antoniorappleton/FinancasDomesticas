@@ -1461,15 +1461,35 @@ export async function init({ sb, outlet } = {}) {
       testBtn.style.display = "inline-block";
     }
     testBtn?.addEventListener("click", async () => {
+      Toast.info("A tentar enviar notificação de teste...");
       if (window.Notification && Notification.permission === "granted") {
-        const reg = await navigator.serviceWorker.ready;
-        reg.showNotification("WiseBudget", { 
-          body: "Notificação de teste ✅\nA infraestrutura está pronta!",
-          icon: "./icon-192.png",
-          badge: "./icon-192.png"
-        });
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          await reg.showNotification("WiseBudget", { 
+            body: "Notificação de teste ✅\nA infraestrutura está pronta!",
+            icon: "./icon-192.png",
+            badge: "./icon-192.png",
+            vibrate: [200, 100, 200]
+          });
+          Toast.success("Pedido de notificação enviado!");
+        } catch (err) {
+          console.error("Erro ao mostrar notificação:", err);
+          Toast.error("Erro ao mostrar notificação no telemóvel.");
+        }
+      } else {
+        Toast.error("Permissão de notificações não concedida.");
       }
     });
+
+    // Mostrar versão no fundo para debug
+    const footer = $(".settings-footer") || outlet;
+    if (footer && !$("#debug-version")) {
+      const vDiv = document.createElement("div");
+      vDiv.id = "debug-version";
+      vDiv.style = "text-align:center; font-size:10px; color:#94a3b8; margin-top:20px; opacity:0.6";
+      vDiv.textContent = `App Version: ${window.APP_VERSION || 'unknown'}`;
+      footer.appendChild(vDiv);
+    }
 
     // Delegar salvaguarda de preferências
     const savePrefs = async () => {
