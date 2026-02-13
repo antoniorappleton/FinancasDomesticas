@@ -1460,11 +1460,13 @@ export async function init({ sb, outlet } = {}) {
     if (state.permission === "granted") {
       testBtn.style.display = "inline-block";
     }
-    testBtn?.addEventListener("click", () => {
+    testBtn?.addEventListener("click", async () => {
       if (window.Notification && Notification.permission === "granted") {
-        new Notification("WiseBudget", { 
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification("WiseBudget", { 
           body: "Notificação de teste ✅\nA infraestrutura está pronta!",
-          icon: "/icon-192.png"
+          icon: "./icon-192.png",
+          badge: "./icon-192.png"
         });
       }
     });
