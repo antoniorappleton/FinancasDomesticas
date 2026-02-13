@@ -55,17 +55,22 @@ const CONTENT = {
   },
   new: {
     icon: ICONS.plus(),
-    title: "Novo Movimento",
+    title: "Manual de Registo de Movimentos",
     what: [
-      "Registar Despesa, Receita, Poupança ou Transferência",
-      "+ Despesas Rápidas: Registar várias despesas fixas de uma vez",
+      "<strong>Registo Manual</strong>: Para movimentos detalhados e ocasionais.",
+      "<strong>Despesas Rápidas</strong>: Registe todas as despesas fixas do mês de uma só vez (Aluguer, Luz, etc).",
+      "<strong>Assistente por Voz</strong>: Diga 'Gastei 15 euros em almoço' e a app preenche tudo.",
+      "<strong>Importação PDF/Excel</strong>: Importe extratos bancários diretamente nas Definições."
     ],
     how: [
-      "Manual: escolhe tipo > data > valor > categoria > guardar",
-      "Despesas Rápidas: abre a opção no topo, ajusta valores e confirma tudo",
+      "Manual: Escolha o Tipo, Data, Valor e Categoria e clique em Guardar.",
+      "Despesas Rápidas: Clique em '+ Despesas Rápidas' no topo do ecrã e confirme a lista sugerida.",
+      "Voz: Toque no ícone do Microfone e fale naturalmente sobre a sua despesa.",
+      "Importação: Vá a <strong>Definições > Importação</strong> para carregar ficheiros PDF ou Excel."
     ],
     tips: [
-      "Usa descrições consistentes para que a app sugira categorias automaticamente no futuro.",
+      "Qual deve usar? Use <strong>Manual</strong> para o dia-a-dia, <strong>Rápido</strong> para o início do mês e <strong>Voz</strong> quando estiver em mobilidade.",
+      "Pode exportar modelos de Excel nas Definições para preenchimento em massa."
     ],
   },
   transactions: {
