@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.3",
+    "dotenv": "^17.3.1",
     "web-push": "^3.6.7"
   }
 }
