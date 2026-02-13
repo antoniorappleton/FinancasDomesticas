@@ -2150,6 +2150,9 @@ export async function init({ sb, outlet } = {}) {
     const M = 40;
     let y = M;
 
+    const FOOTER_SAFE = 44;                 // reserva real para texto do footer + respiro
+    const CONTENT_BOTTOM = H - M - FOOTER_SAFE;
+
     doc.setProperties({
       title: REPORT_CFG.title,
       subject: REPORT_CFG.subject,
@@ -2224,7 +2227,7 @@ export async function init({ sb, outlet } = {}) {
       doc.setTextColor(0);
     };
     const ensureSpace = (need) => {
-      if (y + need <= H - M) return;
+      if (y + need <= CONTENT_BOTTOM) return;
       footer();
       doc.addPage();
       y = M;
@@ -2253,18 +2256,37 @@ export async function init({ sb, outlet } = {}) {
     });
     y += 34;
 
-    // helper: desenhar canvas
-    // helper: desenhar canvas
-    const canvasToPage = (sel, x, y2, w, fixedH) => {
+    // helper: desenhar canvas (versão robusta com maxH e auto-centro)
+    const canvasToPage = (sel, x, y2, w, opts = {}) => {
       const c = document.querySelector(sel);
       if (!c) return y2;
-      // Auto-height baseada no aspect ratio para evitar distorção
-      const ratio = c.height / c.width;
-      const h = fixedH || w * ratio;
+
+      const ratio = c.height / c.width || (9 / 16);
+      let drawW = w;
+      let drawH = (opts.fixedH ?? (w * ratio));
+
+      // clamp sem distorção: se for alto demais, reduz também a largura para manter aspect ratio
+      if (opts.maxH && drawH > opts.maxH) {
+        const scale = opts.maxH / drawH;
+        drawH = opts.maxH;
+        drawW = w * scale;
+      }
+
+      // centra se tiver sido reduzida a largura (pelo clamp)
+      const xOffset = (w - drawW) / 2;
 
       const img = c.toDataURL("image/png", 1.0);
-      doc.addImage(img, "PNG", x, y2, w, h, undefined, "FAST");
-      return y2 + h;
+      doc.addImage(img, "PNG", x + xOffset, y2, drawW, drawH, undefined, "FAST");
+      return y2 + drawH;
+    };
+
+    const canvasHeightFor = (sel, w, maxH) => {
+      const c = document.querySelector(sel);
+      if (!c) return 0;
+      const ratio = c.height / c.width || (9 / 16);
+      let h = w * ratio;
+      if (maxH && h > maxH) h = maxH;
+      return h;
     };
     const drawLegend = (items, x, y2, maxW) => {
       doc.setFont("helvetica", "normal");
@@ -2292,16 +2314,25 @@ export async function init({ sb, outlet } = {}) {
     };
 
     // === LINHA 1: Pizza (Categoria) + Donut (Fixas) LADO A LADO ===
-    ensureSpace(240);
-    const row1Y = y;
     const halfW = (W - 2 * M - 20) / 2;
+    const HALF_MAX_H = 170;
+    const LEG_LH = 14;
+    const legendNeed = (arr) => (arr?.length ? (arr.length * LEG_LH + 22) : 0);
+
+    const needRow1 = 14 + Math.max(
+      canvasHeightFor("#rpt-cat-pie", halfW, HALF_MAX_H) + legendNeed(window._catLegendPDF || _catLegendPDF),
+      canvasHeightFor("#rpt-fixed-donut", halfW, HALF_MAX_H) + legendNeed(window._fixLegendPDF || _fixLegendPDF)
+    ) + 24;
+
+    ensureSpace(needRow1);
+    const row1Y = y;
 
     // Coluna Esq: Categorias
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.text("Despesas por categoria", M, row1Y);
     let yL = row1Y + 14;
-    yL = canvasToPage("#rpt-cat-pie", M, yL, halfW); // Auto-ratio
+    yL = canvasToPage("#rpt-cat-pie", M, yL, halfW, { maxH: HALF_MAX_H });
     yL += 8;
     yL = drawLegend(window._catLegendPDF || _catLegendPDF, M, yL, halfW);
 
@@ -2309,36 +2340,45 @@ export async function init({ sb, outlet } = {}) {
     const xR = M + halfW + 20;
     doc.text("Fixas vs Variáveis", xR, row1Y);
     let yR = row1Y + 14;
-    yR = canvasToPage("#rpt-fixed-donut", xR, yR, halfW); // Auto-ratio
+    yR = canvasToPage("#rpt-fixed-donut", xR, yR, halfW, { maxH: HALF_MAX_H });
     yR += 8;
     yR = drawLegend(window._fixLegendPDF || _fixLegendPDF, xR, yR, halfW);
 
-    // Sincroniza Y pelo maior
     y = Math.max(yL, yR) + 24;
 
+    // Reutiizáveis para as linhas seguintes
+    const fullW = W - 2 * M;
+    const FULL_MAX_H = 240;
+    const TITLE_H = 16;
+    const BLOCK_GAP = 24;
+
     // === LINHA 2: Evolução Mensal ===
-    ensureSpace(220);
+    const needSeries = TITLE_H + canvasHeightFor("#rpt-series", fullW, FULL_MAX_H) + BLOCK_GAP;
+    ensureSpace(needSeries);
     doc.text("Evolução mensal", M, y);
     y += 12;
-    y = canvasToPage("#rpt-series", M, y, W - 2 * M) + 24;
+    y = canvasToPage("#rpt-series", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
-    // === LINHA 3: Top 6 (para quebrar página se precisar) ===
-    ensureSpace(220);
+    // === LINHA 3: Top 6 ===
+    const needTop = TITLE_H + canvasHeightFor("#rpt-top-exp", fullW, FULL_MAX_H) + BLOCK_GAP;
+    ensureSpace(needTop);
     doc.text("Top 6 categorias de despesa", M, y);
     y += 12;
-    y = canvasToPage("#rpt-top-exp", M, y, W - 2 * M) + 24;
+    y = canvasToPage("#rpt-top-exp", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
     // === LINHA 4: Regularidade ===
-    ensureSpace(220);
+    const needReg = TITLE_H + canvasHeightFor("#rpt-regularity", fullW, FULL_MAX_H) + BLOCK_GAP;
+    ensureSpace(needReg);
     doc.text("Despesas por regularidade", M, y);
     y += 12;
-    y = canvasToPage("#rpt-regularity", M, y, W - 2 * M) + 24;
+    y = canvasToPage("#rpt-regularity", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
-    // === LINHA 5: Taxa de esforço (Fixed vs Total) ===
-    ensureSpace(220);
+    // === LINHA 5: Taxa de esforço ===
+    const needEffort = TITLE_H + canvasHeightFor("#rpt-effort", fullW, FULL_MAX_H) + BLOCK_GAP;
+    ensureSpace(needEffort);
     doc.text("Taxa de esforço mensal (Fixa vs Total)", M, y);
     y += 12;
-    y = canvasToPage("#rpt-effort", M, y, W - 2 * M) + 24;
+    y = canvasToPage("#rpt-effort", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
     // Página 2: Tabelas (Categorias + Resumo + Regularidade)
     footer();
