@@ -1,5 +1,6 @@
+/* global self, clients, fetch, Request, Response, caches, Notification */
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v68";
+const VERSION = "v76";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -172,5 +173,50 @@ self.addEventListener("fetch", (event) => {
         return new Response("", { status: 504, statusText: "Offline" });
       }
     })(),
+  );
+});
+// ========================================
+// PUSH & NOTIFICATIONS
+// ========================================
+self.addEventListener("push", (event) => {
+  let data = { title: "WiseBudget", body: "Nova atualização." };
+  try {
+    if (event.data) data = event.data.json();
+  } catch (e) {
+    data.body = event.data.text();
+  }
+
+  const options = {
+    body: data.body,
+    icon: withBase("/icon-192.png"),
+    badge: withBase("/icon-192.png"), // Badge de sistema (pequeno)
+    data: data.url || withBase("/")
+  };
+
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const target = (event.notification.data && event.notification.data.url) || withBase("/");
+  const urlToOpen = new URL(target, self.location.origin).href;
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+
+      for (const client of allClients) {
+        // Normaliza match de URL para evitar falhas no Android
+        const clientUrl = new URL(client.url).origin + new URL(client.url).pathname;
+        const targetUrl = new URL(urlToOpen).origin + new URL(urlToOpen).pathname;
+
+        if (clientUrl === targetUrl && "focus" in client) {
+          if ("navigate" in client) client.navigate(urlToOpen);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
+    })()
   );
 });

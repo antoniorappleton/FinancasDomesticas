@@ -246,8 +246,6 @@ function onSignedIn() {
 
   // Show wizard if new user
   setTimeout(() => Onboarding.init(), 1000);
-  // Show wizard if new user
-  setTimeout(() => Onboarding.init(), 1000);
   Guide.mountHeaderButton();
 }
 

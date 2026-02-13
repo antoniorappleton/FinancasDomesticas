@@ -3,6 +3,8 @@
 import { repo } from "../lib/repo.js";
 import { exportImportTemplate } from "./export-template.js";
 import { saveTheme as saveGlobalTheme, loadTheme } from "../lib/theme.js";
+import { NotificationManager } from "../lib/notifications.js";
+import { Toast } from "../lib/ui.js";
 
 export async function init({ sb, outlet } = {}) {
   // Import do gerador de template
@@ -1389,8 +1391,104 @@ export async function init({ sb, outlet } = {}) {
     }
   });
 
+  // ================== NOTIFICAÇÕES ========================
+  async function initNotificationUI() {
+    const statusEl = $("#ntf-status");
+    const toggleBtn = $("#btn-ntf-toggle");
+    const prefsArea = $("#ntf-preferences");
+    const sec = $("#sec-notifications");
+
+    const state = await NotificationManager.init();
+    if (state.supported) {
+      sec.style.display = "block";
+      
+      const isGranted = state.permission === "granted";
+      
+      // Se já tem permissão, vamos ver se tem subscrição ativa no browser
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+
+      if (isGranted && sub) {
+        statusEl.textContent = "Ativado";
+        statusEl.style.color = "var(--green-600)";
+        toggleBtn.textContent = "Desativar";
+        prefsArea.style.opacity = "1";
+        prefsArea.style.pointerEvents = "auto";
+
+        // Carregar preferências salvas
+        const prefs = await NotificationManager.getPreferences();
+        if (prefs) {
+          $("#ntf-urgent").checked = prefs.urgent !== false;
+          $("#ntf-smart").checked = prefs.smart !== false;
+          $("#ntf-digest").checked = prefs.digest !== false;
+          $("#ntf-quiet-start").value = prefs.quiet_start || "22:00";
+          $("#ntf-quiet-end").value = prefs.quiet_end || "08:00";
+        }
+      } else {
+        statusEl.textContent = "Desativado";
+        statusEl.style.color = "var(--muted)";
+        toggleBtn.textContent = "Ativar";
+        prefsArea.style.opacity = "0.6";
+        prefsArea.style.pointerEvents = "none";
+      }
+    }
+
+    toggleBtn?.addEventListener("click", async () => {
+      const isSubscribed = toggleBtn.textContent === "Desativar";
+      
+      if (isSubscribed) {
+        if (!confirm("Deseja desativar as notificações neste dispositivo?")) return;
+        const ok = await NotificationManager.unsubscribe();
+        if (ok) initNotificationUI();
+      } else {
+        const granted = await NotificationManager.requestPermission();
+        if (granted) {
+          const ok = await NotificationManager.subscribe();
+          if (ok) {
+            alert("Notificações ativadas com sucesso!");
+            initNotificationUI();
+          } else {
+            alert("Erro ao subscrever notificações. Verifique a internet.");
+          }
+        } else {
+          alert("Permissão de notificações negada pelo browser.");
+        }
+      }
+    });
+
+    const testBtn = $("#btn-ntf-test");
+    if (state.permission === "granted") {
+      testBtn.style.display = "inline-block";
+    }
+    testBtn?.addEventListener("click", () => {
+      if (window.Notification && Notification.permission === "granted") {
+        new Notification("WiseBudget", { 
+          body: "Notificação de teste ✅\nA infraestrutura está pronta!",
+          icon: "/icon-192.png"
+        });
+      }
+    });
+
+    // Delegar salvaguarda de preferências
+    const savePrefs = async () => {
+      const patch = {
+        urgent: $("#ntf-urgent").checked,
+        smart: $("#ntf-smart").checked,
+        digest: $("#ntf-digest").checked,
+        quiet_start: $("#ntf-quiet-start").value,
+        quiet_end: $("#ntf-quiet-end").value
+      };
+      await NotificationManager.setPreferences(patch);
+    };
+
+    ["ntf-urgent", "ntf-smart", "ntf-digest", "ntf-quiet-start", "ntf-quiet-end"].forEach(id => {
+      $("#" + id)?.addEventListener("change", savePrefs);
+    });
+  }
+
   // Init
   loadAccounts();
+  initNotificationUI();
 
   document
     .querySelector("#imp-export-template")
@@ -2205,7 +2303,7 @@ export async function init({ sb, outlet } = {}) {
       if (logoEl?.src) {
         logoDataUrl = await toDataURL(logoEl.src);
       } else {
-        logoDataUrl = await toDataURL("/wisebudget_bk_wt.png");
+        logoDataUrl = await toDataURL("./wisebudget_bk_wt.png");
       }
     } catch {
       /* sem logo, segue */

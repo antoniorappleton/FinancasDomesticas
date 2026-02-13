@@ -179,6 +179,32 @@ Personalize a sua experiência:
   - Reset de dados
   - Estatísticas de uso
 
+### 8. 🔔 Notificações Inteligentes (Premium)
+Sistema de alertas proativos para manter a saúde financeira sob controlo:
+
+#### 🚀 Infraestrutura
+- **Web Push API**: Notificações de sistema em background (Android/Desktop).
+- **VAPID Security**: Autenticação segura das mensagens.
+- **Service Worker v71**: Redirecionamento inteligente e foco automático em janelas abertas.
+
+#### 💡 Gatilhos de Notificação
+1. **Urgentes** (Ação imediata):
+   - **Saldo em Risco**: Aviso se a projeção indica saldo < 0.
+   - **Vencimento de Despesa**: Alerta D-3 e D-1 para despesas fixas não registadas.
+   - **Falha Crítica**: Erros em automações ou sincronização.
+2. **Inteligentes** (Insights):
+   - **Alerta de Categoria**: Gastos > média histórica (+25%).
+   - **Taxa de Esforço**: Aviso se despesas fixas ultrapassam 50% do rendimento.
+   - **Metas**: Notificação se a projeção indica que o objetivo não será atingido.
+3. **Rotina** (Digest):
+   - **Resumo Semanal**: Gastos totais e top categoria (Domingo às 18:00).
+   - **Fecho do Mês**: Relatório consolidado (Dia 1 às 09:00).
+
+#### 🛡️ Regras Anti-Spam (UX Premium)
+- **Período de Silêncio**: Configurável (padrão: 22h - 08h).
+- **Deduplicação**: Evita alertas repetidos para a mesma categoria/evento no mesmo período.
+- **Master Switch**: Ativação/desativação global e por tipo no Menu de Definições.
+
 ---
 
 ## 🛠️ Tecnologias Utilizadas
@@ -273,12 +299,9 @@ Personalize a sua experiência:
 - Análise comparativa (vs. mês anterior, vs. ano anterior)
 - Identificação de gastos supérfluos
 
-### 🔮 Fase 3: Notificações Push (Futuro)
-
-- Alertas de gastos
-- Lembretes de metas
-- Avisos de saldo baixo
-- Resumos semanais/mensais
+- [x] **Notificações Inteligentes**: Alertas de saldo, despesas fixas e insights
+- [x] **Gestor de Preferências**: Controlo granular e Período de Silêncio
+- [x] **Infraestrutura Web Push**: Redirecionamento inteligente e system badges
 
 ### 🌟 Fase 4: Comunidade (Visão)
 
