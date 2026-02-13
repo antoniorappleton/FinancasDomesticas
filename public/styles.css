@@ -3968,15 +3968,19 @@ td:nth-child(5) {
 }
 /* ===== White Analytical Cards: Independent of theme ===== */
 :root {
+  --mini-card-bg: #ffffff;
+  --mini-card-text: #0f172a;
+  --mini-card-muted: #64748b;
+  
   --white-card-bg: #ffffff;
   --white-card-text: #1e293b;
   --white-card-muted: #64748b;
 }
 
-/* Force white background for the cards identified by the user */
 /* 1. KPIs (Resumo do mês) */
 .kpi-section, 
-section.card:has(#kpi-income) {
+section.card:has(#kpi-income),
+section.card:has(.kpi) {
   background: var(--white-card-bg) !important;
   color: var(--white-card-text) !important;
   backdrop-filter: none !important;
@@ -3999,16 +4003,16 @@ section.card:has(.mini-carousel) {
   -webkit-backdrop-filter: none !important;
 }
 
-/* 4. Mini-cards themselves (Patch from user) */
+/* 4. Mini-cards themselves (HARD FIX as requested) */
 .mini-card {
-  background: var(--white-card-bg) !important;
-  color: var(--white-card-text) !important;
+  background: var(--mini-card-bg) !important;
+  color: var(--mini-card-text) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   border: 1px solid #e2e8f0 !important;
 }
-.mini-card__title { color: var(--white-card-text) !important; }
-.mini-card__hint { color: var(--white-card-muted) !important; }
+.mini-card__title { color: var(--mini-card-text) !important; }
+.mini-card__hint { color: var(--mini-card-muted) !important; }
 
 /* 5. Detailed Breakdown / Charts */
 section.card:has(#cat-list) {
@@ -4020,7 +4024,8 @@ section.card:has(#cat-list) {
 
 /* Override KPI titles specifically inside these white cards */
 .kpi-section .kpi__title,
-section.card:has(#kpi-income) .kpi__title {
+section.card:has(#kpi-income) .kpi__title,
+section.card:has(.kpi) .kpi__title {
   color: var(--white-card-muted) !important;
 }
 
@@ -4028,8 +4033,9 @@ section.card:has(#kpi-income) .kpi__title {
 .version-tag {
   font-size: 10px;
   color: var(--muted);
-  opacity: 0.6;
-  padding: 8px 0;
+  opacity: 0.8;
+  padding: 10px;
   text-align: center;
   font-family: monospace;
+  width: 100%;
 }

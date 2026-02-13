@@ -75,48 +75,98 @@ function downloadCSVTemplate() {
 }
 
 export async function exportImportTemplate() {
+  const sb = window.sb;
   const XLSX = await getXLSX();
   if (!XLSX) {
     downloadCSVTemplate();
     return;
   }
 
-  // == XLSX ok: gerar workbook com 2 folhas ==
+  // 1. Carregar dados reais para as folhas de apoio
+  const [accRes, catRes, pmRes, stRes, regRes] = await Promise.all([
+    sb.from("accounts").select("name").order("name"),
+    sb.from("categories").select("name, parent_id, kind").order("name"),
+    sb.from("payment_methods").select("name_pt").order("id"),
+    sb.from("statuses").select("name_pt").order("id"),
+    sb.from("regularities").select("name_pt").order("id"),
+  ]);
+
   const wb = XLSX.utils.book_new();
 
-  const headers = ["Tipo", "Área", "Categoria", "Regularidade", "Montante"];
+  // == Folha 1: Registos (O que o utilizador preenche) ==
+  const headers = [
+    "Data",
+    "Tipo",
+    "Conta",
+    "Categoria",
+    "Regularidade",
+    "Montante",
+    "Descrição",
+    "Método",
+    "Estado",
+    "Natureza",
+    "Localização",
+    "Notas",
+  ];
   const hints = [
+    "YYYY-MM-DD",
     "INCOME | EXPENSE | SAVINGS",
-    "ex.: Alimentação, Casa, Carros…",
-    'ex.: "Alimentação > Supermercado"',
-    "none | weekly | biweekly | monthly | yearly",
-    "usar ponto decimal (ex.: 1234.56)",
+    "Nome da conta (ver Folha Contas)",
+    "Pai > Filho (ver Folha Categorias)",
+    "Mensal, Anual, etc.",
+    "0.00",
+    "Opcional",
+    "Dinheiro, MB Way, etc.",
+    "Liquidado, Agendado",
+    "fixed | variable",
+    "Opcional",
+    "Opcional",
   ];
   const ws = XLSX.utils.aoa_to_sheet([headers, hints]);
-  ws["!cols"] = [
-    { wch: 12 },
-    { wch: 18 },
-    { wch: 30 },
-    { wch: 16 },
-    { wch: 16 },
-  ];
-  XLSX.utils.book_append_sheet(wb, ws, "Transacoes");
+  ws["!cols"] = headers.map(() => ({ wch: 20 }));
+  XLSX.utils.book_append_sheet(wb, ws, "Registos");
 
-  const apoio = XLSX.utils.aoa_to_sheet([
-    ["LISTAS SUPORTADAS"],
-    [],
-    ["transaction_types", "INCOME", "EXPENSE", "SAVINGS"],
-    ["regularities", "none", "weekly", "biweekly", "monthly", "yearly"],
-    ["observações", "Datas e moeda são definidas no ecrã de importação (mês)."],
-  ]);
-  apoio["!cols"] = [
-    { wch: 24 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 60 },
-  ];
-  XLSX.utils.book_append_sheet(wb, apoio, "TabelasApoio");
+  // == Folha 2: Contas ==
+  const accounts = (accRes.data || []).map((a) => [a.name]);
+  const wsAcc = XLSX.utils.aoa_to_sheet([["Nome da Conta"], ...accounts]);
+  XLSX.utils.book_append_sheet(wb, wsAcc, "Contas");
 
-  XLSX.writeFile(wb, "wisebudget-import-template.xlsx");
+  // == Folha 3: Categorias ==
+  const catData = catRes.data || [];
+  const parents = new Map(catData.filter((c) => !c.parent_id).map((c) => [c.id, c]));
+  
+  const catRows = catData.map((c) => {
+    const parent = c.parent_id ? (catData.find(p => p.id === c.parent_id)?.name || "") : c.name;
+    const name = c.parent_id ? `${parent} > ${c.name}` : c.name;
+    return [name, c.kind.toUpperCase()];
+  }).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const wsCat = XLSX.utils.aoa_to_sheet([["Nome (Pai > Filho)", "Tipo"], ...catRows]);
+  XLSX.utils.book_append_sheet(wb, wsCat, "Categorias");
+
+  // == Folha 4: Tabelas Apoio (Métodos, Estados, Reg) ==
+  const apoioRows = [
+    ["TIPOS TRANSACÇÃO", "MÉTODOS PAGAMENTO", "ESTADOS", "REGULARIDADES"],
+    ["INCOME", "", "", ""],
+    ["EXPENSE", "", "", ""],
+    ["SAVINGS", "", "", ""],
+  ];
+
+  const maxLen = Math.max(
+    (pmRes.data || []).length,
+    (stRes.data || []).length,
+    (regRes.data || []).length
+  );
+
+  for (let i = 0; i < maxLen; i++) {
+    if (i + 4 > apoioRows.length) apoioRows.push(["", "", "", ""]);
+    apoioRows[i + 1][1] = pmRes.data?.[i]?.name_pt || "";
+    apoioRows[i + 1][2] = stRes.data?.[i]?.name_pt || "";
+    apoioRows[i + 1][3] = regRes.data?.[i]?.name_pt || "";
+  }
+
+  const wsApoio = XLSX.utils.aoa_to_sheet(apoioRows);
+  XLSX.utils.book_append_sheet(wb, wsApoio, "ListasValidas");
+
+  XLSX.writeFile(wb, "wisebudget-template-premium.xlsx");
 }

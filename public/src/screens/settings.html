@@ -545,26 +545,27 @@
     min-width: 0;
     box-sizing: border-box;
   }
+
   /* NOVAS CLASSES RESPONSIVAS */
   .grid-responsive-4 {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0,1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
   }
-  
+
   .grid-responsive-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  
+
   .grid-responsive-session {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 10px;
     align-items: end;
   }
-  
+
   .grid-responsive-delete {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -572,15 +573,16 @@
     align-items: end;
     margin-top: 12px;
   }
-  
+
   .form-grid-responsive {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
-  
+
   /* MOBILE BREAKPOINTS */
   @media (max-width: 600px) {
+
     .grid-responsive-4,
     .grid-responsive-2,
     .grid-responsive-session,
@@ -588,13 +590,13 @@
     .form-grid-responsive {
       grid-template-columns: 1fr !important;
     }
-    
-    .grid-responsive-session > div {
+
+    .grid-responsive-session>div {
       text-align: left !important;
     }
-    
+
     .rep-header {
-        gap: 16px;
+      gap: 16px;
     }
   }
 </style>
@@ -612,48 +614,54 @@
   <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
 
   <!-- WRAPPER ADICIONADO PARA OS INPUTS -->
-  <div class="card soft" style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; box-shadow:none; overflow:hidden; max-width:100%;">
-      <style>
-        /* Local fix for this card's children to ensure containment */
-        .card.soft * {
-          box-sizing: border-box;
-          max-width: 100%;
-        }
-      </style>
-      <div class="form-grid form-grid-responsive">
-        <label>
-          Ficheiro (PDF ou CSV)
-          <input id="imp-file" type="file" accept=".pdf,.csv,text/csv,application/pdf" style="background:#fff; width:100%" />
-        </label>
-        <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
-        <label>
-          Conta Destino
-          <select id="imp-account" style="background:#fff; width:100%">
-            <!-- preenchido via JS -->
-          </select>
-        </label>
-      </div>
+  <div class="card soft"
+    style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; box-shadow:none; overflow:hidden; max-width:100%;">
+    <style>
+      /* Local fix for this card's children to ensure containment */
+      .card.soft * {
+        box-sizing: border-box;
+        max-width: 100%;
+      }
+    </style>
+    <div class="form-grid form-grid-responsive">
+      <label>
+        Ficheiro (PDF ou CSV)
+        <input id="imp-file" type="file" accept=".pdf,.csv,text/csv,application/pdf"
+          style="background:#fff; width:100%" />
+      </label>
+      <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
+      <label>
+        Conta Destino
+        <select id="imp-account" style="background:#fff; width:100%">
+          <!-- preenchido via JS -->
+        </select>
+      </label>
+    </div>
 
-      <div class="actions" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
-        <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
-        <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
-      </div>
+    <div class="actions" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
+      <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
+      <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
+      <button id="imp-export-template" class="btn"
+        style="background:#fff; flex:1; min-width:0; color:var(--primary); border-color:var(--primary)">Modelo Premium
+        (Excel)</button>
+    </div>
   </div>
 
   <p id="imp-info" class="row-note" style="margin-top:8px"></p>
 
-  <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
+  <div id="imp-review-area" class="card soft"
+    style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
       <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
       <div style="font-size:12px; color:var(--muted)">Assinale as transações a importar</div>
     </div>
-    
+
     <div style="max-height:400px; overflow-y:auto; padding-right:4px">
-        <div id="imp-list" style="display:grid; gap:8px"></div>
+      <div id="imp-list" style="display:grid; gap:8px"></div>
     </div>
 
     <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd; text-align:right">
-       <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
+      <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
     </div>
   </div>
 </section>
@@ -964,7 +972,7 @@
 <section class="card" style="border-color:var(--red-100)">
   <h2 class="section-title">Gestão de Dados</h2>
   <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
-  
+
   <div class="grid grid-responsive-delete" style="gap:10px; align-items:end; margin-top:12px">
     <label>
       Eliminar movimentos de:

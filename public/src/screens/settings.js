@@ -551,6 +551,120 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // === PARSERS ===
+
+  // Premium Helper: String Normalization (Accents + Lowercase)
+  function premiumNormalize(s) {
+    return String(s || "")
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .trim()
+      .toLowerCase();
+  }
+
+  // Premium Helper: Excel Date to ISO
+  function excelDateToISO(val) {
+    if (!val) return null;
+    if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+    // Handle DD/MM/YYYY
+    if (typeof val === "string" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(val)) {
+      const [d, m, y] = val.split("/");
+      return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+    }
+    // Handle Serial
+    const serial = Number(val);
+    if (!isNaN(serial) && serial > 30000) {
+      const utc_days = Math.floor(serial - 25569);
+      const utc_value = utc_days * 86400;
+      return new Date(utc_value * 1000).toISOString().slice(0, 10);
+    }
+    return null;
+  }
+
+  // Premium Helper: Load Maps for Deterministic Resolution
+  async function getPremiumMaps() {
+    const [accs, cats, regs, pms, sts, tts] = await Promise.all([
+      sb.from("accounts").select("id, name"),
+      sb.from("categories").select("id, name, parent_id, kind"),
+      sb.from("regularities").select("id, name_pt"),
+      sb.from("payment_methods").select("id, name_pt"),
+      sb.from("statuses").select("id, name_pt"),
+      sb.from("transaction_types").select("id, code"),
+    ]);
+
+    const findCat = (nameStr, kind) => {
+      const normName = premiumNormalize(nameStr);
+      const parts = normName.split(">").map((p) => p.trim());
+      
+      if (parts.length > 1) {
+        // Parent > Child
+        const pName = parts[0];
+        const cName = parts[1];
+        const parent = cats.data.find(c => !c.parent_id && premiumNormalize(c.name) === pName && c.kind === kind);
+        if (!parent) return null;
+        return cats.data.find(c => c.parent_id === parent.id && premiumNormalize(c.name) === cName) || null;
+      } else {
+        // Simple name
+        return cats.data.find(c => premiumNormalize(c.name) === normName && c.kind === kind) || null;
+      }
+    };
+
+    return {
+      accounts: new Map(accs.data.map(r => [premiumNormalize(r.name), r.id])),
+      categories: findCat,
+      regularities: new Map(regs.data.map(r => [premiumNormalize(r.name_pt), r.id])),
+      methods: new Map(pms.data.map(r => [premiumNormalize(r.name_pt), r.id])),
+      statuses: new Map(sts.data.map(r => [premiumNormalize(r.name_pt), r.id])),
+      types: new Map(tts.data.map(r => [premiumNormalize(r.code), r.id])),
+    };
+  }
+
+  function isWiseBudgetTemplate(headers) {
+    const required = ["Data", "Tipo", "Conta", "Categoria", "Montante"];
+    const normHeaders = headers.map(h => premiumNormalize(h));
+    return required.every(r => normHeaders.includes(premiumNormalize(r)));
+  }
+
+  async function parseWiseBudgetFile(rows, maps, headers) {
+    const col = (name) => {
+      const idx = headers.findIndex((h) => premiumNormalize(h) === premiumNormalize(name));
+      return idx;
+    };
+
+    const res = [];
+    for (let i = 2; i < rows.length; i++) { // Skip headers and hints
+      const r = rows[i];
+      if (!r || r.length === 0) continue;
+
+      const tipoStr = String(r[col("Tipo")] || "").toUpperCase();
+      const kind = tipoStr === "INCOME" ? "income" : (tipoStr === "SAVINGS" ? "savings" : "expense");
+      
+      const cat = maps.categories(r[col("Categoria")], kind);
+      const accId = maps.accounts.get(premiumNormalize(r[col("Conta")]));
+      
+      const item = {
+        date: excelDateToISO(r[col("Data")]),
+        amount: Number(r[col("Montante")] || 0),
+        description: r[col("Descrição")] || (cat ? cat.name : "Importação"),
+        category_id: cat ? cat.id : null,
+        account_id: accId || null,
+        type_id: maps.types.get(premiumNormalize(tipoStr)) || maps.types.get(premiumNormalize("EXPENSE")),
+        regularity_id: maps.regularities.get(premiumNormalize(r[col("Regularidade")])) || null,
+        payment_method_id: maps.methods.get(premiumNormalize(r[col("Método")])) || null,
+        status_id: maps.statuses.get(premiumNormalize(r[col("Estado")])) || null,
+        expense_nature: tipoStr === "EXPENSE" ? (premiumNormalize(r[col("Natureza")]) === "fixed" ? "fixed" : "variable") : null,
+        location: r[col("Localização")] || null,
+        notes: r[col("Notas")] || null,
+        selected: true,
+        confidence: (cat && accId) ? 1.0 : 0.5,
+        _isPremium: true
+      };
+
+      if (tipoStr === "EXPENSE") item.amount = -Math.abs(item.amount);
+      res.push(item);
+    }
+    return res;
+  }
+
   // CSV Parser (Generic)
   async function parseCSV(file) {
     const text = await file.text();
@@ -859,6 +973,11 @@ export async function init({ sb, outlet } = {}) {
     const finalItems = [];
 
     parsedItems.forEach((item) => {
+      if (item._isPremium) {
+        // Deterministic items don't need guessing
+        finalItems.push(item);
+        return;
+      }
       if (!item.category_id) {
         const guess = guessCategoryForLine(item.description, item.amount);
         if (guess.skip) return; // Skip item entirely
@@ -1081,12 +1200,30 @@ export async function init({ sb, outlet } = {}) {
 
       if (isPDF) {
         setImpInfo("A ler PDF (pode demorar)...");
-        // Pequeno delay para UI atualizar antes de bloquear main thread com parsing
         await new Promise((r) => setTimeout(r, 50));
         parsedItems = await parsePDF(file);
       } else {
-        setImpInfo("A ler CSV...");
-        parsedItems = await parseCSV(file);
+        setImpInfo("A ler ficheiro...");
+        const XLSX = await getXLSX();
+        if (!XLSX) throw new Error("Biblioteca Excel não carregada.");
+
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        if (rows.length < 1) throw new Error("Ficheiro vazio.");
+        const headers = rows[0];
+
+        if (isWiseBudgetTemplate(headers)) {
+          setImpInfo("Detetado template WiseBudget. A processar...");
+          const maps = await getPremiumMaps();
+          parsedItems = await parseWiseBudgetFile(rows, maps, headers);
+        } else {
+          // Fallback para CSV genérico (heurístico)
+          setImpInfo("A usar importador genérico...");
+          parsedItems = await parseCSV(file);
+        }
       }
 
       await renderReviewList();
@@ -1136,6 +1273,26 @@ export async function init({ sb, outlet } = {}) {
       if (types) types.forEach((t) => (typeMapLocal[t.code] = t.id));
 
       const payload = toImport.map((item) => {
+        if (item._isPremium) {
+          // Já temos o payload quase pronto
+          return {
+            user_id: uid,
+            account_id: item.account_id || accountId,
+            type_id: item.type_id,
+            amount: Math.abs(item.amount),
+            date: item.date,
+            description: item.description,
+            category_id: item.category_id,
+            currency: "EUR",
+            expense_nature: item.expense_nature,
+            regularity_id: item.regularity_id,
+            payment_method_id: item.payment_method_id,
+            status_id: item.status_id,
+            location: item.location,
+            notes: item.notes,
+          };
+        }
+
         const catObj = item.category_id ? catById.get(item.category_id) : null;
         const catKind = catObj?.kind || null;
 
