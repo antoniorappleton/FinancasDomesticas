@@ -54,8 +54,8 @@ export function applyTheme(settings) {
   root.style.setProperty("--border", s.card_border_rgba);
 
   // Typography
-  if (s.text_main) root.style.setProperty("--text", s.text_main);
-  if (s.text_secondary) root.style.setProperty("--muted", s.text_secondary);
+  root.style.setProperty("--text", s.text_main || "#0f172a");
+  root.style.setProperty("--muted", s.text_secondary || "#64748b");
 }
 
 /**
@@ -130,6 +130,8 @@ export async function saveTheme(sb, settings) {
     "header_bg_rgba",
     "menu_bg_rgba",
     "fab_bg",
+    "text_main",
+    "text_secondary",
     "updated_at",
   ];
 

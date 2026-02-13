@@ -1,8 +1,10 @@
-// src/screens/categories.js
 import { Categories } from "../lib/categories-crud.js";
 import { repo } from "../lib/repo.js";
+import { loadTheme } from "../lib/theme.js";
 
 export async function init() {
+  const sb = window.sb;
+  if (sb) await loadTheme(sb);
   console.log("🚀 Categories Screen Native CSS Loaded");
 
   // DOM Elements

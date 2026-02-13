@@ -11,6 +11,7 @@ import {
 import { makeChart } from "../lib/chart-loader.js";
 import { money } from "../lib/helpers.js";
 import Guide from "../lib/guide.js";
+import { loadTheme } from "../lib/theme.js";
 
 let healthChart = null;
 let currentLayer = "net";
@@ -18,6 +19,7 @@ let monthlyData = [];
 
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
+  if (sb) await loadTheme(sb);
   outlet = outlet || document.getElementById("outlet");
 
   // Wait for DOM to be fully rendered (increased delay for complex HTML)

@@ -1848,54 +1848,6 @@ td:nth-child(5) {
   cursor: pointer;
 }
 
-.card__toggle svg {
-  width: 18px;
-  height: 18px;
-  opacity: .85
-}
-
-.card__toggle:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px
-}
-
-/* área que abre/fecha com transição suave */
-.card__content {
-  overflow: hidden;
-  transition: grid-template-rows .22s ease, opacity .18s ease, padding .18s ease;
-  display: grid;
-  grid-template-rows: 1fr;
-  /* “truque” para transição */
-}
-
-.card.is-collapsed .card__content {
-  grid-template-rows: 0fr;
-  opacity: .0;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-}
-
-.card__content>* {
-  min-height: 0
-}
-
-/* permite encolher o conteúdo */
-
-.card .section-title {
-  padding-right: 42px;
-  font-family: var(--font-head);
-  font-weight: 500;
-  letter-spacing: .2px;
-  /* opcional, dá um toque “tech” */
-  line-height: 1.2;
-}
-
-/* espaço para o botão no header */
-/* === Cards colapsáveis (só para os que tiverem data-collapsible) === */
-.card[data-collapsible] {
-  position: relative;
-  padding-top: 6px;
-}
 
 .card__toggle {
   position: absolute;
@@ -1935,33 +1887,6 @@ td:nth-child(5) {
   min-height: 0
 }
 
-.card.is-collapsed .card__content {
-  grid-template-rows: 0fr;
-  opacity: .0;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important
-}
-
-/* Wrapper dos cartões colapsáveis: transição por height */
-.card__content {
-  overflow: hidden;
-  height: auto;
-  /* aberto por defeito */
-  opacity: 1;
-  transition: height .22s ease, opacity .18s ease;
-}
-
-/* Quando colapsado, fica com altura zero */
-.card.is-collapsed>.card__content {
-  height: 0 !important;
-  opacity: 0;
-}
-
-/* (opcional) elimina espaçamento interno quando fechado */
-.card.is-collapsed>.card__content>* {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
 
 /* Semáforo para próximas despesas */
 .cat-item.ok {
@@ -2172,12 +2097,12 @@ td:nth-child(5) {
   align-items: flex-start;
   justify-content: center;
   padding: 12px 12px;
-  background: var(--surface, #fff);
-  border: 1px solid var(--border, #e5e7eb);
+  background: #ffffff !important; /* Bulletproof: Always white */
+  border: 1px solid #e2e8f0 !important; /* Bulletproof: Soft border */
   border-radius: 12px;
-  box-shadow: var(--shadow-card, 0 2px 6px rgba(0, 0, 0, .05));
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .05);
   cursor: pointer;
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
   min-height: 74px;
 }
 
@@ -2189,19 +2114,15 @@ td:nth-child(5) {
   font-weight: 700;
   font-size: 13px;
   line-height: 1.1;
-  color: #0f172a
+  color: #0f172a !important; /* Bulletproof: Always dark */
 }
 
 .mini-card__hint {
   font-size: 12px;
-  color: #64748b;
+  color: #64748b !important; /* Bulletproof: Muted but legible */
   margin-top: 4px
 }
 
-/* -------- Modal base -------- */
-.modal[hidden] {
-  display: none !important;
-}
 
 /* STRICT PROTECTION: Force CONTENT to be White/Opaque */
 /* Modais Funcionais (Popup) devem ter fundo branco e texto escuro */
@@ -2306,10 +2227,7 @@ td:nth-child(5) {
   font-variant-numeric: tabular-nums
 }
 
-/*Análises Rapidas - dashboard*/
-.mini-card {
-  position: relative;
-}
+/* Handlers for mini-card contents */
 
 .mini-card__close {
   position: absolute;
@@ -2470,48 +2388,6 @@ td:nth-child(5) {
   }
 }
 
-/* =========================
-   Carousel Auto (Próximas despesas)
-   ========================= */
-.carousel-container {
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-}
-
-.carousel-track {
-  display: flex;
-  transition: transform 0.5s ease-in-out;
-  width: 100%;
-}
-
-.carousel-item {
-  min-width: 100%;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-
-/* Bolinhas indicadoras (opcional) */
-.carousel-dots {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.carousel-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #cbd5e1;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.carousel-dot.active {
-  background: #3b82f6;
-  transform: scale(1.1);
-}
 
 /* =========================
    Categorias Agrupadas (Accordion)
@@ -2685,25 +2561,25 @@ td:nth-child(5) {
   outline: none;
 }
 
-/* FAB Extended (Mobile Friendly) */
+/* Extended FAB (Mobile Friendly) */
 .fab-extended {
   position: fixed;
-  bottom: calc(var(--footer-h) + 80px);
-  /* Raised to avoid overlap */
-  right: 20px;
-  z-index: 90;
+  bottom: calc(var(--footer-h, 60px) + 80px) !important;
+  right: 16px !important;
+  z-index: 1100;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
-  border-radius: 50px;
-  background: var(--footer-grad);
-  /* Consistent with Header */
-  color: #fff;
+  padding: 10px 18px;
+  border-radius: 99px;
+  background: var(--ui-fab-bg) !important; /* Follows theme! */
+  color: #fff !important;
+  border: none;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  border: none;
-  transition: transform 0.2s, opacity 0.2s;
+  transition: transform 0.2s;
+  width: max-content !important;
 }
 
 .fab-extended:active {
@@ -2719,71 +2595,6 @@ td:nth-child(5) {
   display: none !important;
 }
 
-/* Collapsible Cards */
-.card-body {
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin 0.3s;
-  max-height: 1000px;
-  /* Aumentado de 500px */
-  opacity: 1;
-  overflow-y: auto;
-  /* Permite scroll se exceder */
-  overflow-x: hidden;
-}
-
-.card-body.collapsed {
-  max-height: 0;
-  opacity: 0;
-  margin-top: 0 !important;
-}
-
-.chevron-anim {
-  transition: transform 0.3s;
-  display: inline-block;
-}
-
-.chevron-anim.rotated {
-  transform: rotate(180deg);
-}
-
-/* Botão flutuante estendido (ex: Registar fixa) */
-.fab-extended {
-  position: fixed;
-  bottom: calc(var(--footer-h, 64px) + 80px) !important;
-  /* Force high z position */
-  right: 16px !important;
-  left: auto !important;
-  transform: none !important;
-  z-index: 1100;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 99px;
-  background: var(--blue-500);
-  color: #fff;
-  border: none;
-  font-size: 0.8rem;
-  /* Smaller text */
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  transition: transform .2s ease;
-  width: max-content !important;
-  /* Ensure it wraps text only */
-  max-width: 200px;
-}
-
-.fab-extended:active {
-  transform: scale(0.96) !important;
-}
-
-.fab-extended svg {
-  width: 16px;
-  height: 16px;
-}
-
-.fab-extended.hidden {
-  display: none !important;
-}
 
 /* === FIX: Theme Modal TEXT IS ALWAYS BLACK === */
 #theme-overlay .rep-modal,
@@ -4038,4 +3849,70 @@ section.card:has(.kpi) .kpi__title {
   text-align: center;
   font-family: monospace;
   width: 100%;
+}
+
+/* ============================================================
+   WB THEME HARDENING - FINAL (SAFE)
+   - NÃO sobrescreve --text/--muted (vem do theme.js)
+   - Cards/sections respeitam transparência do tema
+   - Mini-cards ficam SEMPRE brancos com texto escuro
+   - FAB/Header/Footer seguem variáveis persistentes
+   ============================================================ */
+
+:root{
+  /* Aliases para compatibilidade com variáveis antigas no projeto */
+  --card-bg: var(--ui-card-bg);
+  --card-border: var(--ui-card-border);
+  --card-blur: var(--ui-card-blur);
+  --primary: var(--ui-fab-bg);
+}
+
+/* SECTION CARDS: respeitam o tema (transparência/blur) */
+.card{
+  background: var(--ui-card-bg);
+  border-color: var(--ui-card-border);
+  backdrop-filter: blur(var(--ui-card-blur));
+  -webkit-backdrop-filter: blur(var(--ui-card-blur));
+}
+
+/* TÍTULOS/UX TEXT: seguem o tema (o utilizador pode mudar a cor) */
+.section-title,
+label,
+.muted,
+.badge-muted,
+.row-note{
+  color: var(--text);
+}
+
+/* MINI-CARDS: SEMPRE brancos e legíveis (independente do tema) */
+.mini-card,
+.upcoming-card{
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Texto interno dos mini-cards (não depende de --text) */
+.mini-card__title,
+.mini-card__hint,
+.upcoming-card .uc-cat,
+.upcoming-card .uc-amount,
+.upcoming-card .uc-day,
+.upcoming-card .uc-month{
+  color: #0f172a !important;
+}
+
+/* Componentes estruturais: seguem variáveis persistentes */
+.app-header{ background: var(--ui-header-bg); }
+.app-footer{ background: var(--ui-menu-bg); }
+
+/* FABs: seguem a cor persistida do tema */
+.fab-nav__toggle,
+.fab-item,
+.fab-extended,
+.fab-menu-title{
+  background: var(--ui-fab-bg) !important;
+  color: #ffffff !important;
 }

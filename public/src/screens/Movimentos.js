@@ -1,6 +1,6 @@
-// src/screens/transactions.js
 import { money, ptDate } from "../lib/helpers.js";
 import { repo } from "../lib/repo.js";
+import { loadTheme } from "../lib/theme.js";
 
 // Badges UI helpers (simple enough to keep here or move to a ui-helper if reused elsewhere)
 const typeBadge = (code) => {
@@ -35,6 +35,8 @@ const statusBadge = (name_pt) => {
 };
 
 export async function init(ctx = {}) {
+  const sb = window.sb;
+  if (sb) await loadTheme(sb);
   const outlet = ctx.outlet || document.getElementById("outlet");
   const qs = (sel) => outlet?.querySelector(sel) || document.querySelector(sel);
 

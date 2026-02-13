@@ -2,12 +2,13 @@
 
 import { repo } from "../lib/repo.js";
 import { exportImportTemplate } from "./export-template.js";
-import { saveTheme as saveGlobalTheme } from "../lib/theme.js";
+import { saveTheme as saveGlobalTheme, loadTheme } from "../lib/theme.js";
 
 export async function init({ sb, outlet } = {}) {
   // Import do gerador de template
 
   sb ||= window.sb;
+  if (sb) await loadTheme(sb);
   outlet ||= document.getElementById("outlet");
 
   // =============== Ligação / sessão =====================

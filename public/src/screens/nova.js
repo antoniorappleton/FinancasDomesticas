@@ -2,8 +2,11 @@
 import { repo } from "../lib/repo.js";
 import { Toast } from "../lib/ui.js";
 
+import { loadTheme } from "../lib/theme.js";
+
 export async function init({ outlet } = {}) {
   const sb = window.sb;
+  if (sb) await loadTheme(sb);
   const $ = (id) =>
     (outlet && outlet.querySelector(`#${id}`)) || document.getElementById(id);
   const show = (el, on = true) => el?.classList.toggle("hidden", !on);

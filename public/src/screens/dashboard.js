@@ -26,6 +26,7 @@ import {
   calculateRoutineFixedAverage,
   projectCashflow,
 } from "../lib/analytics.js";
+import { loadTheme } from "../lib/theme.js";
 
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
@@ -842,6 +843,7 @@ function setupMiniCardHider(outletEl) {
 // =============================== DASHBOARD INIT ===============================
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
+  if (sb) await loadTheme(sb);
   outlet = outlet || document.getElementById("outlet");
 
   // -------- Chart.js on-demand --------
