@@ -129,6 +129,7 @@ const CONTENT = {
     ],
     tips: [
       "A importação de PDF funciona melhor com extratos mensais de texto (não digitalizados).",
+      "No Android, se a importação falhar, verifique se a 'App do Google' tem permissões de 'Ficheiros' nas definições do telemóvel.",
     ],
   },
   health: {

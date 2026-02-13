@@ -767,20 +767,47 @@ export async function init({ sb, outlet } = {}) {
 
   // PDF Parser using pdf.js -> ActivoBank Logic
   // PDF Parser using pdf.js -> ActivoBank Logic (Geometric + Text)
-  async function parsePDF(file) {
+  async function readAsArrayBufferSafe(file) {
+    if (file.arrayBuffer) {
+      try {
+        const ab = await file.arrayBuffer();
+        if (ab && ab.byteLength > 0) return ab;
+      } catch (e) {
+        console.warn("file.arrayBuffer failed, falling back to FileReader", e);
+      }
+    }
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error("Não foi possível ler o ficheiro (FileReader error)."));
+      r.onload = () => resolve(r.result);
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  function isPdfByMagic(ab) {
+    if (!ab || ab.byteLength < 4) return false;
+    const u8 = new Uint8Array(ab, 0, 4);
+    // "%PDF" => 0x25 0x50 0x44 0x46
+    return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46;
+  }
+
+  async function parsePDF(input) {
     if (!window.pdfjsLib) {
       throw new Error("Biblioteca PDF não carregada. Verifique a internet.");
     }
-
-    // Ensure worker is configured (fail-safe)
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
       pdfjsLib.GlobalWorkerOptions.workerSrc =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
 
     try {
-      setImpInfo("A carregar PDF na memória...");
-      const arrayBuffer = await file.arrayBuffer();
+      let arrayBuffer;
+      if (input instanceof ArrayBuffer) {
+        arrayBuffer = input;
+      } else {
+        setImpInfo("A carregar PDF na memória...");
+        arrayBuffer = await readAsArrayBufferSafe(input);
+      }
 
       setImpInfo("A analisar estrutura do PDF...");
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -1195,35 +1222,45 @@ export async function init({ sb, outlet } = {}) {
       btn.textContent = "A processar...";
       setImpInfo("A preparar ficheiro...");
 
-      // Normalizar nome para detetar PDF
-      const name = (file.name || "").trim().toLowerCase();
-      const isPDF = file.type === "application/pdf" || name.endsWith(".pdf");
+      // Diagnostic Log for Android/Mobile
+      console.log(`[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`);
 
-      if (isPDF) {
-        setImpInfo("A ler PDF (pode demorar)...");
+      if (file.size === 0) {
+        throw new Error("O ficheiro selecionado tem 0 bytes. Verifique as permissões de 'Ficheiros' do seu browser ou da App do Google.");
+      }
+
+      setImpInfo("A preparar ficheiro...");
+      const ab = await readAsArrayBufferSafe(file);
+
+      if (isPdfByMagic(ab)) {
+        setImpInfo("Detetado PDF por assinatura binária. A ler...");
         await new Promise((r) => setTimeout(r, 50));
-        parsedItems = await parsePDF(file);
+        parsedItems = await parsePDF(ab);
       } else {
-        setImpInfo("A ler ficheiro...");
-        const XLSX = await getXLSX();
-        if (!XLSX) throw new Error("Biblioteca Excel não carregada.");
-
-        const data = await file.arrayBuffer();
-        const wb = XLSX.read(data, { type: "array" });
-        const sheet = wb.Sheets[wb.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-        if (rows.length < 1) throw new Error("Ficheiro vazio.");
-        const headers = rows[0];
-
-        if (isWiseBudgetTemplate(headers)) {
-          setImpInfo("Detetado template WiseBudget. A processar...");
-          const maps = await getPremiumMaps();
-          parsedItems = await parseWiseBudgetFile(rows, maps, headers);
+        const name = (file.name || "").toLowerCase();
+        if (name.endsWith(".pdf")) {
+          setImpInfo("A tentar ler como PDF (pela extensão)...");
+          parsedItems = await parsePDF(ab);
         } else {
-          // Fallback para CSV genérico (heurístico)
-          setImpInfo("A usar importador genérico...");
-          parsedItems = await parseCSV(file);
+          setImpInfo("A analisar ficheiro de dados...");
+          const XLSX = await getXLSX();
+          if (!XLSX) throw new Error("Biblioteca Excel não carregada.");
+
+          const wb = XLSX.read(ab, { type: "array" });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+          if (rows.length < 1) throw new Error("Ficheiro vazio ou sem dados.");
+          const headers = rows[0];
+
+          if (isWiseBudgetTemplate(headers)) {
+            setImpInfo("Detetado template WiseBudget. A processar...");
+            const maps = await getPremiumMaps();
+            parsedItems = await parseWiseBudgetFile(rows, maps, headers);
+          } else {
+            setImpInfo("A usar importador genérico...");
+            parsedItems = await parseCSV(file);
+          }
         }
       }
 
