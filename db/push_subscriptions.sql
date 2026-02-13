@@ -18,6 +18,18 @@ create table if not exists public.push_subscriptions (
 alter table public.push_subscriptions add column if not exists user_agent text;
 alter table public.push_subscriptions add column if not exists updated_at timestamptz default now();
 
+-- Garantir que o constraint unique existe (necessário para o upsert)
+do $$
+begin
+    if not exists (
+        select 1 from pg_constraint 
+        where conname = 'uq_user_endpoint' 
+        and conrelid = 'public.push_subscriptions'::regclass
+    ) then
+        alter table public.push_subscriptions add constraint uq_user_endpoint unique(user_id, endpoint);
+    end if;
+end $$;
+
 alter table public.push_subscriptions enable row level security;
 
 -- Trigger para updated_at
