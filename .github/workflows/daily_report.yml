@@ -24,6 +24,7 @@ jobs:
       - name: Send Daily Report
         run: node scripts/send_daily_report.js
         env:
+        DEBUG: "1"
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
