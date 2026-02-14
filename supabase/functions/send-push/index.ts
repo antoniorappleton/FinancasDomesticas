@@ -59,10 +59,9 @@ serve(async (req) => {
       return json({ error: "user_id required for mode=daily" }, 400);
     }
 
-    const { data, error: rpcErr } = await supabase.rpc(
-      "get_daily_digest",
-      { p_user: user_id }
-    );
+    const { data, error: rpcErr } = await supabase.rpc("get_daily_digest", {
+      p_user: user_id,
+    });
 
     if (rpcErr) {
       return json({ error: "RPC error", details: rpcErr.message }, 500);
@@ -72,19 +71,17 @@ serve(async (req) => {
     const spentToday = Number(data?.spent_today ?? 0);
     const next = data?.next_fixed ?? null;
 
-    const nextTxt = next?.name
-      ? `${next.name}${
-          next.amount ? ` (€${Number(next.amount).toFixed(2)})` : ""
-        }${
-          next.next_due ? ` em ${String(next.next_due).slice(0, 10)}` : ""
-        }`
+    // next_fixed agora vem do v_regularities_expenses:
+    // { regularity: string, total: numeric, month: date }
+    const nextTxt = next?.regularity
+      ? `${next.regularity} (€${Number(next.total ?? 0).toFixed(2)} este mês)`
       : "—";
 
     payloadObj = {
       title: "WiseBudget — Relatório diário",
       body: `Saldo: €${balance.toFixed(2)} | Gastos hoje: €${spentToday.toFixed(
         2
-      )} | Próx. fixa: ${nextTxt}`,
+      )} | Fixos do mês: ${nextTxt}`,
       url: body.url ?? "/#/dashboard",
       tag: "daily-digest",
     };
@@ -102,11 +99,7 @@ serve(async (req) => {
 
   const payload = JSON.stringify(payloadObj);
 
-  webpush.setVapidDetails(
-    VAPID_SUBJECT!,
-    VAPID_PUBLIC_KEY!,
-    VAPID_PRIVATE_KEY!
-  );
+  webpush.setVapidDetails(VAPID_SUBJECT!, VAPID_PUBLIC_KEY!, VAPID_PRIVATE_KEY!);
 
   // Buscar subscriptions
   const query = supabase
@@ -117,19 +110,15 @@ serve(async (req) => {
 
   const { data: subs, error } = await query;
 
-  if (error)
-    return json({ error: "DB error", details: error.message }, 500);
+  if (error) return json({ error: "DB error", details: error.message }, 500);
 
   if (!subs?.length)
     return json({ ok: true, sent: 0, message: "No subscriptions found" }, 200);
 
   let sent = 0;
   let removed = 0;
-  const failures: Array<{
-    id: string;
-    reason: string;
-    statusCode?: number;
-  }> = [];
+  const failures: Array<{ id: string; reason: string; statusCode?: number }> =
+    [];
 
   for (const s of subs) {
     const subscription = {
@@ -143,11 +132,9 @@ serve(async (req) => {
     } catch (err: any) {
       const statusCode = err?.statusCode ?? err?.status ?? undefined;
 
+      // 404/410 = subscription morta -> limpar
       if (statusCode === 404 || statusCode === 410) {
-        await supabase
-          .from("push_subscriptions")
-          .delete()
-          .eq("id", s.id);
+        await supabase.from("push_subscriptions").delete().eq("id", s.id);
         removed++;
       } else {
         failures.push({
