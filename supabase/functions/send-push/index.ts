@@ -1,4 +1,3 @@
-// deploy trigger 02
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -22,7 +21,6 @@ serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
   const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
   const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
   const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT");
@@ -48,18 +46,69 @@ serve(async (req) => {
     // ok
   }
 
+  const mode = body.mode ?? "custom";
   const user_id: string | undefined = body.user_id;
 
-  const payloadObj = {
-    title: body.title ?? "WiseBudget",
-    body: body.body ?? "Notificação de teste",
-    url: body.url ?? "/",
-    tag: body.tag ?? "test",
-  };
+  let payloadObj: any;
+
+  // ===============================
+  // DAILY DIGEST MODE (REAL DATA)
+  // ===============================
+  if (mode === "daily") {
+    if (!user_id) {
+      return json({ error: "user_id required for mode=daily" }, 400);
+    }
+
+    const { data, error: rpcErr } = await supabase.rpc(
+      "get_daily_digest",
+      { p_user: user_id }
+    );
+
+    if (rpcErr) {
+      return json({ error: "RPC error", details: rpcErr.message }, 500);
+    }
+
+    const balance = Number(data?.balance ?? 0);
+    const spentToday = Number(data?.spent_today ?? 0);
+    const next = data?.next_fixed ?? null;
+
+    const nextTxt = next?.name
+      ? `${next.name}${
+          next.amount ? ` (€${Number(next.amount).toFixed(2)})` : ""
+        }${
+          next.next_due ? ` em ${String(next.next_due).slice(0, 10)}` : ""
+        }`
+      : "—";
+
+    payloadObj = {
+      title: "WiseBudget — Relatório diário",
+      body: `Saldo: €${balance.toFixed(2)} | Gastos hoje: €${spentToday.toFixed(
+        2
+      )} | Próx. fixa: ${nextTxt}`,
+      url: body.url ?? "/#/dashboard",
+      tag: "daily-digest",
+    };
+  } else {
+    // ===============================
+    // CUSTOM MODE
+    // ===============================
+    payloadObj = {
+      title: body.title ?? "WiseBudget",
+      body: body.body ?? "Notificação de teste",
+      url: body.url ?? "/",
+      tag: body.tag ?? "test",
+    };
+  }
+
   const payload = JSON.stringify(payloadObj);
 
-  webpush.setVapidDetails(VAPID_SUBJECT!, VAPID_PUBLIC_KEY!, VAPID_PRIVATE_KEY!);
+  webpush.setVapidDetails(
+    VAPID_SUBJECT!,
+    VAPID_PUBLIC_KEY!,
+    VAPID_PRIVATE_KEY!
+  );
 
+  // Buscar subscriptions
   const query = supabase
     .from("push_subscriptions")
     .select("id,user_id,endpoint,p256dh,auth");
@@ -67,13 +116,20 @@ serve(async (req) => {
   if (user_id) query.eq("user_id", user_id);
 
   const { data: subs, error } = await query;
-  if (error) return json({ error: "DB error", details: error.message }, 500);
 
-  if (!subs?.length) return json({ ok: true, sent: 0, message: "No subscriptions found" }, 200);
+  if (error)
+    return json({ error: "DB error", details: error.message }, 500);
+
+  if (!subs?.length)
+    return json({ ok: true, sent: 0, message: "No subscriptions found" }, 200);
 
   let sent = 0;
   let removed = 0;
-  const failures: Array<{ id: string; reason: string; statusCode?: number }> = [];
+  const failures: Array<{
+    id: string;
+    reason: string;
+    statusCode?: number;
+  }> = [];
 
   for (const s of subs) {
     const subscription = {
@@ -88,7 +144,10 @@ serve(async (req) => {
       const statusCode = err?.statusCode ?? err?.status ?? undefined;
 
       if (statusCode === 404 || statusCode === 410) {
-        await supabase.from("push_subscriptions").delete().eq("id", s.id);
+        await supabase
+          .from("push_subscriptions")
+          .delete()
+          .eq("id", s.id);
         removed++;
       } else {
         failures.push({
