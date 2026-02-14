@@ -3,7 +3,7 @@
  * NotificationManager - Gestor de Notificações Web Push
  */
 export const NotificationManager = {
-  vapidPublicKey: "BIYQW2zMiKG96ZbDUNgHn3wXQxU6lk2-QYBDPhWkeBnP_tK4oE6-goKXPFBruQVSM6BL3uBOV6Q0CRpwUkdTecU",
+  vapidPublicKey: "BLwfmAUU3I40TEwBZsXmtqtXxsI5oRWSlp3zXSC5WUh0q3g1yvFgd0ZDPAAU_8cxZGz6I-XknNFGflCj0PE9bQ0",
 
   /**
    * Inicializa o gestor, verifica suporte e estado atual.
