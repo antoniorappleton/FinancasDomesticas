@@ -288,8 +288,11 @@ async function sendToUser(user) {
       }
 
       if (DEBUG && err?.body) {
-        console.log("🔎 Debug error body:", err.body);
-      }
+  const bodyText = Buffer.isBuffer(err.body)
+    ? err.body.toString("utf8")
+    : String(err.body);
+  console.log("🔎 Debug error body:", bodyText);
+}
     }
   }
 }
