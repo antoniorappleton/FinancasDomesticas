@@ -21,6 +21,7 @@ serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
   const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
   const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
   const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT");
@@ -35,21 +36,12 @@ serve(async (req) => {
 
   if (missing.length) return json({ error: "Missing env", missing }, 500);
 
-  // ===== DEBUG TEMPORÁRIO (apenas para confirmar secrets no runtime) =====
-  return json({
-    ok: false,
-    debug: {
-      vapid_public_prefix: (VAPID_PUBLIC_KEY ?? "").slice(0, 12),
-      subject: VAPID_SUBJECT,
-      has_private: !!VAPID_PRIVATE_KEY,
-    },
-  }, 200);
-  // ===== FIM DEBUG TEMPORÁRIO =====
-
+  // Criar client Supabase (service role)
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
 
+  // Ler body
   let body: any = {};
   try {
     body = await req.json();
@@ -60,6 +52,31 @@ serve(async (req) => {
   const mode = body.mode ?? "custom";
   const user_id: string | undefined = body.user_id;
 
+  // Configurar VAPID
+  // (se isto falhar por formato inválido, vai lançar erro)
+  try {
+    webpush.setVapidDetails(
+      VAPID_SUBJECT!,
+      VAPID_PUBLIC_KEY!,
+      VAPID_PRIVATE_KEY!,
+    );
+  } catch (e: any) {
+    return json(
+      {
+        error: "VAPID setup failed",
+        details: e?.message ?? String(e),
+        debug: {
+          vapid_public_prefix: (VAPID_PUBLIC_KEY ?? "").slice(0, 12),
+          public_len: (VAPID_PUBLIC_KEY ?? "").length,
+          private_len: (VAPID_PRIVATE_KEY ?? "").length,
+          subject: VAPID_SUBJECT,
+        },
+      },
+      500,
+    );
+  }
+
+  // Preparar payload
   let payloadObj: any;
 
   // ===============================
@@ -82,8 +99,7 @@ serve(async (req) => {
     const spentToday = Number(data?.spent_today ?? 0);
     const next = data?.next_fixed ?? null;
 
-    // next_fixed agora vem do v_regularities_expenses:
-    // { regularity: string, total: numeric, month: date }
+    // next_fixed: { regularity: string, total: numeric, month: date }
     const nextTxt = next?.regularity
       ? `${next.regularity} (€${Number(next.total ?? 0).toFixed(2)} este mês)`
       : "—";
@@ -91,7 +107,7 @@ serve(async (req) => {
     payloadObj = {
       title: "WiseBudget — Relatório diário",
       body: `Saldo: €${balance.toFixed(2)} | Gastos hoje: €${spentToday.toFixed(
-        2
+        2,
       )} | Fixos do mês: ${nextTxt}`,
       url: body.url ?? "/#/dashboard",
       tag: "daily-digest",
@@ -110,8 +126,6 @@ serve(async (req) => {
 
   const payload = JSON.stringify(payloadObj);
 
-  webpush.setVapidDetails(VAPID_SUBJECT!, VAPID_PUBLIC_KEY!, VAPID_PRIVATE_KEY!);
-
   // Buscar subscriptions
   const query = supabase
     .from("push_subscriptions")
@@ -128,9 +142,14 @@ serve(async (req) => {
 
   let sent = 0;
   let removed = 0;
-  const failures: Array<{ id: string; reason: string; statusCode?: number }> =
-    [];
+  const failures: Array<{
+    id: string;
+    reason: string;
+    statusCode?: number;
+    body?: string;
+  }> = [];
 
+  // Enviar
   for (const s of subs) {
     const subscription = {
       endpoint: s.endpoint,
@@ -143,6 +162,14 @@ serve(async (req) => {
     } catch (err: any) {
       const statusCode = err?.statusCode ?? err?.status ?? undefined;
 
+      // Capturar body do erro (isto é a parte mais útil para diagnosticar 403)
+      const errBody =
+        err?.body
+          ? (err.body instanceof Uint8Array
+              ? new TextDecoder().decode(err.body)
+              : String(err.body))
+          : undefined;
+
       // 404/410 = subscription morta -> limpar
       if (statusCode === 404 || statusCode === 410) {
         await supabase.from("push_subscriptions").delete().eq("id", s.id);
@@ -152,6 +179,7 @@ serve(async (req) => {
           id: s.id,
           reason: err?.message ?? "push failed",
           statusCode,
+          body: errBody,
         });
       }
     }
