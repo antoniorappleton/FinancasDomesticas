@@ -35,6 +35,17 @@ serve(async (req) => {
 
   if (missing.length) return json({ error: "Missing env", missing }, 500);
 
+  // ===== DEBUG TEMPORÁRIO (apenas para confirmar secrets no runtime) =====
+  return json({
+    ok: false,
+    debug: {
+      vapid_public_prefix: (VAPID_PUBLIC_KEY ?? "").slice(0, 12),
+      subject: VAPID_SUBJECT,
+      has_private: !!VAPID_PRIVATE_KEY,
+    },
+  }, 200);
+  // ===== FIM DEBUG TEMPORÁRIO =====
+
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!, {
     auth: { persistSession: false },
   });
