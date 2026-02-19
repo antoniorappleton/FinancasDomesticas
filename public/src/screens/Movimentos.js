@@ -404,7 +404,7 @@ export async function init(ctx = {}) {
   async function showReportModal(type) {
     const modal = document.getElementById("report-modal");
     if (!modal) return;
-    
+
     const ui = {
       title: modal.querySelector("#report-title"),
       date: modal.querySelector("#report-date"),
@@ -412,66 +412,128 @@ export async function init(ctx = {}) {
       list: modal.querySelector("#report-list"),
     };
 
-    ui.list.innerHTML = `<li style="text-align:center; padding: 20px;">A carregar...</li>`;
+    ui.list.innerHTML = `<li style="text-align:center;padding:20px;">A carregar...</li>`;
     ui.total.textContent = "--";
     modal.removeAttribute("hidden");
 
     try {
-      // Determine date range
       const today = new Date();
-      let fromDate, toDate;
       const fmt = new Intl.DateTimeFormat("pt-PT").format;
+      const ymd = (d) => d.toISOString().slice(0, 10);
+      const { data: { user } } = await sb.auth.getUser();
+      const uid = user.id;
+      const sumTxs = (txs) => (txs || []).reduce((a, t) => a + Number(t.amount || 0), 0);
+
+      // Helper: fetch expenses for a date range
+      const fetchExpenses = async (from, to, withDesc = false) => {
+        const { data, error } = await sb.from("transactions")
+          .select(withDesc ? "amount, description, date, transaction_types!inner(code)" : "amount, transaction_types!inner(code)")
+          .eq("user_id", uid)
+          .eq("transaction_types.code", "EXPENSE")
+          .gte("date", from).lte("date", to)
+          .order("amount", { ascending: false });
+        if (error) throw error;
+        return data || [];
+      };
 
       if (type === "daily") {
         ui.title.textContent = "Relatório Diário";
         ui.date.textContent = fmt(today);
-        fromDate = toDate = today.toISOString().slice(0, 10);
+        const todayStr = ymd(today);
+
+        const prev30Start = new Date(today); prev30Start.setDate(today.getDate() - 30);
+        const prev30End = new Date(today); prev30End.setDate(today.getDate() - 1);
+
+        const [todayTxs, last30Txs] = await Promise.all([
+          fetchExpenses(todayStr, todayStr, true),
+          fetchExpenses(ymd(prev30Start), ymd(prev30End)),
+        ]);
+
+        const totalHoje = sumTxs(todayTxs);
+        const avgDiario = sumTxs(last30Txs) / 30;
+        const diff = totalHoje - avgDiario;
+        const diffColor = diff <= 0 ? "#16a34a" : "#ef4444";
+        const diffSign = diff >= 0 ? "+" : "";
+
+        ui.total.textContent = money(totalHoje);
+
+        const comparisonHtml = `
+          <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg-body);border-radius:8px;border-left:3px solid ${diffColor};">
+            <div style="font-size:0.8rem;color:var(--text-muted);">Comparação vs média diária (30d)</div>
+            <div style="font-weight:700;color:${diffColor};margin-top:2px;">${diffSign}${money(diff)} (média: ${money(avgDiario)})</div>
+          </div>`;
+
+        const listHtml = todayTxs.length === 0
+          ? `<li style="color:var(--text-muted);padding:10px;text-align:center;">Sem despesas hoje.</li>`
+          : todayTxs.slice(0, 10).map(t => `
+              <li style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-body);border-radius:6px;">
+                <div style="font-weight:500;">${t.description || "Sem descrição"}
+                  <div style="font-size:0.75rem;color:var(--text-muted);">${ptDate(t.date)}</div>
+                </div>
+                <div style="font-weight:700;color:#ef4444;">${money(t.amount)}</div>
+              </li>`).join("");
+
+        ui.list.innerHTML = comparisonHtml + `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">${listHtml}</ul>`;
+
       } else {
         ui.title.textContent = "Relatório Semanal";
-        const lastWeek = new Date(today);
-        lastWeek.setDate(today.getDate() - 7);
-        ui.date.textContent = `${fmt(lastWeek)} - ${fmt(today)}`;
-        fromDate = lastWeek.toISOString().slice(0, 10);
-        toDate = today.toISOString().slice(0, 10);
-      }
+        const weekStart = new Date(today); weekStart.setDate(today.getDate() - 7);
+        const prevWeekStart = new Date(today); prevWeekStart.setDate(today.getDate() - 14);
+        const prevWeekEnd = new Date(today); prevWeekEnd.setDate(today.getDate() - 8);
+        ui.date.textContent = `${fmt(weekStart)} — ${fmt(today)}`;
 
-      // Fetch Expenses
-      const { data: expenses, error } = await sb
-        .from("transactions")
-        .select(`
-          amount, description, date,
-          transaction_types!inner(code)
-        `)
-        .eq("user_id", (await sb.auth.getUser()).data.user.id)
-        .eq("transaction_types.code", "EXPENSE")
-        .gte("date", fromDate)
-        .lte("date", toDate)
-        .order("amount", { ascending: false });
+        const [thisWeekTxs, prevWeekTxs] = await Promise.all([
+          fetchExpenses(ymd(weekStart), ymd(today), true),
+          fetchExpenses(ymd(prevWeekStart), ymd(prevWeekEnd)),
+        ]);
 
-      if (error) throw error;
+        const totalSemana = sumTxs(thisWeekTxs);
+        const totalPrevSemana = sumTxs(prevWeekTxs);
+        ui.total.textContent = money(totalSemana);
 
-      // Calculate Total
-      const totalVal = expenses.reduce((acc, t) => acc + Number(t.amount || 0), 0);
-      ui.total.textContent = money(totalVal);
+        let pctHtml = "";
+        if (totalPrevSemana > 0) {
+          const pct = ((totalSemana - totalPrevSemana) / totalPrevSemana) * 100;
+          const pctColor = pct <= 0 ? "#16a34a" : "#ef4444";
+          const pctSign = pct >= 0 ? "+" : "";
+          pctHtml = `
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+              <span style="color:var(--text-muted);font-size:0.85rem;">vs semana passada</span>
+              <span style="font-weight:700;color:${pctColor};">${pctSign}${pct.toFixed(1)}% (${money(totalPrevSemana)})</span>
+            </div>`;
+        }
 
-      // Render List (Top 10)
-      if (expenses.length === 0) {
-        ui.list.innerHTML = `<li style="text-align:center; color: var(--text-muted); padding: 10px;">Sem despesas neste período.</li>`;
-      } else {
-        ui.list.innerHTML = expenses.slice(0, 10).map(t => `
-          <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-body); border-radius: 6px;">
-            <div style="font-weight: 500;">
-              ${t.description || "Sem descrição"}
-              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${ptDate(t.date)}</div>
-            </div>
-            <div style="font-weight: 700; color: #ef4444;">${money(t.amount)}</div>
-          </li>
-        `).join("");
+        // Projection: extrapolate based on elapsed days of the week
+        const elapsedDays = Math.max(1, (today.getDay() + 6) % 7 + 1);
+        const projected = (totalSemana / elapsedDays) * 7;
+        const projColor = projected > (totalPrevSemana || totalSemana) ? "#ef4444" : "#16a34a";
+        const projHtml = `
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--text-muted);font-size:0.85rem;">Projeção semana completa</span>
+            <span style="font-weight:700;color:${projColor};">${money(projected)}</span>
+          </div>`;
+
+        const comparisonHtml = `
+          <div style="margin-bottom:14px;padding:10px 12px;background:var(--bg-body);border-radius:8px;border:1px solid var(--border);">
+            ${pctHtml}${projHtml}
+          </div>`;
+
+        const listHtml = thisWeekTxs.length === 0
+          ? `<li style="color:var(--text-muted);padding:10px;text-align:center;">Sem despesas esta semana.</li>`
+          : thisWeekTxs.slice(0, 10).map(t => `
+              <li style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-body);border-radius:6px;">
+                <div style="font-weight:500;">${t.description || "Sem descrição"}
+                  <div style="font-size:0.75rem;color:var(--text-muted);">${ptDate(t.date)}</div>
+                </div>
+                <div style="font-weight:700;color:#ef4444;">${money(t.amount)}</div>
+              </li>`).join("");
+
+        ui.list.innerHTML = comparisonHtml + `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">${listHtml}</ul>`;
       }
 
     } catch (e) {
       console.error(e);
-      ui.list.innerHTML = `<li style="color:red">Erro ao carregar relatório.</li>`;
+      ui.list.innerHTML = `<li style="color:red">Erro ao carregar relatório: ${e.message}</li>`;
     }
   }
 
