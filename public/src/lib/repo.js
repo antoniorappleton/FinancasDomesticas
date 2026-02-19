@@ -92,12 +92,14 @@ export const refs = {
       .or(`user_id.is.null,user_id.eq.${u.id}`);
 
     const pmap = new Map((parents || []).map((p) => [p.id, p.name]));
-    return (data || []).map((c) => ({
-      ...c,
-      label: c.parent_id
-        ? `${pmap.get(c.parent_id) || ""} > ${c.name}`
-        : c.name,
-    }));
+    return (data || [])
+      .map((c) => ({
+        ...c,
+        label: c.parent_id
+          ? `${pmap.get(c.parent_id) || ""} > ${c.name}`
+          : c.name,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   },
   async allCategories() {
     let all = [];
