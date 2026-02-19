@@ -1,10 +1,14 @@
 {
   "name": "homefinance",
-  "version": "1.0.85",
+  "version": "1.0.86",
+  "type": "module",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "live-server public --port=5500 --no-browser --open=index.html"
+    "dev": "live-server public --port=5500 --no-browser --open=index.html",
+    "deploy": "node scripts/bump-version.js",
+    "deploy:full": "node scripts/bump-version.js --full",
+    "deploy:dry": "node scripts/bump-version.js --dry-run"
   },
   "keywords": [],
   "author": "",
