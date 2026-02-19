@@ -4,6 +4,9 @@ const logger = require("firebase-functions/logger");
 const webpush = require("web-push");
 const { createClient } = require("@supabase/supabase-js");
 const cors = require("cors")({ origin: true });
+const { setGlobalOptions } = require("firebase-functions/v2");
+
+setGlobalOptions({ maxInstances: 10 });
 
 // Configurar VAPID
 const vapidKeys = {
@@ -18,17 +21,7 @@ webpush.setVapidDetails(
   vapidKeys.privateKey,
 );
 
-// Supabase Admin
-// NOTA: Em produção, usar process.env.SUPABASE_URL e process.env.SUPABASE_SERVICE_KEY
 const SUPABASE_URL = "https://brakxcumzdleufrpyipm.supabase.co";
-// WARNING: Hardcoded for quick prototype. Move to secrets in prod.
-const SUPABASE_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODYxMjUzMywiZXhwIjoyMDc0MTg4NTMzLCJqdGkiOiIyZDVmMzkxYS0yZDIyLTQ2YzUtOTJlNS0wZjRiYjJkZmRhZWIifQ.YOUR_SECRET_SHOULD_GO_HERE";
-// I don't have the service key, effectively acting as anon for now unless user provides it.
-// Actually, I need the SERVICE ROLE KEY to bypass RLS if I want to read all subscriptions.
-// Or I can just use the ANON key but tables must be readable.
-// For now, let's assume the ANON key works if policies allow, or I'll prompt the user.
-
 // Using the ANON key from index.html for now, but really should be Service Role.
 const ANAON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2MTI1MzMsImV4cCI6MjA3NDE4ODUzM30.Y-zw1H1gTyJnFJ3lxbamY8hU1KOFG06ayLmXYMuVknA";
