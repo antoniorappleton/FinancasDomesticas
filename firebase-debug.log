@@ -1,0 +1,16 @@
+[debug] [2026-02-19T19:42:12.583Z] ----------------------------------------------------------------------
+[debug] [2026-02-19T19:42:12.587Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\anton\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-02-19T19:42:12.588Z] CLI Version:   15.6.0
+[debug] [2026-02-19T19:42:12.588Z] Platform:      win32
+[debug] [2026-02-19T19:42:12.588Z] Node Version:  v22.22.0
+[debug] [2026-02-19T19:42:12.588Z] Time:          Thu Feb 19 2026 19:42:12 GMT+0000 (Hora padrão da Europa Ocidental)
+[debug] [2026-02-19T19:42:12.589Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-19T19:42:15.904Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-19T19:42:15.905Z] > authorizing via signed-in user (antonioappleton@gmail.com)
+[debug] [2026-02-19T19:42:15.905Z] [iam] checking project wisebudget-financaspessoais for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-19T19:42:15.907Z] Checked if tokens are valid: true, expires at: 1771531423153
+[debug] [2026-02-19T19:42:15.908Z] Checked if tokens are valid: true, expires at: 1771531423153
+[debug] [2026-02-19T19:42:15.909Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
+[debug] [2026-02-19T19:42:15.909Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T19:42:15.909Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}

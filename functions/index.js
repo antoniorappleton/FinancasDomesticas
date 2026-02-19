@@ -28,7 +28,7 @@ const sb = createClient(SUPABASE_URL, ANAON_KEY);
  * Scheduled Function: Daily at 9:00 AM Lisbon time (v2)
  */
 exports.sendDailyNotification = onSchedule(
-  { schedule: "0 9 * * *", timeZone: "Europe/Lisbon" },
+  { schedule: "0 21 * * *", timeZone: "Europe/Lisbon" },
   async (event) => {
     logger.info("Starting daily notification job (Rich v1)...");
 
@@ -126,7 +126,7 @@ exports.sendDailyNotification = onSchedule(
  * Scheduled Function: Weekly at 9:00 AM Lisbon time (Mondays) (v2)
  */
 exports.sendWeeklyNotification = onSchedule(
-  { schedule: "0 9 * * 1", timeZone: "Europe/Lisbon" },
+  { schedule: "0 22 * * 0", timeZone: "Europe/Lisbon" },
   async (event) => {
     logger.info("Starting weekly notification job (Rich v1)...");
 
@@ -257,101 +257,3 @@ exports.testNotification = onRequest(async (req, res) => {
   });
 });
 
-/**
- * DEBUG: Run every minute to test connectivity
- */
-exports.debugTicker = onSchedule(
-  { schedule: "* * * * *", timeZone: "Europe/Lisbon" },
-  async (event) => {
-    logger.info("DEBUG TICKER: Starting Rich...");
-    
-    // 1. Get Expense Type ID
-    const { data: types } = await sb
-      .from("transaction_types")
-      .select("id, code")
-      .eq("code", "EXPENSE")
-      .single();
-    const expenseTypeId = types?.id;
-
-    const { data: subs } = await sb.from("push_subscriptions").select("*");
-    if (!subs?.length) return;
-
-    const subsByUser = {};
-    subs.forEach((sub) => {
-      if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
-      subsByUser[sub.user_id].push(sub);
-    });
-
-    const isEven = new Date().getMinutes() % 2 === 0;
-    const today = new Date().toISOString().slice(0, 10);
-
-    for (const userId of Object.keys(subsByUser)) {
-      let bodyText = "Abre a app para veres o teu resumo.";
-      
-      if (expenseTypeId) {
-        const { data: txs } = await sb
-          .from("transactions")
-          .select("amount, description")
-          .eq("user_id", userId)
-          .eq("date", today)
-          .eq("type_id", expenseTypeId)
-          .order("amount", { ascending: false })
-          .limit(3);
-
-        if (txs && txs.length > 0) {
-          // Calculate total from ALL transactions (need separate query or aggregate)
-          // For efficiency in this ticker, let's just sum these or fetch total separately.
-          // Let's fetch total separately to be accurate.
-           const { data: allTxs } = await sb
-            .from("transactions")
-            .select("amount")
-            .eq("user_id", userId)
-            .eq("date", today)
-            .eq("type_id", expenseTypeId);
-            
-          const total = (allTxs || []).reduce((sum, t) => sum + Number(t.amount), 0);
-          
-          const formatter = new Intl.NumberFormat("pt-PT", {
-            style: "currency",
-            currency: "EUR",
-          });
-          
-          const details = txs.map(t => `${t.description} (${Number(t.amount).toFixed(0)}€)`).join(", ");
-          
-          bodyText = isEven 
-            ? `Hoje: ${formatter.format(total)} (${details}...)`
-            : `Resumo: ${formatter.format(total)} total.`;
-        } else {
-          bodyText = "(Teste) Sem despesas hoje.";
-        }
-      }
-
-      const payload = JSON.stringify({
-        title: isEven ? "Resumo Diário (Rich)" : "Resumo Semanal (Rich)",
-        body: bodyText,
-        icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        url: isEven
-          ? "https://wisebudget-financaspessoais.web.app/#/transactions?report=daily"
-          : "https://wisebudget-financaspessoais.web.app/#/transactions?report=weekly",
-      });
-
-      const userSubs = subsByUser[userId];
-      await Promise.all(
-        userSubs.map(async (sub) => {
-          try {
-            await webpush.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              payload
-            );
-            logger.info(`DEBUG: Sent to ${sub.endpoint.slice(0, 20)}...`);
-          } catch (err) {
-            if (err.statusCode === 410 || err.statusCode === 404) {
-               await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
-            }
-          }
-        })
-      );
-    }
-  }
-);
