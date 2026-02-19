@@ -1224,6 +1224,20 @@ export async function init({ sb, outlet } = {}) {
 
   // Event Listeners
 
+  // Show Android tip if on mobile
+  const isMobile = /android|iphone|ipad|mobi/i.test(navigator.userAgent);
+  const androidTip = $("#imp-android-tip");
+  if (isMobile && androidTip) androidTip.style.display = "block";
+
+  // Helper: make sure pdfjsLib worker is always initialised (critical for Android/PWA)
+  function ensurePdfWorker() {
+    if (window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  }
+  ensurePdfWorker();
+
   // Feedback imediato no file selection
   $("#imp-file")?.addEventListener("change", () => {
     const fileInput = $("#imp-file");
@@ -1237,13 +1251,17 @@ export async function init({ sb, outlet } = {}) {
     }
 
     const mb = (f.size / (1024 * 1024)).toFixed(1);
-    let msg = `Selecionado: ${f.name} (${mb} MB)`;
 
-    // Limite recomendado
-    if (f.size > 12 * 1024 * 1024) {
-      msg += " — ficheiro grande; pode falhar no telemóvel.";
-      // Opcional: style warning
+    // Detect 0-byte immediately (Android cloud file issue)
+    if (f.size === 0) {
+      if (info) info.textContent =
+        `⚠️ "${f.name}" devolveu 0 bytes. No Android, guarda o PDF em "Transferências" (pasta Downloads local) e seleciona de lá.`;
+      if (btnProcess) btnProcess.disabled = true;
+      return;
     }
+
+    let msg = `Selecionado: ${f.name} (${mb} MB)`;
+    if (f.size > 12 * 1024 * 1024) msg += " — ficheiro grande; pode ser lento no telemóvel.";
 
     if (info) info.textContent = msg;
     if (btnProcess) btnProcess.disabled = false;
@@ -1266,16 +1284,18 @@ export async function init({ sb, outlet } = {}) {
       btn.textContent = "A processar...";
       setImpInfo("A preparar ficheiro...");
 
-      // Diagnostic Log for Android/Mobile
-      console.log(
-        `[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`,
-      );
+      console.log(`[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`);
 
       if (file.size === 0) {
         throw new Error(
-          "O ficheiro selecionado tem 0 bytes. Verifique as permissões de 'Ficheiros' do seu browser ou da App do Google.",
+          `O ficheiro "${file.name}" tem 0 bytes. ` +
+          "No Android: guarda o PDF nas \"Transferências\" (Downloads local) e importa a partir daí. " +
+          "Não funciona direto do Gmail, Google Drive ou links de email."
         );
       }
+
+      // Make sure pdf.js worker is still configured (can be cleared after SW update)
+      ensurePdfWorker();
 
       setImpInfo("A preparar ficheiro...");
       const ab = await readAsArrayBufferSafe(file);

@@ -615,6 +615,11 @@
   <h2 class="section-title">Importação de Extrato (BETA)</h2>
   <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
 
+  <!-- Android Tip -->
+  <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:#fffbeb; border-left:3px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#78350f;">
+    📱 <strong>Dispositivo Móvel Detetado:</strong> Para garantir o upload, o ficheiro deve estar <strong>armazenado localmente</strong> no telefone (Downloads). PDFs no Gmail, Google Drive ou iCloud podem falhar — descarga-o primeiro e importa a partir de "Transferências".
+  </div>
+
   <!-- WRAPPER ADICIONADO PARA OS INPUTS -->
   <div class="card soft"
     style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; box-shadow:none; overflow:hidden; max-width:100%;">
@@ -629,7 +634,7 @@
       <label>
         Ficheiro (PDF ou CSV)
         <input id="imp-file" type="file"
-          accept=".pdf,application/pdf,.csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".pdf,application/pdf,.csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/octet-stream"
           style="background:#fff; width:100%" />
       </label>
       <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
