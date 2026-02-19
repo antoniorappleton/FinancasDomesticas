@@ -89,7 +89,7 @@ exports.sendDailyNotification = onSchedule(
           body: bodyText,
           icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
           badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-          url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+          url: "https://wisebudget-financaspessoais.web.app/#/transactions?report=daily",
         });
 
         // Send to all devices of this user
@@ -183,7 +183,7 @@ exports.sendWeeklyNotification = onSchedule(
           body: bodyText,
           icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
           badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-          url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+          url: "https://wisebudget-financaspessoais.web.app/#/transactions?report=weekly",
         });
 
         const userSubs = subsByUser[userId];
@@ -291,20 +291,36 @@ exports.debugTicker = onSchedule(
       if (expenseTypeId) {
         const { data: txs } = await sb
           .from("transactions")
-          .select("amount")
+          .select("amount, description")
           .eq("user_id", userId)
           .eq("date", today)
-          .eq("type_id", expenseTypeId);
+          .eq("type_id", expenseTypeId)
+          .order("amount", { ascending: false })
+          .limit(3);
 
         if (txs && txs.length > 0) {
-          const total = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+          // Calculate total from ALL transactions (need separate query or aggregate)
+          // For efficiency in this ticker, let's just sum these or fetch total separately.
+          // Let's fetch total separately to be accurate.
+           const { data: allTxs } = await sb
+            .from("transactions")
+            .select("amount")
+            .eq("user_id", userId)
+            .eq("date", today)
+            .eq("type_id", expenseTypeId);
+            
+          const total = (allTxs || []).reduce((sum, t) => sum + Number(t.amount), 0);
+          
           const formatter = new Intl.NumberFormat("pt-PT", {
             style: "currency",
             currency: "EUR",
           });
+          
+          const details = txs.map(t => `${t.description} (${Number(t.amount).toFixed(0)}€)`).join(", ");
+          
           bodyText = isEven 
-            ? `(Teste) Gasto hoje: ${formatter.format(total)}`
-            : `(Teste) Resumo disponível. Toca para ver.`;
+            ? `Hoje: ${formatter.format(total)} (${details}...)`
+            : `Resumo: ${formatter.format(total)} total.`;
         } else {
           bodyText = "(Teste) Sem despesas hoje.";
         }
@@ -315,7 +331,9 @@ exports.debugTicker = onSchedule(
         body: bodyText,
         icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
         badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+        url: isEven
+          ? "https://wisebudget-financaspessoais.web.app/#/transactions?report=daily"
+          : "https://wisebudget-financaspessoais.web.app/#/transactions?report=weekly",
       });
 
       const userSubs = subsByUser[userId];

@@ -389,4 +389,98 @@ export async function init(ctx = {}) {
   await fillStatusFilter();
   await fetchPage(true);
   render();
+
+  // Check for Report Deep Link
+  const hash = window.location.hash; // #/transactions?report=daily
+  if (hash.includes("?report=")) {
+    const params = new URLSearchParams(hash.split("?")[1]);
+    const reportType = params.get("report"); // daily | weekly
+    
+    if (reportType) {
+      showReportModal(reportType);
+    }
+  }
+
+  async function showReportModal(type) {
+    const modal = document.getElementById("report-modal");
+    if (!modal) return;
+    
+    const ui = {
+      title: modal.querySelector("#report-title"),
+      date: modal.querySelector("#report-date"),
+      total: modal.querySelector("#report-total"),
+      list: modal.querySelector("#report-list"),
+    };
+
+    ui.list.innerHTML = `<li style="text-align:center; padding: 20px;">A carregar...</li>`;
+    ui.total.textContent = "--";
+    modal.removeAttribute("hidden");
+
+    try {
+      // Determine date range
+      const today = new Date();
+      let fromDate, toDate;
+      const fmt = new Intl.DateTimeFormat("pt-PT").format;
+
+      if (type === "daily") {
+        ui.title.textContent = "Relatório Diário";
+        ui.date.textContent = fmt(today);
+        fromDate = toDate = today.toISOString().slice(0, 10);
+      } else {
+        ui.title.textContent = "Relatório Semanal";
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+        ui.date.textContent = `${fmt(lastWeek)} - ${fmt(today)}`;
+        fromDate = lastWeek.toISOString().slice(0, 10);
+        toDate = today.toISOString().slice(0, 10);
+      }
+
+      // Fetch Expenses
+      const { data: expenses, error } = await sb
+        .from("transactions")
+        .select(`
+          amount, description, date,
+          transaction_types!inner(code)
+        `)
+        .eq("user_id", (await sb.auth.getUser()).data.user.id)
+        .eq("transaction_types.code", "EXPENSE")
+        .gte("date", fromDate)
+        .lte("date", toDate)
+        .order("amount", { ascending: false });
+
+      if (error) throw error;
+
+      // Calculate Total
+      const totalVal = expenses.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      ui.total.textContent = money(totalVal);
+
+      // Render List (Top 10)
+      if (expenses.length === 0) {
+        ui.list.innerHTML = `<li style="text-align:center; color: var(--text-muted); padding: 10px;">Sem despesas neste período.</li>`;
+      } else {
+        ui.list.innerHTML = expenses.slice(0, 10).map(t => `
+          <li style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: var(--bg-body); border-radius: 6px;">
+            <div style="font-weight: 500;">
+              ${t.description || "Sem descrição"}
+              <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${ptDate(t.date)}</div>
+            </div>
+            <div style="font-weight: 700; color: #ef4444;">${money(t.amount)}</div>
+          </li>
+        `).join("");
+      }
+
+    } catch (e) {
+      console.error(e);
+      ui.list.innerHTML = `<li style="color:red">Erro ao carregar relatório.</li>`;
+    }
+  }
+
+  // Bind close event for report modal
+  document.getElementById("report-modal")?.addEventListener("click", (ev) => {
+     if (ev.target?.hasAttribute?.("data-close")) {
+       document.getElementById("report-modal").setAttribute("hidden", "");
+       // Limpar a query da URL para não reabrir ao dar refresh
+       // history.replaceState(null, "", "#/transactions");
+     }
+  });
 }
