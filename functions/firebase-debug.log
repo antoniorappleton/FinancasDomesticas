@@ -1,0 +1,66 @@
+[debug] [2026-02-19T11:32:43.833Z] ----------------------------------------------------------------------
+[debug] [2026-02-19T11:32:43.837Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\anton\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:shell
+[debug] [2026-02-19T11:32:43.838Z] CLI Version:   15.6.0
+[debug] [2026-02-19T11:32:43.838Z] Platform:      win32
+[debug] [2026-02-19T11:32:43.838Z] Node Version:  v24.13.0
+[debug] [2026-02-19T11:32:43.839Z] Time:          Thu Feb 19 2026 11:32:43 GMT+0000 (Hora padrão da Europa Ocidental)
+[debug] [2026-02-19T11:32:43.839Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-19T11:32:46.638Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-19T11:32:46.638Z] > authorizing via signed-in user (antonioappleton@gmail.com)
+[debug] [2026-02-19T11:32:46.639Z] [iam] checking project wisebudget-financaspessoais for permissions ["firebase.projects.get"]
+[debug] [2026-02-19T11:32:46.640Z] Checked if tokens are valid: true, expires at: 1771504273905
+[debug] [2026-02-19T11:32:46.640Z] Checked if tokens are valid: true, expires at: 1771504273905
+[debug] [2026-02-19T11:32:46.642Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
+[debug] [2026-02-19T11:32:46.642Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:32:46.642Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2026-02-19T11:32:46.893Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions 200
+[debug] [2026-02-19T11:32:46.893Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["firebase.projects.get"]}
+[debug] [2026-02-19T11:32:46.900Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-02-19T11:32:46.918Z] defaultcredentials: writing to file C:\Users\anton\AppData\Roaming\firebase\antonioappleton_gmail_com_application_default_credentials.json
+[debug] [2026-02-19T11:32:46.920Z] DEBUG: Setting GAC to C:\Users\anton\AppData\Roaming\firebase\antonioappleton_gmail_com_application_default_credentials.json
+[debug] [2026-02-19T11:32:46.921Z] Checked if tokens are valid: true, expires at: 1771504273905
+[debug] [2026-02-19T11:32:46.921Z] Checked if tokens are valid: true, expires at: 1771504273905
+[debug] [2026-02-19T11:32:46.921Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig [none]
+[debug] [2026-02-19T11:32:47.249Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig 200
+[debug] [2026-02-19T11:32:47.249Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig {"projectId":"wisebudget-financaspessoais","storageBucket":"wisebudget-financaspessoais.firebasestorage.app"}
+[debug] [2026-02-19T11:32:47.269Z] [functions] Watching "C:\Users\anton\Desktop\Programing_Projects\homefinance\functions" for Cloud Functions...
+[debug] [2026-02-19T11:32:47.275Z] Validating nodejs source
+[debug] [2026-02-19T11:32:48.659Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "cors": "^2.8.6",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
+}
+[debug] [2026-02-19T11:32:48.659Z] Building nodejs source
+[debug] [2026-02-19T11:32:48.660Z] Failed to find version of module node: reached end of search path C:\Users\anton\Desktop\Programing_Projects\homefinance\functions\node_modules
+[warn] !  functions: Your requested "node" version "20" doesn't match your global version "24". Using node@24 from host. 
+[debug] [2026-02-19T11:32:48.666Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-19T11:32:48.676Z] Found firebase-functions binary at 'C:\Users\anton\Desktop\Programing_Projects\homefinance\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8885
+
+[debug] [2026-02-19T11:32:49.968Z] Got response from /__/functions.yaml {"endpoints":{"helloWorld":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"helloWorld"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[debug] [2026-02-19T11:32:54.017Z] [functions] Loaded functions definitions from source: helloWorld.
+[debug] [2026-02-19T11:32:54.018Z] [functions[us-central1-helloWorld]] http function initialized (http://127.0.0.1:5000/wisebudget-financaspessoais/us-central1/helloWorld).
+[info] i  functions: Loaded functions: helloWorld 
+[warn] !  functions: The following emulators are not running, calls to these services will affect production: firestore, database, pubsub, storage, eventarc, tasks 
