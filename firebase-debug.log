@@ -1,0 +1,82 @@
+[debug] [2026-02-19T18:41:31.957Z] ----------------------------------------------------------------------
+[debug] [2026-02-19T18:41:31.960Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\anton\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy
+[debug] [2026-02-19T18:41:31.961Z] CLI Version:   15.6.0
+[debug] [2026-02-19T18:41:31.961Z] Platform:      win32
+[debug] [2026-02-19T18:41:31.961Z] Node Version:  v22.22.0
+[debug] [2026-02-19T18:41:31.962Z] Time:          Thu Feb 19 2026 18:41:31 GMT+0000 (Hora padrão da Europa Ocidental)
+[debug] [2026-02-19T18:41:31.962Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-19T18:41:35.830Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-19T18:41:35.830Z] > authorizing via signed-in user (antonioappleton@gmail.com)
+[debug] [2026-02-19T18:41:35.831Z] [iam] checking project wisebudget-financaspessoais for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-19T18:41:35.832Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:35.832Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:35.833Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
+[debug] [2026-02-19T18:41:35.833Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T18:41:35.833Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-19T18:41:36.692Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions 200
+[debug] [2026-02-19T18:41:36.693Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-19T18:41:36.693Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:36.693Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:36.693Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-02-19T18:41:36.693Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-02-19T18:41:37.476Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-02-19T18:41:37.476Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-02-19T18:41:37.476Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:37.477Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:37.477Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais [none]
+[debug] [2026-02-19T18:41:37.843Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais 200
+[debug] [2026-02-19T18:41:37.844Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais {"projectId":"wisebudget-financaspessoais","projectNumber":"253837748631","displayName":"Wisebudget-FinancasPessoais","name":"projects/wisebudget-financaspessoais","resources":{"hostingSite":"wisebudget-financaspessoais"},"state":"ACTIVE","etag":"1_ed9ace28-d58f-40a8-a175-72a68b4be3b3"}
+[info] 
+[info] === Deploying to 'wisebudget-financaspessoais'...
+[info] 
+[info] i  deploying functions, hosting 
+[debug] [2026-02-19T18:41:37.850Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:37.850Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:37.850Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais [none]
+[debug] [2026-02-19T18:41:38.041Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais 200
+[debug] [2026-02-19T18:41:38.041Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais {"projectNumber":"253837748631","projectId":"wisebudget-financaspessoais","lifecycleState":"ACTIVE","name":"Wisebudget-FinancasPessoais","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-02-04T21:02:23.354234Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-02-19T18:41:38.044Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:38.044Z] Checked if tokens are valid: true, expires at: 1771528186969
+[debug] [2026-02-19T18:41:38.045Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig [none]
+[debug] [2026-02-19T18:41:38.318Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig 200
+[debug] [2026-02-19T18:41:38.318Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig {"projectId":"wisebudget-financaspessoais","storageBucket":"wisebudget-financaspessoais.firebasestorage.app"}
+[debug] [2026-02-19T18:41:38.320Z] Validating nodejs source
+[warn] !  functions: Runtime Node.js 20 will be deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[debug] [2026-02-19T18:41:41.029Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "cors": "^2.8.6",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
+}
+[debug] [2026-02-19T18:41:41.029Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-02-19T18:41:41.031Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-19T18:41:41.048Z] Found firebase-functions binary at 'C:\Users\anton\OneDrive\Documentos\projectPrograming\PWA's projects\Finanças Domesticas\FinancasDomesticas\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8449
+
+[debug] [2026-02-19T18:41:43.282Z] Got response from /__/functions.yaml {"endpoints":{"sendDailyNotification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"0 9 * * *","retryConfig":{},"timeZone":"Europe/Lisbon"},"entryPoint":"sendDailyNotification"},"sendWeeklyNotification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"0 9 * * 1","retryConfig":{},"timeZone":"Europe/Lisbon"},"entryPoint":"sendWeeklyNotification"},"testNotification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testNotification"},"debugTicker":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"* * * * *","retryConfig":{},"timeZone":"Europe/Lisbon"},"entryPoint":"debugTicker"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{}}

@@ -1,6 +1,6 @@
 /* global self, clients, fetch, Request, Response, caches, Notification */
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v81";
+const VERSION = "v82";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -190,7 +190,7 @@ self.addEventListener("push", (event) => {
     body: data.body,
     icon: withBase("/icon-192.png"),
     badge: withBase("/icon-192.png"), // Badge de sistema (pequeno)
-    data: data.url || withBase("/"),
+    data: { url: data.url || withBase("/") },
   };
 
   event.waitUntil(self.registration.showNotification(data.title, options));
