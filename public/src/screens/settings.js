@@ -1568,10 +1568,11 @@ export async function init({ sb, outlet } = {}) {
 
   // Privacy Toggle
   const savedPrivacy = localStorage.getItem("wb:settings:privacy") === "true";
-  if (dom.togglePrivacy) {
-    dom.togglePrivacy.checked = savedPrivacy;
-    dom.togglePrivacy.onchange = () => {
-      localStorage.setItem("wb:settings:privacy", dom.togglePrivacy.checked);
+  const togglePrivacy = document.getElementById("toggle-privacy");
+  if (togglePrivacy) {
+    togglePrivacy.checked = savedPrivacy;
+    togglePrivacy.onchange = () => {
+      localStorage.setItem("wb:settings:privacy", togglePrivacy.checked);
       location.reload();
     };
   }
