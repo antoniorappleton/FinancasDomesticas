@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v79";
+      window.APP_VERSION = "v80";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -47,7 +47,7 @@
       rel="stylesheet"
     />
 
-    <link rel="manifest" href="./manifest.json?v=12" />
+    <link rel="manifest" href="./manifest.json?v=13" />
 
     <!-- PDF.js (CDN) for Import -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -585,7 +585,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=79", { scope: "./" })
+          .register("./sw.js?v=80", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -778,6 +778,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=78"></script>
+    <script type="module" src="./main.js?v=80"></script>
   </body>
 </html>
