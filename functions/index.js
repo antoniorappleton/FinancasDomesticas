@@ -30,70 +30,96 @@ const sb = createClient(SUPABASE_URL, ANAON_KEY);
 exports.sendDailyNotification = onSchedule(
   { schedule: "0 9 * * *", timeZone: "Europe/Lisbon" },
   async (event) => {
-    logger.info("Starting daily notification job (v2)...");
+    logger.info("Starting daily notification job (Rich v1)...");
 
     try {
-      // 1. Fetch subscriptions
+      // 1. Get Expense Type ID
+      const { data: types } = await sb
+        .from("transaction_types")
+        .select("id, code")
+        .eq("code", "EXPENSE")
+        .single();
+      const expenseTypeId = types?.id;
+
+      // 2. Fetch subscriptions
       const { data: subs, error } = await sb
         .from("push_subscriptions")
         .select("*");
 
-      if (error) {
-        logger.error("Supabase Error:", error);
+      if (error || !subs?.length) {
+        logger.info("No subscriptions or error.");
         return;
       }
 
-      if (!subs || subs.length === 0) {
-        logger.info("No subscriptions found.");
-        return;
-      }
-
-      logger.info(`Found ${subs.length} subscriptions.`);
-
-      // 2. Prepare payload
-      const payload = JSON.stringify({
-        title: "Resumo Diário",
-        body: "Abre a app para veres o teu resumo financeiro de hoje!",
-        icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        url: "https://wisebudget-financaspessoais.web.app/#/",
+      // 3. Group by User ID to batch DB queries
+      const subsByUser = {};
+      subs.forEach((sub) => {
+        if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
+        subsByUser[sub.user_id].push(sub);
       });
 
-      // 3. Send to all
-      const promises = subs.map(async (sub) => {
-        const pushConfig = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth,
-          },
-        };
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-        try {
-          await webpush.sendNotification(pushConfig, payload);
-          return { success: true };
-        } catch (err) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            logger.info(
-              `Subscription expired for ${sub.endpoint}, deleting...`,
-            );
-            await sb
-              .from("push_subscriptions")
-              .delete()
-              .eq("endpoint", sub.endpoint);
+      // 4. Process each user
+      for (const userId of Object.keys(subsByUser)) {
+        // Fetch daily expenses
+        let bodyText = "Abre a app para veres o teu resumo financeiro.";
+        if (expenseTypeId) {
+          const { data: txs } = await sb
+            .from("transactions")
+            .select("amount")
+            .eq("user_id", userId)
+            .eq("date", today)
+            .eq("type_id", expenseTypeId);
+
+          if (txs && txs.length > 0) {
+            const total = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+            const formatter = new Intl.NumberFormat("pt-PT", {
+              style: "currency",
+              currency: "EUR",
+            });
+            bodyText = `Gasto hoje: ${formatter.format(total)}`;
           } else {
-            logger.error("Error sending push:", err);
+            bodyText = "Sem despesas registadas hoje. Bom trabalho!";
           }
-          return { success: false, err };
         }
-      });
 
-      await Promise.all(promises);
-      logger.info("Daily notifications sent.");
+        const payload = JSON.stringify({
+          title: "Resumo Diário",
+          body: bodyText,
+          icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+          badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+          url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+        });
+
+        // Send to all devices of this user
+        const userSubs = subsByUser[userId];
+        await Promise.all(
+          userSubs.map(async (sub) => {
+            try {
+              await webpush.sendNotification(
+                {
+                  endpoint: sub.endpoint,
+                  keys: { p256dh: sub.p256dh, auth: sub.auth },
+                },
+                payload
+              );
+            } catch (err) {
+              if (err.statusCode === 410 || err.statusCode === 404) {
+                await sb
+                  .from("push_subscriptions")
+                  .delete()
+                  .eq("endpoint", sub.endpoint);
+              }
+            }
+          })
+        );
+      }
+      logger.info(`Processed daily notifications for ${Object.keys(subsByUser).length} users.`);
     } catch (err) {
       logger.error("Fatal error in daily job:", err);
     }
-  },
+  }
 );
 
 /**
@@ -102,55 +128,80 @@ exports.sendDailyNotification = onSchedule(
 exports.sendWeeklyNotification = onSchedule(
   { schedule: "0 9 * * 1", timeZone: "Europe/Lisbon" },
   async (event) => {
-    logger.info("Starting weekly notification job...");
+    logger.info("Starting weekly notification job (Rich v1)...");
 
     try {
-      const { data: subs, error } = await sb
-        .from("push_subscriptions")
-        .select("*");
+      const { data: types } = await sb
+        .from("transaction_types")
+        .select("id, code")
+        .eq("code", "EXPENSE")
+        .single();
+      const expenseTypeId = types?.id;
 
-      if (error) {
-        logger.error("Supabase Error:", error);
-        return;
-      }
+      const { data: subs, error } = await sb.from("push_subscriptions").select("*");
+      if (error || !subs?.length) return;
 
-      if (!subs || subs.length === 0) {
-        logger.info("No subscriptions found.");
-        return;
-      }
-
-      const payload = JSON.stringify({
-        title: "Resumo Semanal",
-        body: "O teu relatório financeiro da semana já está disponível.",
-        icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
-        url: "https://wisebudget-financaspessoais.web.app/#/",
+      const subsByUser = {};
+      subs.forEach((sub) => {
+        if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
+        subsByUser[sub.user_id].push(sub);
       });
 
-      const promises = subs.map(async (sub) => {
-        const pushConfig = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth,
-          },
-        };
+      // Calculate last 7 days
+      const today = new Date();
+      const lastWeek = new Date(today);
+      lastWeek.setDate(today.getDate() - 7);
+      const fromDate = lastWeek.toISOString().slice(0, 10);
+      const toDate = today.toISOString().slice(0, 10);
 
-        try {
-          await webpush.sendNotification(pushConfig, payload);
-          return { success: true };
-        } catch (err) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
-            await sb
-              .from("push_subscriptions")
-              .delete()
-              .eq("endpoint", sub.endpoint);
+      for (const userId of Object.keys(subsByUser)) {
+        let bodyText = "O teu relatório financeiro da semana já está disponível.";
+        
+        if (expenseTypeId) {
+          const { data: txs } = await sb
+            .from("transactions")
+            .select("amount")
+            .eq("user_id", userId)
+            .gte("date", fromDate)
+            .lte("date", toDate)
+            .eq("type_id", expenseTypeId);
+
+          if (txs && txs.length > 0) {
+            const total = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+            const formatter = new Intl.NumberFormat("pt-PT", {
+              style: "currency",
+              currency: "EUR",
+            });
+            bodyText = `Total gasto esta semana: ${formatter.format(total)}`;
+          } else {
+             bodyText = "Sem despesas registadas esta semana.";
           }
-          return { success: false, err };
         }
-      });
 
-      await Promise.all(promises);
+        const payload = JSON.stringify({
+          title: "Resumo Semanal",
+          body: bodyText,
+          icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+          badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+          url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+        });
+
+        const userSubs = subsByUser[userId];
+        await Promise.all(
+          userSubs.map(async (sub) => {
+            try {
+              await webpush.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                payload
+              );
+            } catch (err) {
+              if (err.statusCode === 410 || err.statusCode === 404) {
+                await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+              }
+            }
+          })
+        );
+      }
       logger.info("Weekly notifications sent.");
     } catch (err) {
       logger.error("Fatal error in weekly job:", err);
@@ -205,3 +256,84 @@ exports.testNotification = onRequest(async (req, res) => {
     }
   });
 });
+
+/**
+ * DEBUG: Run every minute to test connectivity
+ */
+exports.debugTicker = onSchedule(
+  { schedule: "* * * * *", timeZone: "Europe/Lisbon" },
+  async (event) => {
+    logger.info("DEBUG TICKER: Starting Rich...");
+    
+    // 1. Get Expense Type ID
+    const { data: types } = await sb
+      .from("transaction_types")
+      .select("id, code")
+      .eq("code", "EXPENSE")
+      .single();
+    const expenseTypeId = types?.id;
+
+    const { data: subs } = await sb.from("push_subscriptions").select("*");
+    if (!subs?.length) return;
+
+    const subsByUser = {};
+    subs.forEach((sub) => {
+      if (!subsByUser[sub.user_id]) subsByUser[sub.user_id] = [];
+      subsByUser[sub.user_id].push(sub);
+    });
+
+    const isEven = new Date().getMinutes() % 2 === 0;
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const userId of Object.keys(subsByUser)) {
+      let bodyText = "Abre a app para veres o teu resumo.";
+      
+      if (expenseTypeId) {
+        const { data: txs } = await sb
+          .from("transactions")
+          .select("amount")
+          .eq("user_id", userId)
+          .eq("date", today)
+          .eq("type_id", expenseTypeId);
+
+        if (txs && txs.length > 0) {
+          const total = txs.reduce((sum, t) => sum + Number(t.amount), 0);
+          const formatter = new Intl.NumberFormat("pt-PT", {
+            style: "currency",
+            currency: "EUR",
+          });
+          bodyText = isEven 
+            ? `(Teste) Gasto hoje: ${formatter.format(total)}`
+            : `(Teste) Resumo disponível. Toca para ver.`;
+        } else {
+          bodyText = "(Teste) Sem despesas hoje.";
+        }
+      }
+
+      const payload = JSON.stringify({
+        title: isEven ? "Resumo Diário (Rich)" : "Resumo Semanal (Rich)",
+        body: bodyText,
+        icon: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+        badge: "https://wisebudget-financaspessoais.web.app/icon-192.png",
+        url: "https://wisebudget-financaspessoais.web.app/#/transactions",
+      });
+
+      const userSubs = subsByUser[userId];
+      await Promise.all(
+        userSubs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              payload
+            );
+            logger.info(`DEBUG: Sent to ${sub.endpoint.slice(0, 20)}...`);
+          } catch (err) {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+               await sb.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+            }
+          }
+        })
+      );
+    }
+  }
+);
