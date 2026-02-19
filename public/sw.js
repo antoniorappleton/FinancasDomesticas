@@ -1,6 +1,6 @@
 /* global self, clients, fetch, Request, Response, caches, Notification */
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v78";
+const VERSION = "v79";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -190,7 +190,7 @@ self.addEventListener("push", (event) => {
     body: data.body,
     icon: withBase("/icon-192.png"),
     badge: withBase("/icon-192.png"), // Badge de sistema (pequeno)
-    data: data.url || withBase("/")
+    data: data.url || withBase("/"),
   };
 
   event.waitUntil(self.registration.showNotification(data.title, options));
@@ -199,17 +199,23 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const target = (event.notification.data && event.notification.data.url) || withBase("/");
+  const target =
+    (event.notification.data && event.notification.data.url) || withBase("/");
   const urlToOpen = new URL(target, self.location.origin).href;
 
   event.waitUntil(
     (async () => {
-      const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+      const allClients = await clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
 
       for (const client of allClients) {
         // Normaliza match de URL para evitar falhas no Android
-        const clientUrl = new URL(client.url).origin + new URL(client.url).pathname;
-        const targetUrl = new URL(urlToOpen).origin + new URL(urlToOpen).pathname;
+        const clientUrl =
+          new URL(client.url).origin + new URL(client.url).pathname;
+        const targetUrl =
+          new URL(urlToOpen).origin + new URL(urlToOpen).pathname;
 
         if (clientUrl === targetUrl && "focus" in client) {
           if ("navigate" in client) client.navigate(urlToOpen);
@@ -217,6 +223,6 @@ self.addEventListener("notificationclick", (event) => {
         }
       }
       if (clients.openWindow) return clients.openWindow(urlToOpen);
-    })()
+    })(),
   );
 });

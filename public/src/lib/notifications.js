@@ -3,7 +3,8 @@
  * NotificationManager - Gestor de Notificações Web Push
  */
 export const NotificationManager = {
-  vapidPublicKey: "BIYQW2zMiKG96ZbDUNgHn3wXQxU6lk2-QYBDPhWkeBnP_tK4oE6-goKXPFBruQVSM6BL3uBOV6Q0CRpwUkdTecU",
+  vapidPublicKey:
+    "BH0rnMSjXoeBnrHJiQu1TXI4RS8GTIhLsOPhyp0Dnc2tQBstlJu91opBmPQXtdEFrEwGE_jrVcy2CyQ0XhuLOL4",
 
   /**
    * Inicializa o gestor, verifica suporte e estado atual.
@@ -16,7 +17,7 @@ export const NotificationManager = {
     return {
       supported: true,
       permission: Notification.permission,
-      pwa: window.matchMedia("(display-mode: standalone)").matches
+      pwa: window.matchMedia("(display-mode: standalone)").matches,
     };
   },
 
@@ -34,15 +35,17 @@ export const NotificationManager = {
   async subscribe() {
     try {
       const registration = await navigator.serviceWorker.ready;
-      
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey)
+        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
       });
 
       const json = subscription.toJSON();
       const sb = window.sb;
-      const { data: { user } } = await sb.auth.getUser();
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
 
       if (!user) throw new Error("Utilizador não autenticado.");
 
@@ -52,11 +55,11 @@ export const NotificationManager = {
         p256dh: json.keys.p256dh,
         auth: json.keys.auth,
         user_agent: navigator.userAgent,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await sb.from("push_subscriptions").upsert(payload, { 
-        onConflict: "user_id, endpoint" 
+      const { error } = await sb.from("push_subscriptions").upsert(payload, {
+        onConflict: "user_id, endpoint",
       });
 
       if (error) throw error;
@@ -73,17 +76,20 @@ export const NotificationManager = {
   async setPreferences(patch) {
     try {
       const sb = window.sb;
-      const { data: { user } } = await sb.auth.getUser();
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
       if (!user) return false;
 
       // Buscar atuais para garantir merge limpo
-      const current = await this.getPreferences() || {};
+      const current = (await this.getPreferences()) || {};
       const next = { ...current, ...patch };
 
-      const { error } = await sb.from("profiles")
+      const { error } = await sb
+        .from("profiles")
         .update({ notification_settings: next })
         .eq("id", user.id);
-      
+
       if (error) throw error;
       return true;
     } catch (err) {
@@ -99,15 +105,13 @@ export const NotificationManager = {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      
+
       if (subscription) {
         const endpoint = subscription.endpoint;
         await subscription.unsubscribe();
 
         const sb = window.sb;
-        await sb.from("push_subscriptions")
-          .delete()
-          .eq("endpoint", endpoint);
+        await sb.from("push_subscriptions").delete().eq("endpoint", endpoint);
       }
       return true;
     } catch (err) {
@@ -122,14 +126,17 @@ export const NotificationManager = {
   async getPreferences() {
     try {
       const sb = window.sb;
-      const { data: { user } } = await sb.auth.getUser();
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
       if (!user) return null;
 
-      const { data, error } = await sb.from("profiles")
+      const { data, error } = await sb
+        .from("profiles")
         .select("notification_settings")
         .eq("id", user.id)
         .single();
-      
+
       if (error) throw error;
       return data.notification_settings;
     } catch (err) {
@@ -144,13 +151,16 @@ export const NotificationManager = {
   async updatePreferences(prefs) {
     try {
       const sb = window.sb;
-      const { data: { user } } = await sb.auth.getUser();
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
       if (!user) return false;
 
-      const { error } = await sb.from("profiles")
+      const { error } = await sb
+        .from("profiles")
         .update({ notification_settings: prefs })
         .eq("id", user.id);
-      
+
       if (error) throw error;
       return true;
     } catch (err) {
@@ -175,7 +185,7 @@ export const NotificationManager = {
       outputArray[i] = rawData.charCodeAt(i);
     }
     return outputArray;
-  }
+  },
 };
 
 window.NotificationManager = NotificationManager;
