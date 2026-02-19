@@ -2263,11 +2263,12 @@ export async function init({ sb, outlet } = {}) {
             <div class="carousel-track" id="upcoming-track">
               ${upcoming
                 .map((u) => {
-                  const displayName = String(u.name || "")
-                    .split(">")
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                    .at(-1) || "";
+                  const displayName =
+                    String(u.name || "")
+                      .split(">")
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                      .at(-1) || "";
 
                   let badgeClass = "badge-ok";
                   let statusText = `${u.daysLeft} dias`;
@@ -2817,7 +2818,8 @@ export async function init({ sb, outlet } = {}) {
   if (fHash) fHash.textContent = "";
 
   // ====== Colapsáveis com SVG inline (após título) ======
-  (function enhanceCollapsibles(root = document) {
+  // ====== Colapsáveis com SVG inline (após título) ======
+  function enhanceCollapsibles(root) {
     const LS_KEY = "wb:dash:collapsed";
     const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
 
@@ -2872,7 +2874,7 @@ export async function init({ sb, outlet } = {}) {
         );
         btn.innerHTML = collapsed ? btn.dataset.iconDown : btn.dataset.iconUp;
 
-        btn.addEventListener("click", () => {
+        btn.onclick = () => {
           card.classList.toggle("is-collapsed");
           const isCollapsed = card.classList.contains("is-collapsed");
           btn.setAttribute("aria-expanded", String(!isCollapsed));
@@ -2887,9 +2889,10 @@ export async function init({ sb, outlet } = {}) {
           localStorage.setItem(LS_KEY, JSON.stringify(saved));
           if (!isCollapsed)
             setTimeout(() => window.dispatchEvent(new Event("resize")), 120);
-        });
+        };
       });
-  })();
+  }
+  enhanceCollapsibles(outlet);
 
   // ====== Mini-cards + modal ======
   try {

@@ -3916,3 +3916,11 @@ label,
   background: var(--ui-fab-bg) !important;
   color: #ffffff !important;
 }
+
+/* === Collapsible Cards === */
+.card.is-collapsed .card__content {
+  grid-template-rows: 0fr;
+  padding-bottom: 0;
+  padding-top: 0;
+  opacity: 0;
+}
