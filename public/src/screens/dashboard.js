@@ -841,10 +841,15 @@ function setupMiniCardHider(outletEl) {
 }
 
 // =============================== DASHBOARD INIT ===============================
+import { MiniReport } from "../components/MiniReport.js";
+
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
   if (sb) await loadTheme(sb);
   outlet = outlet || document.getElementById("outlet");
+
+  // Expose for debug
+  window.MiniReport = MiniReport;
 
   // -------- Chart.js on-demand --------
   await ensureChartStack();
@@ -2998,6 +3003,9 @@ export async function init({ sb, outlet } = {}) {
     const miniDots = outlet.querySelector("#mini-dots");
     setupCarousel(miniBox, miniTrack, miniDots);
   }
+
+  // Trigger Mini Report
+  setTimeout(() => MiniReport.checkAndShow(), 1500);
 
   return cleanup;
 }

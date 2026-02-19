@@ -597,69 +597,108 @@ export async function init({ sb, outlet } = {}) {
     const findCat = (nameStr, kind) => {
       const normName = premiumNormalize(nameStr);
       const parts = normName.split(">").map((p) => p.trim());
-      
+
       if (parts.length > 1) {
         // Parent > Child
         const pName = parts[0];
         const cName = parts[1];
-        const parent = cats.data.find(c => !c.parent_id && premiumNormalize(c.name) === pName && c.kind === kind);
+        const parent = cats.data.find(
+          (c) =>
+            !c.parent_id &&
+            premiumNormalize(c.name) === pName &&
+            c.kind === kind,
+        );
         if (!parent) return null;
-        return cats.data.find(c => c.parent_id === parent.id && premiumNormalize(c.name) === cName) || null;
+        return (
+          cats.data.find(
+            (c) =>
+              c.parent_id === parent.id && premiumNormalize(c.name) === cName,
+          ) || null
+        );
       } else {
         // Simple name
-        return cats.data.find(c => premiumNormalize(c.name) === normName && c.kind === kind) || null;
+        return (
+          cats.data.find(
+            (c) => premiumNormalize(c.name) === normName && c.kind === kind,
+          ) || null
+        );
       }
     };
 
     return {
-      accounts: new Map(accs.data.map(r => [premiumNormalize(r.name), r.id])),
+      accounts: new Map(accs.data.map((r) => [premiumNormalize(r.name), r.id])),
       categories: findCat,
-      regularities: new Map(regs.data.map(r => [premiumNormalize(r.name_pt), r.id])),
-      methods: new Map(pms.data.map(r => [premiumNormalize(r.name_pt), r.id])),
-      statuses: new Map(sts.data.map(r => [premiumNormalize(r.name_pt), r.id])),
-      types: new Map(tts.data.map(r => [premiumNormalize(r.code), r.id])),
+      regularities: new Map(
+        regs.data.map((r) => [premiumNormalize(r.name_pt), r.id]),
+      ),
+      methods: new Map(
+        pms.data.map((r) => [premiumNormalize(r.name_pt), r.id]),
+      ),
+      statuses: new Map(
+        sts.data.map((r) => [premiumNormalize(r.name_pt), r.id]),
+      ),
+      types: new Map(tts.data.map((r) => [premiumNormalize(r.code), r.id])),
     };
   }
 
   function isWiseBudgetTemplate(headers) {
     const required = ["Data", "Tipo", "Conta", "Categoria", "Montante"];
-    const normHeaders = headers.map(h => premiumNormalize(h));
-    return required.every(r => normHeaders.includes(premiumNormalize(r)));
+    const normHeaders = headers.map((h) => premiumNormalize(h));
+    return required.every((r) => normHeaders.includes(premiumNormalize(r)));
   }
 
   async function parseWiseBudgetFile(rows, maps, headers) {
     const col = (name) => {
-      const idx = headers.findIndex((h) => premiumNormalize(h) === premiumNormalize(name));
+      const idx = headers.findIndex(
+        (h) => premiumNormalize(h) === premiumNormalize(name),
+      );
       return idx;
     };
 
     const res = [];
-    for (let i = 2; i < rows.length; i++) { // Skip headers and hints
+    for (let i = 2; i < rows.length; i++) {
+      // Skip headers and hints
       const r = rows[i];
       if (!r || r.length === 0) continue;
 
       const tipoStr = String(r[col("Tipo")] || "").toUpperCase();
-      const kind = tipoStr === "INCOME" ? "income" : (tipoStr === "SAVINGS" ? "savings" : "expense");
-      
+      const kind =
+        tipoStr === "INCOME"
+          ? "income"
+          : tipoStr === "SAVINGS"
+            ? "savings"
+            : "expense";
+
       const cat = maps.categories(r[col("Categoria")], kind);
       const accId = maps.accounts.get(premiumNormalize(r[col("Conta")]));
-      
+
       const item = {
         date: excelDateToISO(r[col("Data")]),
         amount: Number(r[col("Montante")] || 0),
         description: r[col("Descrição")] || (cat ? cat.name : "Importação"),
         category_id: cat ? cat.id : null,
         account_id: accId || null,
-        type_id: maps.types.get(premiumNormalize(tipoStr)) || maps.types.get(premiumNormalize("EXPENSE")),
-        regularity_id: maps.regularities.get(premiumNormalize(r[col("Regularidade")])) || null,
-        payment_method_id: maps.methods.get(premiumNormalize(r[col("Método")])) || null,
-        status_id: maps.statuses.get(premiumNormalize(r[col("Estado")])) || null,
-        expense_nature: tipoStr === "EXPENSE" ? (premiumNormalize(r[col("Natureza")]) === "fixed" ? "fixed" : "variable") : null,
+        type_id:
+          maps.types.get(premiumNormalize(tipoStr)) ||
+          maps.types.get(premiumNormalize("EXPENSE")),
+        regularity_id:
+          maps.regularities.get(premiumNormalize(r[col("Regularidade")])) ||
+          null,
+        payment_method_id:
+          maps.methods.get(premiumNormalize(r[col("Método")])) || null,
+        status_id:
+          maps.statuses.get(premiumNormalize(r[col("Estado")])) || null,
+        expense_nature:
+          tipoStr === "EXPENSE"
+            ? premiumNormalize(r[col("Natureza")]) === "fixed"
+              ? "fixed"
+              : "variable"
+            : null,
         location: r[col("Localização")] || null,
         notes: r[col("Notas")] || null,
         selected: true,
-        confidence: (cat && accId) ? 1.0 : 0.5,
-        _isPremium: true
+        confidence: cat && accId ? 1.0 : 0.5,
+        _isPremium: true,
       };
 
       if (tipoStr === "EXPENSE") item.amount = -Math.abs(item.amount);
@@ -780,7 +819,10 @@ export async function init({ sb, outlet } = {}) {
     }
     return new Promise((resolve, reject) => {
       const r = new FileReader();
-      r.onerror = () => reject(new Error("Não foi possível ler o ficheiro (FileReader error)."));
+      r.onerror = () =>
+        reject(
+          new Error("Não foi possível ler o ficheiro (FileReader error)."),
+        );
       r.onload = () => resolve(r.result);
       r.readAsArrayBuffer(file);
     });
@@ -1225,10 +1267,14 @@ export async function init({ sb, outlet } = {}) {
       setImpInfo("A preparar ficheiro...");
 
       // Diagnostic Log for Android/Mobile
-      console.log(`[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`);
+      console.log(
+        `[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`,
+      );
 
       if (file.size === 0) {
-        throw new Error("O ficheiro selecionado tem 0 bytes. Verifique as permissões de 'Ficheiros' do seu browser ou da App do Google.");
+        throw new Error(
+          "O ficheiro selecionado tem 0 bytes. Verifique as permissões de 'Ficheiros' do seu browser ou da App do Google.",
+        );
       }
 
       setImpInfo("A preparar ficheiro...");
@@ -1401,9 +1447,9 @@ export async function init({ sb, outlet } = {}) {
     const state = await NotificationManager.init();
     if (state.supported) {
       sec.style.display = "block";
-      
+
       const isGranted = state.permission === "granted";
-      
+
       // Se já tem permissão, vamos ver se tem subscrição ativa no browser
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
@@ -1435,9 +1481,10 @@ export async function init({ sb, outlet } = {}) {
 
     toggleBtn?.addEventListener("click", async () => {
       const isSubscribed = toggleBtn.textContent === "Desativar";
-      
+
       if (isSubscribed) {
-        if (!confirm("Deseja desativar as notificações neste dispositivo?")) return;
+        if (!confirm("Deseja desativar as notificações neste dispositivo?"))
+          return;
         const ok = await NotificationManager.unsubscribe();
         if (ok) initNotificationUI();
       } else {
@@ -1465,11 +1512,11 @@ export async function init({ sb, outlet } = {}) {
       if (window.Notification && Notification.permission === "granted") {
         try {
           const reg = await navigator.serviceWorker.ready;
-          await reg.showNotification("WiseBudget", { 
+          await reg.showNotification("WiseBudget", {
             body: "Notificação de teste ✅\nA infraestrutura está pronta!",
             icon: "./icon-192.png",
             badge: "./icon-192.png",
-            vibrate: [200, 100, 200]
+            vibrate: [200, 100, 200],
           });
           Toast.success("Pedido de notificação enviado!");
         } catch (err) {
@@ -1486,8 +1533,9 @@ export async function init({ sb, outlet } = {}) {
     if (footer && !$("#debug-version")) {
       const vDiv = document.createElement("div");
       vDiv.id = "debug-version";
-      vDiv.style = "text-align:center; font-size:10px; color:#94a3b8; margin-top:20px; opacity:0.6";
-      vDiv.textContent = `App Version: ${window.APP_VERSION || 'unknown'}`;
+      vDiv.style =
+        "text-align:center; font-size:10px; color:#94a3b8; margin-top:20px; opacity:0.6";
+      vDiv.textContent = `App Version: ${window.APP_VERSION || "unknown"}`;
       footer.appendChild(vDiv);
     }
 
@@ -1498,12 +1546,18 @@ export async function init({ sb, outlet } = {}) {
         smart: $("#ntf-smart").checked,
         digest: $("#ntf-digest").checked,
         quiet_start: $("#ntf-quiet-start").value,
-        quiet_end: $("#ntf-quiet-end").value
+        quiet_end: $("#ntf-quiet-end").value,
       };
       await NotificationManager.setPreferences(patch);
     };
 
-    ["ntf-urgent", "ntf-smart", "ntf-digest", "ntf-quiet-start", "ntf-quiet-end"].forEach(id => {
+    [
+      "ntf-urgent",
+      "ntf-smart",
+      "ntf-digest",
+      "ntf-quiet-start",
+      "ntf-quiet-end",
+    ].forEach((id) => {
       $("#" + id)?.addEventListener("change", savePrefs);
     });
   }
@@ -1511,6 +1565,27 @@ export async function init({ sb, outlet } = {}) {
   // Init
   loadAccounts();
   initNotificationUI();
+
+  // Privacy Toggle
+  const savedPrivacy = localStorage.getItem("wb:settings:privacy") === "true";
+  if (dom.togglePrivacy) {
+    dom.togglePrivacy.checked = savedPrivacy;
+    dom.togglePrivacy.onchange = () => {
+      localStorage.setItem("wb:settings:privacy", dom.togglePrivacy.checked);
+      location.reload();
+    };
+  }
+
+  // Daily Report Toggle
+  const savedReport =
+    localStorage.getItem("wb:settings:dailyReport") !== "false"; // Default true
+  const toggleReport = document.getElementById("toggle-daily-report");
+  if (toggleReport) {
+    toggleReport.checked = savedReport;
+    toggleReport.onchange = () => {
+      localStorage.setItem("wb:settings:dailyReport", toggleReport.checked);
+    };
+  }
 
   document
     .querySelector("#imp-export-template")
@@ -2307,7 +2382,7 @@ export async function init({ sb, outlet } = {}) {
     const M = 40;
     let y = M;
 
-    const FOOTER_SAFE = 44;                 // reserva real para texto do footer + respiro
+    const FOOTER_SAFE = 44; // reserva real para texto do footer + respiro
     const CONTENT_BOTTOM = H - M - FOOTER_SAFE;
 
     doc.setProperties({
@@ -2418,9 +2493,9 @@ export async function init({ sb, outlet } = {}) {
       const c = document.querySelector(sel);
       if (!c) return y2;
 
-      const ratio = c.height / c.width || (9 / 16);
+      const ratio = c.height / c.width || 9 / 16;
       let drawW = w;
-      let drawH = (opts.fixedH ?? (w * ratio));
+      let drawH = opts.fixedH ?? w * ratio;
 
       // clamp sem distorção: se for alto demais, reduz também a largura para manter aspect ratio
       if (opts.maxH && drawH > opts.maxH) {
@@ -2433,14 +2508,23 @@ export async function init({ sb, outlet } = {}) {
       const xOffset = (w - drawW) / 2;
 
       const img = c.toDataURL("image/png", 1.0);
-      doc.addImage(img, "PNG", x + xOffset, y2, drawW, drawH, undefined, "FAST");
+      doc.addImage(
+        img,
+        "PNG",
+        x + xOffset,
+        y2,
+        drawW,
+        drawH,
+        undefined,
+        "FAST",
+      );
       return y2 + drawH;
     };
 
     const canvasHeightFor = (sel, w, maxH) => {
       const c = document.querySelector(sel);
       if (!c) return 0;
-      const ratio = c.height / c.width || (9 / 16);
+      const ratio = c.height / c.width || 9 / 16;
       let h = w * ratio;
       if (maxH && h > maxH) h = maxH;
       return h;
@@ -2474,12 +2558,17 @@ export async function init({ sb, outlet } = {}) {
     const halfW = (W - 2 * M - 20) / 2;
     const HALF_MAX_H = 170;
     const LEG_LH = 14;
-    const legendNeed = (arr) => (arr?.length ? (arr.length * LEG_LH + 22) : 0);
+    const legendNeed = (arr) => (arr?.length ? arr.length * LEG_LH + 22 : 0);
 
-    const needRow1 = 14 + Math.max(
-      canvasHeightFor("#rpt-cat-pie", halfW, HALF_MAX_H) + legendNeed(window._catLegendPDF || _catLegendPDF),
-      canvasHeightFor("#rpt-fixed-donut", halfW, HALF_MAX_H) + legendNeed(window._fixLegendPDF || _fixLegendPDF)
-    ) + 24;
+    const needRow1 =
+      14 +
+      Math.max(
+        canvasHeightFor("#rpt-cat-pie", halfW, HALF_MAX_H) +
+          legendNeed(window._catLegendPDF || _catLegendPDF),
+        canvasHeightFor("#rpt-fixed-donut", halfW, HALF_MAX_H) +
+          legendNeed(window._fixLegendPDF || _fixLegendPDF),
+      ) +
+      24;
 
     ensureSpace(needRow1);
     const row1Y = y;
@@ -2510,28 +2599,34 @@ export async function init({ sb, outlet } = {}) {
     const BLOCK_GAP = 24;
 
     // === LINHA 2: Evolução Mensal ===
-    const needSeries = TITLE_H + canvasHeightFor("#rpt-series", fullW, FULL_MAX_H) + BLOCK_GAP;
+    const needSeries =
+      TITLE_H + canvasHeightFor("#rpt-series", fullW, FULL_MAX_H) + BLOCK_GAP;
     ensureSpace(needSeries);
     doc.text("Evolução mensal", M, y);
     y += 12;
     y = canvasToPage("#rpt-series", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
     // === LINHA 3: Top 6 ===
-    const needTop = TITLE_H + canvasHeightFor("#rpt-top-exp", fullW, FULL_MAX_H) + BLOCK_GAP;
+    const needTop =
+      TITLE_H + canvasHeightFor("#rpt-top-exp", fullW, FULL_MAX_H) + BLOCK_GAP;
     ensureSpace(needTop);
     doc.text("Top 6 categorias de despesa", M, y);
     y += 12;
     y = canvasToPage("#rpt-top-exp", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
     // === LINHA 4: Regularidade ===
-    const needReg = TITLE_H + canvasHeightFor("#rpt-regularity", fullW, FULL_MAX_H) + BLOCK_GAP;
+    const needReg =
+      TITLE_H +
+      canvasHeightFor("#rpt-regularity", fullW, FULL_MAX_H) +
+      BLOCK_GAP;
     ensureSpace(needReg);
     doc.text("Despesas por regularidade", M, y);
     y += 12;
     y = canvasToPage("#rpt-regularity", M, y, fullW, { maxH: FULL_MAX_H }) + 24;
 
     // === LINHA 5: Taxa de esforço ===
-    const needEffort = TITLE_H + canvasHeightFor("#rpt-effort", fullW, FULL_MAX_H) + BLOCK_GAP;
+    const needEffort =
+      TITLE_H + canvasHeightFor("#rpt-effort", fullW, FULL_MAX_H) + BLOCK_GAP;
     ensureSpace(needEffort);
     doc.text("Taxa de esforço mensal (Fixa vs Total)", M, y);
     y += 12;
