@@ -1,67 +1,196 @@
-[debug] [2026-02-19T11:14:25.631Z] ----------------------------------------------------------------------
-[debug] [2026-02-19T11:14:25.636Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\anton\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions --debug
-[debug] [2026-02-19T11:14:25.637Z] CLI Version:   15.6.0
-[debug] [2026-02-19T11:14:25.637Z] Platform:      win32
-[debug] [2026-02-19T11:14:25.637Z] Node Version:  v24.13.0
-[debug] [2026-02-19T11:14:25.638Z] Time:          Thu Feb 19 2026 11:14:25 GMT+0000 (Hora padrão da Europa Ocidental)
-[debug] [2026-02-19T11:14:25.638Z] ----------------------------------------------------------------------
+[debug] [2026-02-19T11:20:48.359Z] ----------------------------------------------------------------------
+[debug] [2026-02-19T11:20:48.364Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\anton\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only functions --debug
+[debug] [2026-02-19T11:20:48.364Z] CLI Version:   15.6.0
+[debug] [2026-02-19T11:20:48.364Z] Platform:      win32
+[debug] [2026-02-19T11:20:48.364Z] Node Version:  v24.13.0
+[debug] [2026-02-19T11:20:48.365Z] Time:          Thu Feb 19 2026 11:20:48 GMT+0000 (Hora padrão da Europa Ocidental)
+[debug] [2026-02-19T11:20:48.365Z] ----------------------------------------------------------------------
 [debug] 
-[debug] [2026-02-19T11:14:28.870Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
-[debug] [2026-02-19T11:14:28.871Z] > authorizing via signed-in user (antonioappleton@gmail.com)
-[debug] [2026-02-19T11:14:28.872Z] [iam] checking project wisebudget-financaspessoais for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
-[debug] [2026-02-19T11:14:28.873Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:28.874Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:28.875Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
-[debug] [2026-02-19T11:14:28.875Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
-[debug] [2026-02-19T11:14:28.875Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
-[debug] [2026-02-19T11:14:29.584Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions 200
-[debug] [2026-02-19T11:14:29.584Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
-[debug] [2026-02-19T11:14:29.585Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:29.585Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:29.585Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions [none]
-[debug] [2026-02-19T11:14:29.585Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
-[debug] [2026-02-19T11:14:30.294Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions 200
-[debug] [2026-02-19T11:14:30.295Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-02-19T11:20:51.470Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-19T11:20:51.471Z] > authorizing via signed-in user (antonioappleton@gmail.com)
+[debug] [2026-02-19T11:20:51.472Z] [iam] checking project wisebudget-financaspessoais for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-02-19T11:20:51.473Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:51.473Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:51.474Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
+[debug] [2026-02-19T11:20:51.475Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:20:51.475Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-02-19T11:20:51.745Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions 200
+[debug] [2026-02-19T11:20:51.745Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-02-19T11:20:51.746Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:51.746Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:51.746Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-02-19T11:20:51.746Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-02-19T11:20:52.474Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2026-02-19T11:20:52.474Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/wisebudget-financaspessoais/serviceAccounts/wisebudget-financaspessoais@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
 [info] 
 [info] === Deploying to 'wisebudget-financaspessoais'...
 [info] 
 [info] i  deploying functions 
-[debug] [2026-02-19T11:14:30.301Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:30.301Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:30.301Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais [none]
-[debug] [2026-02-19T11:14:30.495Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais 200
-[debug] [2026-02-19T11:14:30.495Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais {"projectNumber":"253837748631","projectId":"wisebudget-financaspessoais","lifecycleState":"ACTIVE","name":"Wisebudget-FinancasPessoais","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-02-04T21:02:23.354234Z"}
+[debug] [2026-02-19T11:20:52.478Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.478Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.478Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais [none]
+[debug] [2026-02-19T11:20:52.666Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais 200
+[debug] [2026-02-19T11:20:52.667Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais {"projectNumber":"253837748631","projectId":"wisebudget-financaspessoais","lifecycleState":"ACTIVE","name":"Wisebudget-FinancasPessoais","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-02-04T21:02:23.354234Z"}
 [info] i  functions: preparing codebase default for deployment 
 [info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
 [info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
-[debug] [2026-02-19T11:14:30.500Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:30.500Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.669Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.669Z] Checked if tokens are valid: true, expires at: 1771501453832
 [info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
-[debug] [2026-02-19T11:14:30.501Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:30.501Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:30.501Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com [none]
-[debug] [2026-02-19T11:14:30.502Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com  x-goog-user-project=wisebudget-financaspessoais
-[debug] [2026-02-19T11:14:30.504Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com [none]
-[debug] [2026-02-19T11:14:30.504Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com  x-goog-user-project=wisebudget-financaspessoais
-[debug] [2026-02-19T11:14:31.328Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com 200
-[debug] [2026-02-19T11:14:31.328Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com [omitted]
+[debug] [2026-02-19T11:20:52.670Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.670Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:52.670Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com [none]
+[debug] [2026-02-19T11:20:52.670Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:20:52.672Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com [none]
+[debug] [2026-02-19T11:20:52.672Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:20:53.077Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com 200
+[debug] [2026-02-19T11:20:53.077Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com [omitted]
+[info] +  artifactregistry: required API artifactregistry.googleapis.com is enabled 
+[debug] [2026-02-19T11:20:53.545Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com 200
+[debug] [2026-02-19T11:20:53.545Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com [omitted]
 [warn] !  functions: missing required API cloudbuild.googleapis.com. Enabling now... 
-[debug] [2026-02-19T11:14:31.329Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:31.329Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:31.329Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable [none]
-[debug] [2026-02-19T11:14:31.329Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable  x-goog-user-project=wisebudget-financaspessoais
-[debug] [2026-02-19T11:14:31.335Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com 200
-[debug] [2026-02-19T11:14:31.336Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com [omitted]
-[warn] !  artifactregistry: missing required API artifactregistry.googleapis.com. Enabling now... 
-[debug] [2026-02-19T11:14:31.336Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:31.336Z] Checked if tokens are valid: true, expires at: 1771501453832
-[debug] [2026-02-19T11:14:31.337Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com:enable [none]
-[debug] [2026-02-19T11:14:31.337Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com:enable  x-goog-user-project=wisebudget-financaspessoais
-[debug] [2026-02-19T11:14:32.100Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com:enable 400
-[debug] [2026-02-19T11:14:32.100Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/artifactregistry.googleapis.com:enable [omitted]
-[debug] [2026-02-19T11:14:32.120Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable 400
-[debug] [2026-02-19T11:14:32.120Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable [omitted]
-[error] 
-[error] Error: Your project wisebudget-financaspessoais must be on the Blaze (pay-as-you-go) plan to complete this command. Required API artifactregistry.googleapis.com can't be enabled until the upgrade is complete. To upgrade, visit the following URL:
+[debug] [2026-02-19T11:20:53.546Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:53.546Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:20:53.546Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable [none]
+[debug] [2026-02-19T11:20:53.546Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:20:54.150Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable 200
+[debug] [2026-02-19T11:20:54.150Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/cloudbuild.googleapis.com:enable [omitted]
+[debug] [2026-02-19T11:21:04.171Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:04.172Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:04.172Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig [none]
+[debug] [2026-02-19T11:21:04.507Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig 200
+[debug] [2026-02-19T11:21:04.507Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/wisebudget-financaspessoais/adminSdkConfig {"projectId":"wisebudget-financaspessoais","storageBucket":"wisebudget-financaspessoais.firebasestorage.app"}
+[debug] [2026-02-19T11:21:04.510Z] Validating nodejs source
+[warn] !  functions: Runtime Node.js 20 will be deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[debug] [2026-02-19T11:21:06.559Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "cors": "^2.8.6",
+    "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.4.1"
+  },
+  "private": true
+}
+[debug] [2026-02-19T11:21:06.560Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-02-19T11:21:06.562Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-02-19T11:21:06.574Z] Found firebase-functions binary at 'C:\Users\anton\Desktop\Programing_Projects\homefinance\functions\node_modules\.bin\firebase-functions'
+[info] Serving at port 8490
 
-https://console.firebase.google.com/project/wisebudget-financaspessoais/usage/details
+[debug] [2026-02-19T11:21:08.612Z] Got response from /__/functions.yaml {"endpoints":{"sendDailyNotification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"scheduleTrigger":{"schedule":"0 9 * * *","retryConfig":{},"timeZone":"Europe/Lisbon"},"entryPoint":"sendDailyNotification"},"testNotification":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":10,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"httpsTrigger":{},"entryPoint":"testNotification"}},"specVersion":"v1alpha1","requiredAPIs":[{"api":"cloudscheduler.googleapis.com","reason":"Needed for scheduled functions."}],"extensions":{}}
+[info] i  extensions: ensuring required API firebaseextensions.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:12.676Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:12.676Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:12.676Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com [none]
+[debug] [2026-02-19T11:21:12.677Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:21:13.526Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com 200
+[debug] [2026-02-19T11:21:13.526Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com [omitted]
+[warn] !  extensions: missing required API firebaseextensions.googleapis.com. Enabling now... 
+[debug] [2026-02-19T11:21:13.526Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:13.527Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:13.527Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com:enable [none]
+[debug] [2026-02-19T11:21:13.527Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com:enable  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:21:14.075Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com:enable 200
+[debug] [2026-02-19T11:21:14.075Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/wisebudget-financaspessoais/services/firebaseextensions.googleapis.com:enable [omitted]
+[debug] [2026-02-19T11:21:24.099Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-02-19T11:21:24.100Z] > authorizing via signed-in user (antonioappleton@gmail.com)
+[debug] [2026-02-19T11:21:24.100Z] [iam] checking project wisebudget-financaspessoais for permissions ["firebase.projects.get","firebaseextensions.instances.list"]
+[debug] [2026-02-19T11:21:24.100Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:24.100Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:24.101Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions [none]
+[debug] [2026-02-19T11:21:24.101Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions  x-goog-user-project=wisebudget-financaspessoais
+[debug] [2026-02-19T11:21:24.101Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-02-19T11:21:24.781Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions 200
+[debug] [2026-02-19T11:21:24.781Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/wisebudget-financaspessoais:testIamPermissions {"permissions":["firebase.projects.get","firebaseextensions.instances.list"]}
+[debug] [2026-02-19T11:21:24.782Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:24.782Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:24.783Z] >>> [apiv2][query] GET https://firebaseextensions.googleapis.com/v1beta/projects/wisebudget-financaspessoais/instances pageSize=100&pageToken=
+[debug] [2026-02-19T11:21:26.529Z] <<< [apiv2][status] GET https://firebaseextensions.googleapis.com/v1beta/projects/wisebudget-financaspessoais/instances 200
+[debug] [2026-02-19T11:21:26.530Z] <<< [apiv2][body] GET https://firebaseextensions.googleapis.com/v1beta/projects/wisebudget-financaspessoais/instances {}
+[info] i  functions: preparing functions directory for uploading... 
+[info] i  functions: packaged C:\Users\anton\Desktop\Programing_Projects\homefinance\functions (71.53 KB) for uploading 
+[debug] [2026-02-19T11:21:26.577Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:26.577Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:26.578Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/wisebudget-financaspessoais/locations/-/functions [none]
+[debug] [2026-02-19T11:21:27.242Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/wisebudget-financaspessoais/locations/-/functions 200
+[debug] [2026-02-19T11:21:27.243Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/wisebudget-financaspessoais/locations/-/functions {}
+[debug] [2026-02-19T11:21:27.244Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:27.244Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:27.244Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/wisebudget-financaspessoais/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-02-19T11:21:28.214Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/wisebudget-financaspessoais/locations/-/functions 200
+[debug] [2026-02-19T11:21:28.214Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/wisebudget-financaspessoais/locations/-/functions {}
+[info] i  functions: ensuring required API cloudscheduler.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:28.218Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:28.218Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:28.218Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com [none]
+[debug] [2026-02-19T11:21:28.218Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:29.058Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com 200
+[debug] [2026-02-19T11:21:29.059Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com [omitted]
+[warn] !  functions: missing required API cloudscheduler.googleapis.com. Enabling now... 
+[debug] [2026-02-19T11:21:29.059Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:29.059Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:29.059Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com:enable [none]
+[debug] [2026-02-19T11:21:29.059Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com:enable  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:30.072Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com:enable 200
+[debug] [2026-02-19T11:21:30.073Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/cloudscheduler.googleapis.com:enable [omitted]
+[info] i  functions: ensuring required API run.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:40.092Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.092Z] Checked if tokens are valid: true, expires at: 1771501453832
+[info] i  functions: ensuring required API eventarc.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:40.093Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.093Z] Checked if tokens are valid: true, expires at: 1771501453832
+[info] i  functions: ensuring required API pubsub.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:40.094Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.094Z] Checked if tokens are valid: true, expires at: 1771501453832
+[info] i  functions: ensuring required API storage.googleapis.com is enabled... 
+[debug] [2026-02-19T11:21:40.095Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.095Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.095Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com [none]
+[debug] [2026-02-19T11:21:40.096Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.098Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com [none]
+[debug] [2026-02-19T11:21:40.098Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.101Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/pubsub.googleapis.com [none]
+[debug] [2026-02-19T11:21:40.101Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/pubsub.googleapis.com  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.102Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/storage.googleapis.com [none]
+[debug] [2026-02-19T11:21:40.102Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/storage.googleapis.com  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.942Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com 200
+[debug] [2026-02-19T11:21:40.942Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com [omitted]
+[warn] !  functions: missing required API eventarc.googleapis.com. Enabling now... 
+[debug] [2026-02-19T11:21:40.943Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.943Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.943Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com:enable [none]
+[debug] [2026-02-19T11:21:40.943Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com:enable  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.956Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com 200
+[debug] [2026-02-19T11:21:40.956Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com [omitted]
+[warn] !  functions: missing required API run.googleapis.com. Enabling now... 
+[debug] [2026-02-19T11:21:40.956Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.956Z] Checked if tokens are valid: true, expires at: 1771501453832
+[debug] [2026-02-19T11:21:40.957Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com:enable [none]
+[debug] [2026-02-19T11:21:40.957Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com:enable  x-goog-user-project=253837748631
+[debug] [2026-02-19T11:21:40.968Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/pubsub.googleapis.com 200
+[debug] [2026-02-19T11:21:40.968Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/pubsub.googleapis.com [omitted]
+[info] +  functions: required API pubsub.googleapis.com is enabled 
+[debug] [2026-02-19T11:21:41.000Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/storage.googleapis.com 200
+[debug] [2026-02-19T11:21:41.000Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/253837748631/services/storage.googleapis.com [omitted]
+[info] +  functions: required API storage.googleapis.com is enabled 
+[debug] [2026-02-19T11:21:41.634Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com:enable 200
+[debug] [2026-02-19T11:21:41.634Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/eventarc.googleapis.com:enable [omitted]
+[debug] [2026-02-19T11:21:41.652Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com:enable 200
+[debug] [2026-02-19T11:21:41.652Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/253837748631/services/run.googleapis.com:enable [omitted]
