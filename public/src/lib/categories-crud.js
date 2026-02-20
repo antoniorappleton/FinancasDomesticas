@@ -69,7 +69,7 @@ export const Categories = (() => {
         throw new Error("Já existe uma categoria com esse nome no mesmo nível.");
       throw error;
     }
-    if (!data) throw new Error("Não podes editar categorias de sistema.");
+    if (!data) throw new Error("Não é possível editar categorias de sistema.");
     return data;
   }
 

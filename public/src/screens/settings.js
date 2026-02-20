@@ -44,7 +44,7 @@ export async function init({ sb, outlet } = {}) {
         sec.style.border = "2px solid var(--ui-fab-bg)"; // Highlight
         const inp = document.getElementById("set-new-pass");
         if (inp) inp.focus();
-        Toast.info("Define a tua nova palavra-passe aqui.");
+        Toast.info("Defina a nova palavra-passe aqui.");
       }
     }
   }, 500);
@@ -830,7 +830,8 @@ export async function init({ sb, outlet } = {}) {
 
   function isPdfByMagic(ab) {
     if (!ab || ab.byteLength < 4) return false;
-    const u8 = new Uint8Array(ab, 0, 4);
+    // Use subarray() instead of byteOffset constructor — safer on Android WebView
+    const u8 = new Uint8Array(ab).subarray(0, 4);
     // "%PDF" => 0x25 0x50 0x44 0x46
     return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46;
   }
@@ -1255,7 +1256,7 @@ export async function init({ sb, outlet } = {}) {
     // Detect 0-byte immediately (Android cloud file issue)
     if (f.size === 0) {
       if (info) info.textContent =
-        `⚠️ "${f.name}" devolveu 0 bytes. No Android, guarda o PDF em "Transferências" (pasta Downloads local) e seleciona de lá.`;
+        `⚠️ "${f.name}" devolveu 0 bytes. No Android, guarde o PDF em "Transferências" (pasta Downloads local) e selecione a partir daí.`;
       if (btnProcess) btnProcess.disabled = true;
       return;
     }
@@ -1289,8 +1290,8 @@ export async function init({ sb, outlet } = {}) {
       if (file.size === 0) {
         throw new Error(
           `O ficheiro "${file.name}" tem 0 bytes. ` +
-          "No Android: guarda o PDF nas \"Transferências\" (Downloads local) e importa a partir daí. " +
-          "Não funciona direto do Gmail, Google Drive ou links de email."
+          "No Android: guarde o PDF em \"Transferências\" (Downloads local) e importe a partir daí. " +
+          "Não é possível importar diretamente do Gmail, Google Drive ou links de email."
         );
       }
 
@@ -1302,7 +1303,7 @@ export async function init({ sb, outlet } = {}) {
 
       if (isPdfByMagic(ab)) {
         setImpInfo("Detetado PDF por assinatura binária. A ler...");
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 100)); // 100ms — Android needs more time to render UI
         parsedItems = await parsePDF(ab);
       } else {
         const name = (file.name || "").toLowerCase();

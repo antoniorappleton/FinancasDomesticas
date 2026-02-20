@@ -259,7 +259,7 @@ export async function init({ outlet } = {}) {
           !to_account ||
           to_account === "__none__"
         )
-          throw new Error("Seleciona as duas contas.");
+          throw new Error("Selecione as duas contas.");
         if (from_account === to_account)
           throw new Error("As contas têm de ser diferentes.");
 

@@ -65,13 +65,13 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     if (mode === "signin") {
       title.textContent = "Entrar";
       submit.textContent = "Entrar";
-      helpTxt.textContent = "Ainda não tens conta?";
+      helpTxt.textContent = "Ainda não tem conta?";
       toggle.textContent = "Criar conta";
       if (rowConfirm) rowConfirm.classList.add("hidden");
     } else {
       title.textContent = "Criar conta";
       submit.textContent = "Registar";
-      helpTxt.textContent = "Já tens conta?";
+      helpTxt.textContent = "Já tem conta?";
       toggle.textContent = "Entrar";
       if (rowConfirm) rowConfirm.classList.remove("hidden");
     }
@@ -168,9 +168,9 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     card.innerHTML = `
       <div class="auth-success" style="text-align:center; padding:20px 0;">
         <div style="font-size:3rem; margin-bottom:10px;">📩</div>
-        <h2 style="font-size:1.4rem; margin-bottom:10px">Confirma o teu email</h2>
+        <h2 style="font-size:1.4rem; margin-bottom:10px">Confirme o seu email</h2>
         <p style="color:var(--muted); margin-bottom:20px">Enviámos um link de confirmação para <br><strong>${maskEmail(email)}</strong>.</p>
-        <p style="font-size:0.9rem; margin-bottom:30px">Abre o email e clica no botão para ativar a conta.</p>
+        <p style="font-size:0.9rem; margin-bottom:30px">Abra o email e clique no botão para ativar a conta.</p>
 
         <button id="resend-email" class="btn btn--primary" style="width:100%; margin-bottom:10px">Reenviar email</button>
         <button id="back-login" class="link" style="font-size:0.9rem">Voltar ao login</button>
@@ -206,7 +206,7 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
 
     const banner = document.createElement("div");
     banner.className = "auth-banner success";
-    banner.textContent = "🟢 Conta ativada! Já podes iniciar sessão.";
+    banner.textContent = "🟢 Conta ativada! Já pode iniciar sessão.";
 
     // Inject style inline or assume css class exists.
     // Since user provided CSS, let's inject it via style attr or ensure it's in CSS file.

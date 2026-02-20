@@ -84,9 +84,9 @@ export async function init({ sb, outlet } = {}) {
 
     if (!title) return alert("Indica um título.");
     if (type === "budget_cap" && (!monthly_cap || monthly_cap <= 0))
-      return alert("Define o teto mensal (€).");
+      return alert("Defina o teto mensal (€).");
     if (type === "savings_goal" && (!target_amount || target_amount <= 0))
-      return alert("Define a meta (€).");
+      return alert("Defina a meta (€).");
 
     const { error } = await sb.from("objectives").insert({
       user_id: user.id,

@@ -16,14 +16,14 @@ export class Onboarding {
       <div class="onboarding-card">
         <div class="onboarding-img">👋</div>
         <h2>Bem-vindo ao Wisebudget!</h2>
-        <p>A tua gestão doméstica, simplificada.</p>
+        <p>Gestão doméstica simplificada.</p>
         
         <ul class="onboarding-steps">
           <li>
-            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Dashboard:</strong> Visão geral das tuas finanças.
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Dashboard:</strong> Visão geral das finanças.
           </li>
           <li>
-            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Nova:</strong> Regista despesas e receitas.
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Nova:</strong> Registe despesas e receitas.
           </li>
           <li>
             <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cog'/></svg> Definições:</strong> Configura categorias e contas.

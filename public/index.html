@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v86";
+      window.APP_VERSION = "v87";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -49,15 +49,7 @@
 
     <link rel="manifest" href="./manifest.json?v=13" />
 
-    <!-- PDF.js (CDN) for Import -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script>
-      // Configure worker immediately
-      if (window.pdfjsLib) {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      }
-    </script>
+
   </head>
 
   <body>
@@ -562,14 +554,17 @@
     </script>
 
     <link rel="manifest" href="manifest.json" />
+    <!-- PDF.js — carregado uma única vez (Android fix: was duplicated) -->
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
     <script>
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+          "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
     </script>
     <!-- Supabase e singleton window.sb -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -585,7 +580,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=86", { scope: "./" })
+          .register("./sw.js?v=87", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -713,7 +708,7 @@
             <use href="#i-cog" /></svg
           ><span class="fab-label">Definições</span>
         </button>
-        <div class="version-tag">WiseBudget v86 — © 2026 Appleton</div>
+        <div class="version-tag">WiseBudget v87 — © 2026 Appleton</div>
       </div>
     </div>
 
@@ -778,6 +773,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=86"></script>
+    <script type="module" src="./main.js?v=87"></script>
   </body>
 </html>

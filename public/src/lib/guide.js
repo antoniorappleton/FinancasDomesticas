@@ -27,15 +27,15 @@ const CONTENT = {
     title: "Guia Geral",
     what: [
       "Registar movimentos diários e fixos",
-      "Analisar as tuas finanças (Dashboard)",
+      "Analisar as finanças no Dashboard",
       "Organizar categorias e orçamentos",
     ],
     how: [
-      "Usa o botão + para novos registos",
-      "Navega no menu inferior para ver histórico e definições",
-      "Toca nos cartões do Dashboard para ver detalhes",
+      "Utilize o botão + para novos registos",
+      "Navegue no menu inferior para ver o histórico e as definições",
+      "Toque nos cartões do Dashboard para ver os detalhes",
     ],
-    tips: ["Instala a app (PWA) para acesso offline e mais rápido."],
+    tips: ["Instale a aplicação (PWA) para acesso offline e mais rápido."],
   },
   dashboard: {
     icon: ICONS.dashboard(),
@@ -46,11 +46,11 @@ const CONTENT = {
       "Consultar próximas despesas e alertas",
     ],
     how: [
-      "Toca nos cartões grandes para ver gráficos detalhados",
-      "Desliza para ver os widgets inferiores",
+      "Toque nos cartões grandes para ver gráficos detalhados",
+      "Deslize para ver os widgets inferiores",
     ],
     tips: [
-      "Podes ocultar os mini-cards nas Definições se preferires um visual mais limpo.",
+      "É possível ocultar os mini-cards nas Definições para um visual mais limpo.",
     ],
   },
   new: {
@@ -82,11 +82,11 @@ const CONTENT = {
       "Editar ou apagar registos",
     ],
     how: [
-      "Usa a barra de pesquisa ou os filtros no topo",
-      "Carrega numa transação para editar os detalhes",
+      "Utilize a barra de pesquisa ou os filtros no topo",
+      "Selecione uma transação para editar os detalhes",
     ],
     tips: [
-      "Se a categoria estiver errada, corrige-a aqui para melhorar a inteligência da app.",
+      "Se a categoria estiver incorreta, corrija-a aqui para melhorar a inteligência da aplicação.",
     ],
   },
   categories: {
@@ -97,10 +97,10 @@ const CONTENT = {
       "Definir se é despesa, receita ou poupança",
     ],
     how: [
-      "Cria primeiro a categoria Pai, depois adiciona sub-categorias (Filhos)",
+      "Crie primeiro a categoria Pai, depois adicione sub-categorias (Filhos)",
     ],
     tips: [
-      "Evita criar muitos 'Outros'. Nomes específicos ajudam nos relatórios.",
+      "Evite criar muitas categorias 'Outros'. Nomes específicos melhoram os relatórios.",
     ],
   },
   goals: {
@@ -108,10 +108,10 @@ const CONTENT = {
     title: "Objetivos",
     what: ["Definir metas de poupança", "Acompanhar o progresso visualmente"],
     how: [
-      "Cria um objetivo, define o valor alvo e associa a uma categoria de poupança",
+      "Crie um objetivo, defina o valor alvo e associe a uma categoria de poupança",
     ],
     tips: [
-      "Começa com objetivos pequenos e realistas para manter a motivação.",
+      "Comece com objetivos pequenos e realistas para manter a motivação.",
     ],
   },
   settings: {
@@ -123,13 +123,13 @@ const CONTENT = {
       "Importar Extratos Bancários (PDF)",
     ],
     how: [
-      "Relatórios: escolhe o período e exporta",
-      "Orçamentos: define limites para cada categoria",
-      "Importar: faz upload do PDF, valida os movimentos e confirma",
+      "Relatórios: escolha o período e exporte",
+      "Orçamentos: defina limites para cada categoria",
+      "Importar: faça upload do PDF, valide os movimentos e confirme",
     ],
     tips: [
-      "A importação de PDF funciona melhor com extratos mensais de texto (não digitalizados).",
-      "No Android, se a importação falhar, verifique se a 'App do Google' tem permissões de 'Ficheiros' nas definições do telemóvel.",
+      "A importação de PDF funciona melhor com extratos mensais em formato texto (não digitalizados).",
+      "No Android, o ficheiro deve estar guardado localmente em 'Transferências' — não funciona diretamente a partir do Gmail ou Google Drive.",
     ],
   },
   health: {
@@ -144,12 +144,12 @@ const CONTENT = {
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Regularidade</strong>: Identifica se as despesas são estáveis ou irregulares.",
     ],
     how: [
-      "Consulta o teu <strong>Score de Saúde</strong> no topo para uma visão rápida",
-      "Usa os <strong>filtros por cima do gráfico</strong> para ver cada indicador nos últimos 12 meses",
-      "Analista os <strong>Alertas</strong> no fundo para conselhos práticos de melhoria",
+      "Consulte o <strong>Score de Saúde</strong> no topo para uma visão rápida",
+      "Utilize os <strong>filtros por cima do gráfico</strong> para ver cada indicador nos últimos 12 meses",
+      "Analise os <strong>Alertas</strong> no fundo para conselhos práticos de melhoria",
     ],
     tips: [
-      "Clica no botão de ajuda no header para ver este guia a qualquer momento.",
+      "Clique no botão de ajuda no cabeçalho para aceder a este guia a qualquer momento.",
     ],
   },
 };
@@ -181,7 +181,7 @@ function renderSection(key, data, isContextual) {
       </div>
       
       <div class="guide-block">
-        <h4>O que podes fazer</h4>
+        <h4>O que é possível fazer</h4>
         <ul>${data.what.map((i) => `<li>${i}</li>`).join("")}</ul>
       </div>
 
