@@ -26,31 +26,31 @@ const CONTENT = {
     icon: ICONS.helpGeneric(),
     title: "Guia Geral",
     what: [
-      "Registar movimentos diÃ¡rios e fixos",
-      "Analisar as finanÃ§as no Dashboard",
-      "Organizar categorias e orÃ§amentos",
+      "Registar movimentos diários e fixos",
+      "Analisar as finanças no Dashboard",
+      "Organizar categorias e orçamentos",
     ],
     how: [
-      "Utilize o botÃ£o + para novos registos",
-      "Navegue no menu inferior para ver o histÃ³rico e as definiÃ§Ãµes",
-      "Toque nos cartÃµes do Dashboard para ver os detalhes",
+      "Utilize o botão + para novos registos",
+      "Navegue no menu inferior para ver o histórico e as definições",
+      "Toque nos cartões do Dashboard para ver os detalhes",
     ],
-    tips: ["Instale a aplicaÃ§Ã£o (PWA) para acesso offline e mais rÃ¡pido."],
+    tips: ["Instale a aplicação (PWA) para acesso offline e mais rápido."],
   },
   dashboard: {
     icon: ICONS.dashboard(),
     title: "Dashboard",
     what: [
-      "Ver resumo: Receitas, Despesas, PoupanÃ§a, Saldo",
-      "Ver anÃ¡lises rÃ¡pidas (mini-cards)",
-      "Consultar prÃ³ximas despesas e alertas",
+      "Ver resumo: Receitas, Despesas, Poupança, Saldo",
+      "Ver análises rápidas (mini-cards)",
+      "Consultar próximas despesas e alertas",
     ],
     how: [
-      "Toque nos cartÃµes grandes para ver grÃ¡ficos detalhados",
+      "Toque nos cartões grandes para ver gráficos detalhados",
       "Deslize para ver os widgets inferiores",
     ],
     tips: [
-      "Ã‰ possÃ­vel ocultar os mini-cards nas DefiniÃ§Ãµes para um visual mais limpo.",
+      "É possível ocultar os mini-cards nas Definições para um visual mais limpo.",
     ],
   },
   new: {
@@ -58,35 +58,35 @@ const CONTENT = {
     title: "Manual de Registo de Movimentos",
     what: [
       "<strong>Registo Manual</strong>: Para movimentos detalhados e ocasionais.",
-      "<strong>Despesas RÃ¡pidas</strong>: Registe todas as despesas fixas do mÃªs de uma sÃ³ vez (Aluguer, Luz, etc).",
-      "<strong>Assistente por Voz</strong>: Diga 'Gastei 15 euros em almoÃ§o' e a app preenche tudo.",
-      "<strong>ImportaÃ§Ã£o PDF/Excel</strong>: Importe extratos bancÃ¡rios diretamente nas DefiniÃ§Ãµes."
+      "<strong>Despesas Rápidas</strong>: Registe todas as despesas fixas do mês de uma só vez (Aluguer, Luz, etc).",
+      "<strong>Assistente por Voz</strong>: Diga 'Gastei 15 euros em almoço' e a app preenche tudo.",
+      "<strong>Importação PDF/Excel</strong>: Importe extratos bancários diretamente nas Definições."
     ],
     how: [
       "Manual: Escolha o Tipo, Data, Valor e Categoria e clique em Guardar.",
-      "Despesas RÃ¡pidas: Clique em '+ Despesas RÃ¡pidas' no topo do ecrÃ£ e confirme a lista sugerida.",
-      "Voz: Toque no Ã­cone do Microfone e fale naturalmente sobre a sua despesa.",
-      "ImportaÃ§Ã£o: VÃ¡ a <strong>DefiniÃ§Ãµes > ImportaÃ§Ã£o</strong> para carregar ficheiros PDF ou Excel."
+      "Despesas Rápidas: Clique em '+ Despesas Rápidas' no topo do ecrã e confirme a lista sugerida.",
+      "Voz: Toque no ícone do Microfone e fale naturalmente sobre a sua despesa.",
+      "Importação: Vá a <strong>Definições > Importação</strong> para carregar ficheiros PDF ou Excel."
     ],
     tips: [
-      "Qual deve usar? Use <strong>Manual</strong> para o dia-a-dia, <strong>RÃ¡pido</strong> para o inÃ­cio do mÃªs e <strong>Voz</strong> quando estiver em mobilidade.",
-      "Pode exportar modelos de Excel nas DefiniÃ§Ãµes para preenchimento em massa."
+      "Qual deve usar? Use <strong>Manual</strong> para o dia-a-dia, <strong>Rápido</strong> para o início do mês e <strong>Voz</strong> quando estiver em mobilidade.",
+      "Pode exportar modelos de Excel nas Definições para preenchimento em massa."
     ],
   },
   transactions: {
     icon: ICONS.list(),
     title: "Movimentos",
     what: [
-      "Ver histÃ³rico completo",
+      "Ver histórico completo",
       "Filtrar por texto, data ou meio",
       "Editar ou apagar registos",
     ],
     how: [
       "Utilize a barra de pesquisa ou os filtros no topo",
-      "Selecione uma transaÃ§Ã£o para editar os detalhes",
+      "Selecione uma transação para editar os detalhes",
     ],
     tips: [
-      "Se a categoria estiver incorreta, corrija-a aqui para melhorar a inteligÃªncia da aplicaÃ§Ã£o.",
+      "Se a categoria estiver incorreta, corrija-a aqui para melhorar a inteligência da aplicação.",
     ],
   },
   categories: {
@@ -94,62 +94,62 @@ const CONTENT = {
     title: "Categorias",
     what: [
       "Criar e organizar categorias Pai/Filho",
-      "Definir se Ã© despesa, receita ou poupanÃ§a",
+      "Definir se é despesa, receita ou poupança",
     ],
     how: [
       "Crie primeiro a categoria Pai, depois adicione sub-categorias (Filhos)",
     ],
     tips: [
-      "Evite criar muitas categorias 'Outros'. Nomes especÃ­ficos melhoram os relatÃ³rios.",
+      "Evite criar muitas categorias 'Outros'. Nomes específicos melhoram os relatórios.",
     ],
   },
   goals: {
     icon: ICONS.target(),
     title: "Objetivos",
-    what: ["Definir metas de poupanÃ§a", "Acompanhar o progresso visualmente"],
+    what: ["Definir metas de poupança", "Acompanhar o progresso visualmente"],
     how: [
-      "Crie um objetivo, defina o valor alvo e associe a uma categoria de poupanÃ§a",
+      "Crie um objetivo, defina o valor alvo e associe a uma categoria de poupança",
     ],
     tips: [
-      "Comece com objetivos pequenos e realistas para manter a motivaÃ§Ã£o.",
+      "Comece com objetivos pequenos e realistas para manter a motivação.",
     ],
   },
   settings: {
     icon: ICONS.gear(),
-    title: "DefiniÃ§Ãµes",
+    title: "Definições",
     what: [
-      "Criar RelatÃ³rios PDF (Anual/Mensal)",
-      "Gerir OrÃ§amentos",
-      "Importar Extratos BancÃ¡rios (PDF)",
+      "Criar Relatórios PDF (Anual/Mensal)",
+      "Gerir Orçamentos",
+      "Importar Extratos Bancários (PDF)",
     ],
     how: [
-      "RelatÃ³rios: escolha o perÃ­odo e exporte",
-      "OrÃ§amentos: defina limites para cada categoria",
-      "Importar: faÃ§a upload do PDF, valide os movimentos e confirme",
+      "Relatórios: escolha o período e exporte",
+      "Orçamentos: defina limites para cada categoria",
+      "Importar: faça upload do PDF, valide os movimentos e confirme",
     ],
     tips: [
-      "A importaÃ§Ã£o de PDF funciona melhor com extratos mensais em formato texto (nÃ£o digitalizados).",
-      "No Android, o ficheiro deve estar guardado localmente em 'TransferÃªncias' â€” nÃ£o funciona diretamente a partir do Gmail ou Google Drive.",
+      "A importação de PDF funciona melhor com extratos mensais em formato texto (não digitalizados).",
+      "No Android, o ficheiro deve estar guardado localmente em 'Transferências' â€” não funciona diretamente a partir do Gmail ou Google Drive.",
     ],
   },
   health: {
     icon: ICONS.heart(),
-    title: "SaÃºde Financeira",
+    title: "Saúde Financeira",
     what: [
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-home'/></svg> EsforÃ§o Fixo</strong> (Meta < 40%): Percentagem do rendimento gasta em despesas fixas (renda, seguros).",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-down'/></svg> EsforÃ§o Total</strong> (Meta < 85%): Percentagem total do rendimento gasta (fixas + variÃ¡veis).",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-piggy'/></svg> Taxa de PoupanÃ§a</strong> (Meta â‰¥ 10%): Percentagem do rendimento que consegues poupar.",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Liquidez</strong>: Dinheiro disponÃ­vel acumulado e tendÃªncia dos Ãºltimos meses.",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-target'/></svg> Saldos Negativos</strong> (Meta: 0): NÃºmero de meses consecutivos com saldo negativo.",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Regularidade</strong>: Identifica se as despesas sÃ£o estÃ¡veis ou irregulares.",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-home'/></svg> Esforço Fixo</strong> (Meta < 40%): Percentagem do rendimento gasta em despesas fixas (renda, seguros).",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-down'/></svg> Esforço Total</strong> (Meta < 85%): Percentagem total do rendimento gasta (fixas + variáveis).",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-piggy'/></svg> Taxa de Poupança</strong> (Meta â‰¥ 10%): Percentagem do rendimento que consegues poupar.",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Liquidez</strong>: Dinheiro disponível acumulado e tendência dos últimos meses.",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-target'/></svg> Saldos Negativos</strong> (Meta: 0): Número de meses consecutivos com saldo negativo.",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Regularidade</strong>: Identifica se as despesas são estáveis ou irregulares.",
     ],
     how: [
-      "Consulte o <strong>Score de SaÃºde</strong> no topo para uma visÃ£o rÃ¡pida",
-      "Utilize os <strong>filtros por cima do grÃ¡fico</strong> para ver cada indicador nos Ãºltimos 12 meses",
-      "Analise os <strong>Alertas</strong> no fundo para conselhos prÃ¡ticos de melhoria",
+      "Consulte o <strong>Score de Saúde</strong> no topo para uma visão rápida",
+      "Utilize os <strong>filtros por cima do gráfico</strong> para ver cada indicador nos últimos 12 meses",
+      "Analise os <strong>Alertas</strong> no fundo para conselhos práticos de melhoria",
     ],
     tips: [
-      "Clique no botÃ£o de ajuda no cabeÃ§alho para aceder a este guia a qualquer momento.",
+      "Clique no botão de ajuda no cabeçalho para aceder a este guia a qualquer momento.",
     ],
   },
 };
@@ -344,7 +344,7 @@ class Guide {
 
     const btn = document.createElement("button");
     btn.className = "screen-help-btn";
-    btn.title = "Ajuda deste ecrÃ£";
+    btn.title = "Ajuda deste ecrã";
     btn.innerHTML = `<span>?</span> Ajuda`;
 
     btn.addEventListener("click", (e) => {
