@@ -181,7 +181,7 @@ function renderSection(key, data, isContextual) {
       </div>
       
       <div class="guide-block">
-        <h4>O que Ã© possÃ­vel fazer</h4>
+        <h4>O que é possível fazer</h4>
         <ul>${data.what.map((i) => `<li>${i}</li>`).join("")}</ul>
       </div>
 
