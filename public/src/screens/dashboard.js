@@ -938,20 +938,68 @@ export async function init({ sb, outlet } = {}) {
       }
     };
 
-    // Arrows
-    const btnPrev = box.querySelector(".carousel-nav--prev");
-    const btnNext = box.querySelector(".carousel-nav--next");
-    if (btnPrev) {
-      // Clone to remove old listeners (simple way in this context) usually fine,
-      // but here we are inside init() so listeners are added once.
-      // We just add new listeners. If setupCarousel is called multiple times, this might stack.
-      // 'dashboard.js' seems to run init() once or cleanup.
-      // We will just add the listener.
-      btnPrev.onclick = () => showSlide(currentIdx - 1);
+    // Navigation Buttons (Insert dynamically if not present)
+    let btnPrev = box.querySelector(".carousel-nav--prev");
+    let btnNext = box.querySelector(".carousel-nav--next");
+
+    if (!btnPrev) {
+      const p = document.createElement("button");
+      p.className = "carousel-nav carousel-nav--prev";
+      p.innerHTML =
+        '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+      p.ariaLabel = "Anterior";
+      box.appendChild(p);
+      btnPrev = p;
     }
-    if (btnNext) {
-      btnNext.onclick = () => showSlide(currentIdx + 1);
+    if (!btnNext) {
+      const n = document.createElement("button");
+      n.className = "carousel-nav carousel-nav--next";
+      n.innerHTML =
+        '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+      n.ariaLabel = "Próximo";
+      box.appendChild(n);
+      btnNext = n;
     }
+
+    btnPrev.onclick = (e) => {
+      e.stopPropagation();
+      showSlide(currentIdx - 1);
+    };
+    btnNext.onclick = (e) => {
+      e.stopPropagation();
+      showSlide(currentIdx + 1);
+    };
+
+    // Touch Swipe Logic
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    box.addEventListener(
+      "touchstart",
+      (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      },
+      { passive: true },
+    );
+
+    box.addEventListener(
+      "touchend",
+      (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      },
+      { passive: true },
+    );
+
+    const handleSwipe = () => {
+      const swipeThreshold = 50;
+      const diff = touchEndX - touchStartX;
+      if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0)
+          showSlide(currentIdx - 1); // Swipe Right -> Prev
+        else showSlide(currentIdx + 1); // Swipe Left -> Next
+      }
+    };
 
     if (dotsBox) {
       dotsBox.innerHTML = Array.from(items)
