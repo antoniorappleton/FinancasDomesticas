@@ -946,7 +946,7 @@ export async function init({ sb, outlet } = {}) {
       const p = document.createElement("button");
       p.className = "carousel-nav carousel-nav--prev";
       p.innerHTML =
-        '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>';
+        '<svg viewBox="0 0 24 24"><use href="#i-chevron-left" /></svg>';
       p.ariaLabel = "Anterior";
       box.appendChild(p);
       btnPrev = p;
@@ -955,7 +955,7 @@ export async function init({ sb, outlet } = {}) {
       const n = document.createElement("button");
       n.className = "carousel-nav carousel-nav--next";
       n.innerHTML =
-        '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>';
+        '<svg viewBox="0 0 24 24"><use href="#i-chevron-right" /></svg>';
       n.ariaLabel = "Próximo";
       box.appendChild(n);
       btnNext = n;
