@@ -329,6 +329,9 @@ function setupDashboardModal(ds, rawData) {
     titleEl.textContent = "Tendências (12 meses + previsão próxima)";
 
     const labels = [...(ds.labels12m || [])];
+    if (labels.length) {
+      labels[labels.length - 1] += " (atual)";
+    }
     const inc = ds.income12m ? [...ds.income12m] : [];
     const exp = ds.expense12m ? [...ds.expense12m].map(Math.abs) : [];
     const sav = ds.savings12m ? [...ds.savings12m].map(Math.abs) : [];
@@ -337,11 +340,16 @@ function setupDashboardModal(ds, rawData) {
         ? [...ds.saldo12m]
         : inc.map((_, i) => (inc[i] || 0) - (exp[i] || 0) - (sav[i] || 0));
 
-    // Previsão = média móvel
-    const WINDOW = Math.min(6, inc.length);
-    const incF = movingAverage(inc, WINDOW);
-    const expF = movingAverage(exp, WINDOW);
-    const savF = movingAverage(sav, WINDOW);
+    // Previsão customizada (User Refined 80/20)
+    // Entradas/Poupanças: média 12 meses (incluindo o corrente)
+    const incF = movingAverage(inc, 12);
+    const savF = movingAverage(sav, 12);
+
+    // Saídas: 80% média últimos 2 meses (inclui corrente) + 20% média meses 4 a 9 (pula mês 3)
+    const avg2 = movingAverage(exp, 2);
+    const avg4_9 = movingAverage(exp.slice(0, -3), 6);
+    const expF = 0.8 * avg2 + 0.2 * avg4_9;
+
     const saldoF = incF - expF - savF;
 
     const last = labels.length ? new Date(labels.at(-1) + "-01") : new Date();
@@ -446,15 +454,16 @@ function setupDashboardModal(ds, rawData) {
     });
 
     extraEl.innerHTML = `<div class="muted">
-    A linha a tracejado é previsão (média dos últimos ${WINDOW} meses).
+    A linha a tracejado é previsão: Entradas (média 12m), Saídas (80% últimos 2m + 20% meses 4-9).
   </div>`;
 
     // (Opcional) Fixas vs Variáveis previsto
     const fixed = ds.fixed12m || [];
     const variable = ds.variable12m || [];
     if (fixed.length && variable.length) {
-      const avgFixed = movingAverage(fixed, WINDOW),
-        avgVar = movingAverage(variable, WINDOW);
+      // Usar média 12 meses para consistência nestes detalhes
+      const avgFixed = movingAverage(fixed, 12),
+        avgVar = movingAverage(variable, 12);
       const tot = avgFixed + avgVar || 1;
       const pf = ((avgFixed / tot) * 100).toFixed(1);
       const pv = ((avgVar / tot) * 100).toFixed(1);
