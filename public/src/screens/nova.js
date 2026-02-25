@@ -347,7 +347,6 @@ export async function init({ outlet } = {}) {
     );
   });
 
-
   // ===== Despesas Fixas em lote (Redesigned) =====
   (function mountFixedBulk() {
     const btn = $("btn-fixed-bulk");
@@ -398,12 +397,13 @@ export async function init({ outlet } = {}) {
           return;
         }
 
-        // Logic: Target Month derived from Main Form Date
-        const mainDateVal =
-          $("tx-date")?.value || new Date().toISOString().slice(0, 10);
+        // Logic: Target Month is always the month following the current one
+        const now = new Date();
+        const targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const targetDateStr = targetDate.toISOString().slice(0, 10);
 
         // 1. Fetch Data
-        groups = await fetchGroupedExpenses(mainDateVal); // Pass main date to calc suggestions
+        groups = await fetchGroupedExpenses(targetDateStr);
 
         if (!groups.length) {
           toast("Não encontrei despesas fixas recentes.", false);
@@ -536,10 +536,20 @@ export async function init({ outlet } = {}) {
       const catMap = new Map();
       allCats.forEach((c) => catMap.set(c.id, c));
 
-      // 2. Fetch Transactions (Last 6 Months)
-      const mid = await ensureMonthlyId();
+      // 1b. Fetch Regularities for frequency logic
+      const { data: regData } = await sb
+        .from("regularities")
+        .select("id, code");
+      const regMap = {}; // ID -> Code
+      const idByCode = {}; // Code -> ID
+      (regData || []).forEach((r) => {
+        regMap[r.id] = r.code;
+        idByCode[r.code] = r.id;
+      });
+
+      // 2. Fetch Transactions (Last 15 Months to catch Annual/Bi-monthly/etc)
       const to = new Date();
-      const from = new Date(to.getFullYear(), to.getMonth() - 6, 1);
+      const from = new Date(to.getFullYear(), to.getMonth() - 15, 1);
 
       const { data: tExpData } = await sb
         .from("transaction_types")
@@ -551,14 +561,14 @@ export async function init({ outlet } = {}) {
 
       const { data } = await sb
         .from("transactions")
-        .select("amount,description,category_id,date")
+        .select("amount,description,category_id,date,regularity_id")
         .eq("type_id", expTypeId)
         .eq("expense_nature", "fixed")
         .gte("date", from.toISOString().slice(0, 10))
         .lte("date", to.toISOString().slice(0, 10))
-        .order("date", { ascending: true }); // Most recent last
+        .order("date", { ascending: true }); // Historical order
 
-      // Helper: Normalize Description (for uncategorized fallback)
+      // Helper: Normalize Description
       const normalize = (s) => {
         let n = String(s || "").toLowerCase();
         n = n.replace(
@@ -582,14 +592,13 @@ export async function init({ outlet } = {}) {
         );
 
       // 3. Aggregate
-      const aggMap = new Map(); // key -> { desc, cid, count, sum, lastDate }
+      const aggMap = new Map(); // key -> { desc, cid, count, sum, lastDate, lastRegId }
 
       (data || []).forEach((x) => {
         const rawDesc = (x.description || "").trim();
         const cid = x.category_id;
         let key, name;
 
-        // Group by Category if exists, otherwise by Description
         if (cid) {
           key = `cat::${cid}`;
           const c = catMap.get(cid);
@@ -609,40 +618,68 @@ export async function init({ outlet } = {}) {
             count: 0,
             sum: 0,
             lastDate: null,
+            lastRegId: null,
           });
 
         const r = aggMap.get(key);
         r.count++;
         r.sum += Number(x.amount || 0);
         r.lastDate = x.date;
+        r.lastRegId = x.regularity_id;
       });
 
-      // Target Year/Month for Suggestions
+      // Target Year/Month
       const tDate = new Date(targetDateStr);
       const tYear = tDate.getFullYear();
-      const tMonth = tDate.getMonth(); // 0-11
+      const tMonth = tDate.getMonth();
+
+      // Frequency Logic
+      function isDue(lastDateStr, regId) {
+        if (!lastDateStr) return true;
+        const code = regMap[regId] || "MONTHLY";
+        if (code === "ONCE") return false;
+        if (
+          code === "MONTHLY" ||
+          code === "DAILY" ||
+          code === "WEEKLY" ||
+          code === "BIWEEKLY"
+        )
+          return true;
+
+        const ld = new Date(lastDateStr);
+        const diffMonths =
+          (tYear - ld.getFullYear()) * 12 + (tMonth - ld.getMonth());
+
+        if (code === "BIMONTHLY") return diffMonths % 2 === 0;
+        if (code === "QUARTERLY") return diffMonths % 3 === 0;
+        if (code === "YEARLY") return diffMonths % 12 === 0;
+
+        return true;
+      }
 
       // 4. Build Item List
-      const items = Array.from(aggMap.values()).map((r) => {
-        const avg = r.sum / r.count; // Average amount
+      const items = Array.from(aggMap.values()).flatMap((r) => {
+        if (!isDue(r.lastDate, r.lastRegId)) return [];
 
-        // Suggested Date Calculation
-        let sDate = targetDateStr;
-        if (r.lastDate) {
-          const ld = new Date(r.lastDate);
-          const day = ld.getDate();
-          const safeDay = Math.min(
-            day,
-            new Date(tYear, tMonth + 1, 0).getDate(),
-          );
+        const avg = r.sum / r.count; // Average amount
+        const code = regMap[r.lastRegId] || "MONTHLY";
+
+        // Suggested Date Calculation (Common Day)
+        const getSDate = (baseDateStr, offsetDays = 0) => {
+          const ld = new Date(baseDateStr);
+          let day = ld.getDate() + offsetDays;
+          const lastDayOfTMonth = new Date(tYear, tMonth + 1, 0).getDate();
+          const safeDay = Math.min(day, lastDayOfTMonth);
           const sd = new Date(tYear, tMonth, safeDay);
           const z = new Date(sd.getTime() - sd.getTimezoneOffset() * 60000);
-          sDate = z.toISOString().slice(0, 10);
-        }
+          return z.toISOString().slice(0, 10);
+        };
+
+        const sDate = getSDate(r.lastDate);
 
         // Resolve names
         let parentName = "Outros";
-        let subName = r.desc; // Default to the aggregated name (Category Name or Desc)
+        let subName = r.desc;
 
         if (r.cid) {
           const c = catMap.get(r.cid);
@@ -656,21 +693,30 @@ export async function init({ outlet } = {}) {
               subName = "(Geral)";
             }
           }
-        } else {
-          // If no category, it goes to "Outros" (already set)
-          // subName is already set to r.desc
         }
 
-        return {
-          description: r.desc || "(Sem descrição)", // Use the Category Name or Clean Desc
+        const baseItem = {
+          description: r.desc || "(Sem descrição)",
           parentName,
           subName,
           suggestedAmount: avg,
           suggestedDate: sDate,
           category_id: r.cid,
+          regularity_id: r.lastRegId,
           selected: true,
           occurrences: r.count,
         };
+
+        // Special case: Fortnightly (suggest 2 instances)
+        if (code === "BIWEEKLY") {
+          const item2 = {
+            ...baseItem,
+            suggestedDate: getSDate(r.lastDate, 14),
+          };
+          return [baseItem, item2];
+        }
+
+        return [baseItem];
       });
 
       // 5. Group by Parent
@@ -718,7 +764,7 @@ export async function init({ outlet } = {}) {
                 amount: i.suggestedAmount,
                 description: i.description || null,
                 expense_nature: "fixed",
-                regularity_id: mid || null,
+                regularity_id: i.regularity_id || null,
                 currency: "EUR",
               });
             }
@@ -733,7 +779,7 @@ export async function init({ outlet } = {}) {
         const { error } = await sb.from("transactions").insert(payloads);
         if (error) throw error;
 
-        toast(`Registadas ${payloads.length} despesas fixas (Mensais) ✅`);
+        toast(`Registadas ${payloads.length} despesas fixas ✅`);
         close();
 
         // Reset form
@@ -760,7 +806,7 @@ export async function init({ outlet } = {}) {
   })();
 
   // ===== Importar PDF/CSV =====
-  
+
   // ===== ASSISTENTE IA (VOZ & TEXTO) =====
   setupAIAssistant(outlet, TYPE_ID, $, toast);
 }
@@ -823,7 +869,9 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
 
     recognition.onerror = (e) => {
       micBtn.classList.remove("ai-listening");
-      const msg = e?.error ? `Erro na voz: ${e.error}` : "Erro na voz. Tenta escrever.";
+      const msg = e?.error
+        ? `Erro na voz: ${e.error}`
+        : "Erro na voz. Tenta escrever.";
       statusEl.textContent = msg;
     };
 
@@ -837,7 +885,11 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
     if (!recognition) return toast("Voz não suportada neste browser", false);
 
     // 1) Speech + mic em muitos Android falha fora de HTTPS
-    if (!window.isSecureContext && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+    if (
+      !window.isSecureContext &&
+      location.hostname !== "localhost" &&
+      location.hostname !== "127.0.0.1"
+    ) {
       toast("⚠️ Voz precisa de HTTPS (site seguro).", false);
       statusEl.textContent = "Abre em HTTPS / PWA para usar voz.";
       return;
@@ -848,7 +900,10 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => t.stop());
     } catch (err) {
-      toast("Sem permissão de microfone. Ativa nas definições do browser.", false);
+      toast(
+        "Sem permissão de microfone. Ativa nas definições do browser.",
+        false,
+      );
       statusEl.textContent = "Permissão de microfone bloqueada.";
       return;
     }
@@ -870,14 +925,16 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
   async function processCommand(cmd) {
     if (!cmd || cmd.length < 3) return;
     statusEl.innerHTML = "<small>A processar...</small>";
-    
+
     try {
       const data = parseFinancialCommand(cmd);
       if (!data.amount) throw new Error("Não percebi o valor.");
 
       // 2. Preencher Campos (Regra 1 e 2)
       // Tipo (Rádio)
-      const typeRadio = document.querySelector(`input[name="tx-type"][value="${data.type}"]`);
+      const typeRadio = document.querySelector(
+        `input[name="tx-type"][value="${data.type}"]`,
+      );
       if (typeRadio) {
         typeRadio.checked = true;
         typeRadio.dispatchEvent(new Event("change"));
@@ -909,15 +966,14 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
         await matchCategory(data.subject, data.type);
       }
 
-      statusEl.innerHTML = `<div class="ai-feedback">Comando aceite: <strong>${data.type === 'INCOME' ? 'Receita' : 'Despesa'}</strong> de <strong>${data.amount}€</strong></div>`;
-      
+      statusEl.innerHTML = `<div class="ai-feedback">Comando aceite: <strong>${data.type === "INCOME" ? "Receita" : "Despesa"}</strong> de <strong>${data.amount}€</strong></div>`;
+
       // Auto-save: Disparar clique no Guardar existente
       setTimeout(() => {
         const saveBtn = $("tx-save");
         if (saveBtn) saveBtn.click();
         input.value = "";
       }, 1500);
-
     } catch (err) {
       statusEl.textContent = "Erro: " + err.message;
     }
@@ -933,11 +989,16 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
       amount: null,
       description: "",
       subject: "",
-      date: new Date().toISOString().slice(0, 10)
+      date: new Date().toISOString().slice(0, 10),
     };
 
     // 1. Tipo
-    if (s.includes("recebi") || s.includes("ganhei") || s.includes("ordenado") || s.includes("receita")) {
+    if (
+      s.includes("recebi") ||
+      s.includes("ganhei") ||
+      s.includes("ordenado") ||
+      s.includes("receita")
+    ) {
       result.type = "INCOME";
     }
 
@@ -959,7 +1020,7 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
       now.setDate(now.getDate() + 1);
       result.date = now.toISOString().slice(0, 10);
     }
-    
+
     // Suporte "dia X"
     const dayMatch = s.match(/dia\s+(\d{1,2})/);
     if (dayMatch) {
@@ -973,7 +1034,10 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
     // 4. Descrição / Sujeito
     // Remove o valor e palavras de ligação
     let clean = s.replace(amountMatch ? amountMatch[0] : "", "");
-    clean = clean.replace(/\b(gastei|paguei|recebi|ganhei|ontem|hoje|amanhã|dia\s+\d+|no|na|em|de|com|um|uma|euros?|eur|€)\b/g, " ");
+    clean = clean.replace(
+      /\b(gastei|paguei|recebi|ganhei|ontem|hoje|amanhã|dia\s+\d+|no|na|em|de|com|um|uma|euros?|eur|€)\b/g,
+      " ",
+    );
     result.description = clean.trim().replace(/\s+/g, " ");
     result.subject = result.description.split(" ")[0]; // Primeira palavra para keyword match
 
@@ -987,22 +1051,23 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
   async function matchCategory(subject, type) {
     if (!subject) return;
     const kind = type.toLowerCase();
-    
+
     try {
       // 1. Procurar na BD para ter a hierarquia completa
       const { data: allCats, error } = await sb
         .from("categories")
         .select("id, name, parent_id")
         .eq("kind", kind);
-      
+
       if (error || !allCats) return;
 
       const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
-      
+
       // Tentar match exato ou parcial
-      const match = allCats.find(c => 
-        coll.compare(c.name, subject) === 0 || 
-        c.name.toLowerCase().includes(subject.toLowerCase())
+      const match = allCats.find(
+        (c) =>
+          coll.compare(c.name, subject) === 0 ||
+          c.name.toLowerCase().includes(subject.toLowerCase()),
       );
 
       if (!match) return;
@@ -1016,13 +1081,15 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
           // É uma subcategoria (Filho)
           parentSelect.value = match.parent_id;
           parentSelect.dispatchEvent(new Event("change"));
-          
+
           // Esperar um pouco para a subcategoria carregar (async)
           // No nova.js original, $("cat-parent").onchange é async
           // Vamos Poll ou simplesmente esperar
-          for(let i=0; i<10; i++) {
-            await new Promise(r => setTimeout(r, 100));
-            const foundChild = Array.from(childSelect.options).find(o => o.value === match.id);
+          for (let i = 0; i < 10; i++) {
+            await new Promise((r) => setTimeout(r, 100));
+            const foundChild = Array.from(childSelect.options).find(
+              (o) => o.value === match.id,
+            );
             if (foundChild) {
               childSelect.value = match.id;
               childSelect.dispatchEvent(new Event("change"));
