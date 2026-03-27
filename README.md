@@ -12,13 +12,17 @@
 
 **WiseBudget** não é apenas uma folha de cálculo bonita. É um assistente pessoal que ajuda a entender para onde vai o seu dinheiro e como atingir os seus objetivos.
 
-### 🧠 Inteligência Financeira
+### 🧠 Inteligência & Automação
+*   **Relatórios Mensais Automáticos**: Receba um relatório completo em **PDF no seu email** no último dia de cada mês, com o resumo de receitas, despesas e poupanças.
 *   **Coach Financeiro**: Um sistema exclusivo que avalia a sua saúde financeira (0-100) com base em 6 indicadores vitais: *Esforço Fixo, Esforço Total, Taxa de Poupança, Liquidez, Saldos Negativos e Regularidade*.
+*   **Notificações Push Inteligentes**:
+    *   **Diárias**: Resumo de gastos do dia às 21:00.
+    *   **Semanais**: Relatório acumulado aos domingos às 22:00.
 *   **Previsões & Cenários**: Projeta o seu saldo para os próximos 3 meses com base no histórico, permitindo antecipar problemas.
-*   **Insights & Alertas**: Receba notificações inteligentes sobre desvios orçamentais, vencimento de despesas e dicas para melhorar o seu score.
 
 ### 📊 Gestão Completa
-*   **Dashboard Interativo**: Visualização clara de rendimentos, despesas e saldos com gráficos dinâmicos (Chart.js).
+*   **Navegação Quick-Access**: Barra de navegação inferior fixa para acesso rápido a Dashboard, Transações, Simulação, Análise, Portfólio e Definições.
+*   **Dashboard Filtrável**: Filtre os KPIs do resumo mensal por Ano/Mês para uma visão histórica instantânea.
 *   **Transações & Importação**: Adicione movimentos manualmente ou **importe extratos bancários (OFX/CSV)** com classificação automática de categorias.
 *   **Orçamento & Categorias**: Crie orçamentos anuais/mensais e organize despesas com categorias hierárquicas e ícones personalizados.
 

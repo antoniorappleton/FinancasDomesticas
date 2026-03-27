@@ -7,6 +7,12 @@ const cors = require("cors")({ origin: true });
 const nodemailer = require("nodemailer");
 const { jsPDF } = require("jspdf");
 
+const { defineSecret } = require("firebase-functions/params");
+
+// Definir Segredos (Secret Manager)
+const sbServiceKey = defineSecret("SB_SERVICE_KEY");
+const gmailPass = defineSecret("GMAIL_PASS");
+
 // Configurar VAPID
 const vapidKeys = {
   publicKey:
@@ -204,15 +210,12 @@ exports.sendWeeklyNotification = onSchedule(
   },
 );
 
-const SB_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyYWt4Y3VtemRsZXVmcnB5aXBtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODYxMjUzMywiZXhwIjoyMDc0MTg4NTMzfQ.9Cx6ypGJ7o4r6-ysQZ89guptFsK2Nu-up0oElhdiREw";
-const sbAdmin = createClient(SUPABASE_URL, SB_SERVICE_KEY || ANAON_KEY);
-
 /**
  * Scheduled Function: Last day of the month at 23:00 Lisbon time
- * DESIGN PROFISSIONAL: Com tabelas no PDF e Email HTML estilizado
+ * DESIGN PROFISSIONAL: Com segredos seguros (Secret Manager)
  */
 exports.sendMonthlyReportEmail = onSchedule(
-  { schedule: "0 23 28-31 * *", timeZone: "Europe/Lisbon" },
+  { schedule: "0 23 28-31 * *", timeZone: "Europe/Lisbon", secrets: [sbServiceKey, gmailPass] },
   async (event) => {
     const now = new Date();
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -221,6 +224,7 @@ exports.sendMonthlyReportEmail = onSchedule(
     logger.info("Starting professional monthly report job...");
 
     try {
+      const sbAdmin = createClient(SUPABASE_URL, sbServiceKey.value());
       const { data: tt } = await sbAdmin.from("transaction_types").select("id, code");
       const typeMap = {};
       tt.forEach((t) => (typeMap[t.code] = t.id));
@@ -230,29 +234,25 @@ exports.sendMonthlyReportEmail = onSchedule(
       const from = `${year}-${String(month).padStart(2, "0")}-01`;
       const to = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
 
-      // 1. Procurar utilizadores ativos
       const { data: usersData } = await sbAdmin.from("transactions").select("user_id").gte("date", from).lte("date", to);
       const userIds = [...new Set(usersData?.map((u) => u.user_id))];
 
       const transporter = nodemailer.createTransport({
-        service: "gmail", auth: { user: "antonioappleton@gmail.com", pass: "ssqawymxmoxtazqp" }
+        service: "gmail", auth: { user: "antonioappleton@gmail.com", pass: gmailPass.value() }
       });
 
       for (const uid of userIds) {
         try {
-          // 2. Tentar obter email do utilizador (fallback Antonio)
           let targetEmail = "antonioappleton@gmail.com"; 
           const { data: profile } = await sbAdmin.from("profiles").select("email").eq("id", uid).single();
           if (profile?.email) targetEmail = profile.email;
 
-          // 3. Fetch Real Data
           const { data: txs } = await sbAdmin.from("transactions")
             .select("amount, description, date, type_id, categories(name)")
             .eq("user_id", uid).gte("date", from).lte("date", to);
 
           if (!txs?.length) continue;
 
-          // 4. Agregação e Cálculo
           let inc = 0, exp = 0, sav = 0;
           const byCat = {};
           txs.forEach(t => {
@@ -268,20 +268,14 @@ exports.sendMonthlyReportEmail = onSchedule(
           const net = inc - exp - sav;
           const monthLabel = now.toLocaleString("pt-PT", { month: "long", year: "numeric" });
 
-          // 5. Geração do PDF "Pro"
           const doc = new jsPDF();
-          doc.setFillColor(6, 95, 70); // Verde WiseBudget
+          doc.setFillColor(6, 95, 70); 
           doc.rect(0, 0, 210, 40, "F");
           doc.setTextColor(255, 255, 255);
-          doc.setFontSize(22);
-          doc.text("WiseBudget", 20, 25);
-          doc.setFontSize(10);
-          doc.text(`RELATÓRIO MENSAL - ${monthLabel.toUpperCase()}`, 110, 24);
+          doc.setFontSize(22); doc.text("WiseBudget", 20, 25);
+          doc.setFontSize(10); doc.text(`RELATÓRIO MENSAL - ${monthLabel.toUpperCase()}`, 110, 24);
 
-          doc.setTextColor(0, 0, 0);
-          doc.setFontSize(14);
-          doc.text("Resumo Financeiro", 20, 55);
-          
+          doc.setTextColor(0, 0, 0); doc.setFontSize(14); doc.text("Resumo Financeiro", 20, 55);
           doc.setFontSize(10);
           let y = 65;
           const drawRow = (label, val, color = [0,0,0]) => {
@@ -296,8 +290,7 @@ exports.sendMonthlyReportEmail = onSchedule(
           drawRow("Saldo Líquido", net, net >= 0 ? [22, 163, 74] : [239, 68, 68]);
 
           y += 10;
-          doc.setFontSize(14); doc.setTextColor(0,0,0);
-          doc.text("Despesas por Categoria", 20, y);
+          doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text("Despesas por Categoria", 20, y);
           y += 10;
           doc.setFontSize(10);
           Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0, 15).forEach(([cat, val]) => {
@@ -308,8 +301,6 @@ exports.sendMonthlyReportEmail = onSchedule(
           });
 
           const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
-
-          // 6. Email HTML "Pro"
           const htmlBody = `
             <div style="background-color: #f3f4f6; padding: 40px 20px; font-family: 'Segoe UI', sans-serif;">
               <div style="background-color: white; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -329,102 +320,52 @@ exports.sendMonthlyReportEmail = onSchedule(
                       <tr><td style="font-weight: bold; padding: 8px 0;">Saldo Final</td><td style="text-align: right; font-weight: bold; font-size: 20px;">${net.toFixed(2)} €</td></tr>
                     </table>
                   </div>
-                  <p>Em anexo podes encontrar o relatório detalhado em formato PDF com a discriminação por categoria.</p>
+                  <p>Em anexo podes encontrar o relatório detalhado em formato PDF.</p>
                   <a href="https://wisebudget-financaspessoais.web.app" style="display: block; background-color: #065f46; color: white; text-align: center; padding: 15px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 25px;">Abrir WiseBudget</a>
-                </div>
-                <div style="background-color: #f9fafb; padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;">
-                  Este é um email automático enviado pelo sistema WiseBudget.<br>Antonio Appleton © 2026
                 </div>
               </div>
             </div>
           `;
 
           await transporter.sendMail({
-            from: "WiseBudget <antonioappleton@gmail.com>",
-            to: targetEmail,
-            subject: `Relatório Financeiro WiseBudget - ${monthLabel}`,
+            from: "WiseBudget <antonioappleton@gmail.com>", to: targetEmail,
+            subject: `Relatório WiseBudget - ${monthLabel}`,
             html: htmlBody,
             attachments: [{ filename: `Relatorio_WB_${year}_${month}.pdf`, content: pdfBuffer }]
           });
-          logger.info(`Professional report sent to ${targetEmail}`);
-        } catch (e) { logger.error(`Error with user ${uid}:`, e); }
+        } catch (e) { logger.error(e); }
       }
-    } catch (err) { logger.error("Fatal monthly job error:", err); }
+    } catch (err) { logger.error(err); }
   }
 );
 
 /**
- * HTTP Function for testing the monthly report manually
+ * HTTP Function for testing manually
  */
-exports.testMonthlyReportEmail = onRequest(async (req, res) => {
+exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] }, async (req, res) => {
   cors(req, res, async () => {
     logger.info("Manual trigger for Monthly Report Test...");
-    const now = new Date();
-    
     try {
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      const lastDay = new Date(year, month, 0).getDate();
-      const from = `${year}-${String(month).padStart(2, "0")}-01`;
-      const to = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
-      const monthLabel = now.toLocaleString("pt-PT", { month: "long", year: "numeric" });
-
       const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: "antonioappleton@gmail.com",
-          pass: "ssqawymxmoxtazqp",
-        },
+        service: "gmail", auth: { user: "antonioappleton@gmail.com", pass: gmailPass.value() }
       });
-
-      let inc = 2500, exp = 1800, sav = 300, net = 400; // Demo
+      const monthLabel = new Date().toLocaleString("pt-PT", { month: "long", year: "numeric" });
       
-      try {
-        const { data: usersData } = await sb.from("transactions").select("user_id").limit(1);
-        if (usersData?.length) {
-            const uid = usersData[0].user_id;
-            const { data: tt } = await sb.from("transaction_types").select("id, code");
-            const typeMap = {};
-            tt.forEach(t => typeMap[t.code] = t.id);
-
-            const { data: txs } = await sb.from("transactions")
-                .select("amount, type_id")
-                .eq("user_id", uid).gte("date", from).lte("date", to);
-            
-            if (txs?.length) {
-                inc = exp = sav = 0;
-                txs.forEach(t => {
-                   const amt = Number(t.amount);
-                   if (t.type_id === typeMap.INCOME) inc += amt;
-                   else if (t.type_id === typeMap.EXPENSE) exp += amt;
-                   else if (t.type_id === typeMap.SAVINGS) sav += amt;
-                });
-                net = inc - exp - sav;
-            }
-        }
-      } catch (e) {
-        logger.warn("Supabase query failed in test (RLS likely). Using demo values.");
-      }
-
       const doc = new jsPDF();
-      doc.text(`Relatorio de TESTE - WiseBudget`, 20, 20);
-      doc.text(`Periodo: ${monthLabel}`, 20, 30);
-      doc.text(`Saldo: ${net.toFixed(2)} EUR`, 20, 50);
+      doc.text(`TESTE DE ENVIO - WiseBudget`, 20, 20);
+      doc.text(`Segredo SB carregado: ${sbServiceKey.value() ? "SIM" : "NAO"}`, 20, 40);
       const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
       await transporter.sendMail({
-        from: "WiseBudget Test <antonioappleton@gmail.com>",
-        to: "antonioappleton@gmail.com",
-        subject: `TESTE: Relatório Financeiro WiseBudget`,
-        html: `<h3>Teste de Relatório Mensal</h3><p>O envio por email e o anexo PDF estão a funcionar!</p><p>Saldo simulado: <b>${net.toFixed(2)} €</b></p>`,
-        attachments: [{ filename: "Relatorio_Teste.pdf", content: pdfBuffer }],
+        from: "WiseBudget Test <antonioappleton@gmail.com>", to: "antonioappleton@gmail.com",
+        subject: `TESTE SEGURO: Relatório WiseBudget`,
+        html: `<h3>Teste Concluído com Sucesso!</h3><p>Este email foi enviado usando os segredos do <b>Firebase Secret Manager</b>. Nenhuma chave está agora no código.</p>`,
+        attachments: [{ filename: "Teste_Seguro.pdf", content: pdfBuffer }]
       });
-
-      res.send("Email de teste enviado com sucesso para antonioappleton@gmail.com!");
-
+      res.send("Email de teste enviado usando segredos seguros!");
     } catch (err) {
       logger.error(err);
-      res.status(500).send("Erro fatal no teste: " + err.message);
+      res.status(500).send("Erro no teste: " + err.message);
     }
   });
 });
