@@ -360,7 +360,7 @@ a {
 
 /* base: grelha fluida com auto-fit para caber 5 tabs sem partir */
 .app-footer {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -369,8 +369,8 @@ a {
   height: var(--footer-h, 56px);
   /* ligeiramente mais baixo */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
   padding: 6px 8px calc(max(6px, env(safe-area-inset-bottom)));
   background: var(--ui-menu-bg);
   /* Theme */

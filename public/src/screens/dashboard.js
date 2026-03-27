@@ -1565,14 +1565,18 @@ export async function init({ sb, outlet } = {}) {
       100, 150, 130, 140, 190, 170, 180, 180, 150, 180, 190, 200,
     ];
     const net = income.map((v, i) => v - expense[i] - savings[i]);
-    monthly = labs.map((label, i) => ({
-      key: label,
-      label,
-      income: income[i],
-      expense: expense[i],
-      savings: savings[i],
-      net: net[i],
-    }));
+    monthly = monthsKeys.map((key, i) => {
+      const data = {
+        key,
+        label: labelMonthPT(key),
+        income: income[i % income.length],
+        expense: expense[i % expense.length],
+        savings: savings[i % savings.length],
+      };
+      data.net = data.income - data.expense - data.savings;
+      allHistoryMap.set(key, data);
+      return data;
+    });
 
     fixedVarByMonth = new Map(
       labs.map((m, i) => [
@@ -1766,14 +1770,18 @@ export async function init({ sb, outlet } = {}) {
       100, 150, 130, 140, 190, 170, 180, 180, 150, 180, 190, 200,
     ];
     const net = income.map((v, i) => v - expense[i] - savings[i]);
-    monthly = monthsKeys.map((key, i) => ({
-      key, // Usar YYYY-MM format
-      label: labelMonthPT(key), // Gerar label formatado
-      income: income[i],
-      expense: expense[i],
-      savings: savings[i],
-      net: net[i],
-    }));
+    monthly = monthsKeys.map((key, i) => {
+      const data = {
+        key,
+        label: labelMonthPT(key),
+        income: income[i % income.length],
+        expense: expense[i % expense.length],
+        savings: savings[i % savings.length],
+      };
+      data.net = data.income - data.expense - data.savings;
+      allHistoryMap.set(key, data);
+      return data;
+    });
 
     fixedVarByMonth = new Map(
       monthsKeys.map((m, i) => [
@@ -1883,47 +1891,90 @@ export async function init({ sb, outlet } = {}) {
   await computeDailySeries();
 
   // ===================== KPIs =====================
-  const latest = monthly[monthly.length - 1] || {
-    income: 0,
-    expense: 0,
-    savings: 0,
-    net: 0,
-  };
-  const prev = monthly[monthly.length - 2] || {
-    income: 0,
-    expense: 0,
-    savings: 0,
-    net: 0,
-  };
-  const pct = (a, b) => (b ? ((a - b) / Math.abs(b)) * 100 : 0);
+  function renderMonthlySummary(targetYear, targetMonth) {
+    const targetKey = `${targetYear}-${targetMonth}`;
+    const latest = allHistoryMap.get(targetKey) || {
+      income: 0,
+      expense: 0,
+      savings: 0,
+      net: 0,
+    };
 
-  // usa a setKpi já definida na secção de Privacidade
-  setKpi("kpi-income", money(latest.income));
-  setKpi("kpi-expense", money(Math.abs(latest.expense)));
-  setKpi("kpi-savings", money(Math.abs(latest.savings)));
-  setKpi("kpi-balance", money(latest.net));
+    // Calcular mês anterior para tendências
+    const d = new Date(Number(targetYear), Number(targetMonth) - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    const prevKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const prev = allHistoryMap.get(prevKey) || {
+      income: 0,
+      expense: 0,
+      savings: 0,
+      net: 0,
+    };
 
-  const setPill = (id, val, goodWhenUp = true) => {
-    const el = byId(id);
-    if (!el) return;
-    const s = `${val >= 0 ? "+" : ""}${val.toFixed(1)}%`;
-    el.textContent = s;
-    const up = goodWhenUp ? "pill--up" : "pill--down";
-    const down = goodWhenUp ? "pill--down" : "pill--up";
-    el.className = "pill " + (val >= 0 ? up : down);
-  };
-  setPill("kpi-income-trend", pct(latest.income, prev.income), true);
-  setPill(
-    "kpi-expense-trend",
-    pct(Math.abs(latest.expense), Math.abs(prev.expense)),
-    false,
-  );
-  setPill(
-    "kpi-savings-trend",
-    pct(Math.abs(latest.savings), Math.abs(prev.savings)),
-    true,
-  );
-  setPill("kpi-net-trend", pct(latest.net, prev.net), true);
+    const pct = (a, b) => (b ? ((a - b) / Math.abs(b)) * 100 : 0);
+
+    setKpi("kpi-income", money(latest.income));
+    setKpi("kpi-expense", money(Math.abs(latest.expense)));
+    setKpi("kpi-savings", money(Math.abs(latest.savings)));
+    setKpi("kpi-balance", money(latest.net));
+
+    const setPill = (id, val, goodWhenUp = true) => {
+      const el = byId(id);
+      if (!el) return;
+      const s = `${val >= 0 ? "+" : ""}${val.toFixed(1)}%`;
+      el.textContent = s;
+      const up = goodWhenUp ? "pill--up" : "pill--down";
+      const down = goodWhenUp ? "pill--down" : "pill--up";
+      el.className = "pill " + (val >= 0 ? up : down);
+    };
+
+    setPill("kpi-income-trend", pct(latest.income, prev.income), true);
+    setPill(
+      "kpi-expense-trend",
+      pct(Math.abs(latest.expense), Math.abs(prev.expense)),
+      false,
+    );
+    setPill(
+      "kpi-savings-trend",
+      pct(Math.abs(latest.savings), Math.abs(prev.savings)),
+      true,
+    );
+    setPill("kpi-net-trend", pct(latest.net, prev.net), true);
+  }
+
+  // Inicializar filtros com mês atual
+  const selYear = byId("kpi-year");
+  const selMonth = byId("kpi-month");
+  if (selYear && selMonth) {
+    const now = new Date();
+    selYear.value = String(now.getFullYear());
+    selMonth.value = String(now.getMonth() + 1).padStart(2, "0");
+
+    const update = () => renderMonthlySummary(selYear.value, selMonth.value);
+    selYear.addEventListener("change", update);
+    selMonth.addEventListener("change", update);
+
+    // Initial render
+    renderMonthlySummary(selYear.value, selMonth.value);
+  } else {
+    // Fallback se selects não existirem
+    const latest = monthly[monthly.length - 1] || {
+      income: 0,
+      expense: 0,
+      savings: 0,
+      net: 0,
+    };
+    const prev = monthly[monthly.length - 2] || {
+      income: 0,
+      expense: 0,
+      savings: 0,
+      net: 0,
+    };
+    renderMonthlySummary(
+      latest.key.slice(0, 4),
+      latest.key.slice(5, 7) || "01",
+    );
+  }
 
   // ===================== CÁLCULO PREVISÃO (Forecast 12m) =====================
   const forecast12m = { labels: [], net: [], cum: [] };

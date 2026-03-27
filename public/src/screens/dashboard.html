@@ -1,7 +1,28 @@
 <section class="card">
   <h2 class="section-title">
     Resumo do mês
-    <!-- Botão “olho” (novo) -->
+    <div class="kpi-filter-group" style="display:inline-flex; align-items:center; gap:8px; margin-left:12px; font-weight:normal; font-size:0.9rem;">
+      <select id="kpi-year" class="input-sm" style="padding:4px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text);">
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+      </select>
+      <select id="kpi-month" class="input-sm" style="padding:4px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text);">
+        <option value="01">Jan</option>
+        <option value="02">Fev</option>
+        <option value="03">Mar</option>
+        <option value="04">Abr</option>
+        <option value="05">Mai</option>
+        <option value="06">Jun</option>
+        <option value="07">Jul</option>
+        <option value="08">Ago</option>
+        <option value="09">Set</option>
+        <option value="10">Out</option>
+        <option value="11">Nov</option>
+        <option value="12">Dez</option>
+      </select>
+    </div>
+
+    <!-- Botão “olho” -->
     <button
       id="kpi-privacy-toggle"
       class="icon-btn"

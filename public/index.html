@@ -671,58 +671,33 @@
       })();
     </script>
 
-    <!-- FAB (opcional; podes remover se usares só o footer) -->
-    <div class="fab-nav" aria-live="polite">
-      <button
-        id="fabToggle"
-        class="fab-nav__toggle"
-        aria-label="Abrir menu"
-        aria-expanded="false"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M4 7h16v2H4zm0 5h16v2H4zm0 5h16v2H4" />
-        </svg>
-      </button>
-      <div id="fabItems" class="fab-nav__items" hidden aria-hidden="true">
-        <button class="fab-item" data-to="#/" aria-label="Dashboard">
-          <svg>
-            <use href="#i-home" /></svg
-          ><span class="fab-label">Dashboard</span>
-        </button>
-        <button class="fab-item" data-to="#/objetivos" aria-label="Objetivos">
-          <svg>
-            <use href="#i-target" /></svg
-          ><span class="fab-label">Objetivos</span>
-        </button>
-        <button class="fab-item" data-to="#/health" aria-label="Saúde">
-          <svg>
-            <use href="#i-activity" /></svg
-          ><span class="fab-label">Saúde</span>
-        </button>
-        <button
-          class="fab-item"
-          data-to="#/transactions"
-          aria-label="Transações"
-        >
-          <svg>
-            <use href="#i-receipt" /></svg
-          ><span class="fab-label">Transações</span>
-        </button>
-        <button class="fab-item" data-to="#/new" aria-label="Nova">
-          <svg>
-            <use href="#i-plus" /></svg
-          ><span class="fab-label">Nova</span>
-        </button>
-        <button class="fab-item" data-to="#/settings" aria-label="Definições">
-          <svg>
-            <use href="#i-cog" /></svg
-          ><span class="fab-label">Definições</span>
-        </button>
-        <div class="version-tag">WiseBudget v88 — © 2026 Appleton</div>
-      </div>
-    </div>
 
-    <footer id="app-footer" class="app-footer" hidden></footer>
+    <footer id="app-footer" class="app-footer" hidden>
+      <a href="#/" class="foot-item" aria-label="Dashboard">
+        <svg class="foot-item__icon"><use href="#i-home" /></svg>
+        <span class="foot-item__label">Dashboard</span>
+      </a>
+      <a href="#/objetivos" class="foot-item" aria-label="Objetivos">
+        <svg class="foot-item__icon"><use href="#i-target" /></svg>
+        <span class="foot-item__label">Objetivos</span>
+      </a>
+      <a href="#/health" class="foot-item" aria-label="Saúde">
+        <svg class="foot-item__icon"><use href="#i-activity" /></svg>
+        <span class="foot-item__label">Saúde</span>
+      </a>
+      <a href="#/transactions" class="foot-item" aria-label="Transações">
+        <svg class="foot-item__icon"><use href="#i-receipt" /></svg>
+        <span class="foot-item__label">Transações</span>
+      </a>
+      <a href="#/new" class="foot-item" aria-label="Nova">
+        <svg class="foot-item__icon"><use href="#i-plus" /></svg>
+        <span class="foot-item__label">Nova</span>
+      </a>
+      <a href="#/settings" class="foot-item" aria-label="Definições">
+        <svg class="foot-item__icon"><use href="#i-cog" /></svg>
+        <span class="foot-item__label">Definições</span>
+      </a>
+    </footer>
 
     <!-- ===== MODAL DE RESET DE PASSWORD (GLOBAL) ===== -->
     <div
