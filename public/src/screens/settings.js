@@ -796,6 +796,9 @@ export async function init({ sb, outlet } = {}) {
       u.includes("ULTRAPASSAGEM DE CREDITO") ||
       u.startsWith("DATA") ||
       u.startsWith("LANC") ||
+      u.startsWith("EXT.") ||
+      u.startsWith("CONTA SIMPLES") ||
+      u.startsWith("EXTRATO DE") ||
       u.startsWith("VALOR") ||
       u.startsWith("DESCRITIVO") ||
       u.startsWith("DEBITO") ||
@@ -823,6 +826,7 @@ export async function init({ sb, outlet } = {}) {
       descUpper.includes("PAGAMENTO DE VENCIMENTO") ||
       descUpper.includes("TRF. DE ") ||
       descUpper.includes("TRF DE ") ||
+      descUpper.includes("TRF. P/O ") ||
       descUpper.includes("TRF MB WAY DE ") ||
       descUpper.includes("MB WAY DE ") ||
       descUpper.includes("DEPOSITO") ||
