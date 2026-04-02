@@ -890,11 +890,12 @@ export async function init({ sb, outlet } = {}) {
 
       const res = [];
       let fullTextDebug = [];
-      let totalPDFTextItems = 0; // Para detetar scanned/imagem
+      let totalPDFTextItems = 0;
 
-      // Coordinates for columns (discovered dynamically)
+      // Coordinates for columns (discovered dynamically and persisted across pages)
       let xDebit = 0;
       let xCredit = 0;
+      let lastExtractedBalance = null;
 
       for (let i = 1; i <= pdf.numPages; i++) {
         setImpInfo(`A ler página ${i}/${pdf.numPages}...`);
@@ -971,44 +972,59 @@ export async function init({ sb, outlet } = {}) {
           if (!mDate) continue;
 
           const dateToken = mDate[1];
+          const rest = mDate[3];
 
           // 5. Detection Logic
-          // We ignore matches that start early in the line (indices 0-12)
-          // because they are typically DD.MM (the transaction and lancamento dates).
           const allMatches = [...raw.matchAll(moneyRegex)];
-          const monies = allMatches
-            .filter((m) => m.index > 10)
-            .map((x) => x[1]);
+          const itemsAfterDate = allMatches.filter((m) => m.index > 10);
+          const monies = itemsAfterDate.map((x) => x[1]);
 
           if (monies.length < 1) continue;
 
-          // If there are at least 2 money values after the dates, the last one is the balance.
-          // We want the penultimate money value (the transaction amount).
-          // If only 1 exists, we take that one.
+          // If there are at least 2 money values, the last one is the balance.
           const targetMoneyStr =
             monies.length >= 2 ? monies[monies.length - 2] : monies[0];
+          const currentBalanceStr =
+            monies.length >= 2 ? monies[monies.length - 1] : null;
+
           const mov = parseMoneyPt(targetMoneyStr);
-          if (!Number.isFinite(mov)) continue;
+          if (!Number.isFinite(mov) || mov === 0) continue;
 
           // Determine Sign (Debit vs Credit)
-          const amountItem = line.items.find((it) =>
-            it.str.includes(targetMoneyStr),
+          const amountMatch = itemsAfterDate.find((m) =>
+            m[1].includes(targetMoneyStr),
           );
+          const amountItem = amountMatch
+            ? line.items.find(
+                (it) =>
+                  it.x >= amountMatch.index - 5 && it.x <= amountMatch.index + 5,
+              )
+            : line.items.find((it) => it.str.includes(targetMoneyStr));
 
-          let sign = -1; // Default to expense
+          let sign = -1;
 
-          // Geometric Check
+          // Strategy A: Geometric Check
           if (amountItem && xDebit > 0 && xCredit > 0) {
             const mid = (xDebit + xCredit) / 2;
-            if (amountItem.x > mid) {
-              sign = 1; // Credit (Right)
-            } else {
-              sign = -1; // Debit (Left)
-            }
+            sign = amountItem.x > mid ? 1 : -1;
           } else {
-            // Fallback: Text Heuristic
+            // Strategy B: Text Heuristic
             let cleanDesc = rest.replace(moneyRegex, "");
             sign = inferSignFromText(cleanDesc.toUpperCase());
+          }
+
+          // Strategy C: Balance Validation (The ultimate tie-breaker)
+          if (currentBalanceStr && lastExtractedBalance !== null) {
+            const curBal = parseMoneyPt(currentBalanceStr);
+            const diff = curBal - lastExtractedBalance;
+            // If the difference matches the mountain, we use the diff sign
+            if (Math.abs(Math.abs(diff) - mov) < 0.02) {
+              sign = diff > 0 ? 1 : -1;
+            }
+          }
+
+          if (currentBalanceStr) {
+            lastExtractedBalance = parseMoneyPt(currentBalanceStr);
           }
 
           // Clean Description
@@ -1021,12 +1037,25 @@ export async function init({ sb, outlet } = {}) {
           const isoDate = parseActivoBankDateMD(dateToken, pageYear);
           if (!isoDate) continue;
 
-          res.push({
-            date: isoDate,
-            amount: mov * sign,
-            description: normalizeDescription(desc),
-            selected: true,
-          });
+          const normalizedDesc = normalizeDescription(desc);
+          const finalAmount = mov * sign;
+
+          // Prevention: Check if already in the session's review list
+          const isDup = parsedItems.some(
+            (existing) =>
+              existing.date === isoDate &&
+              Math.abs(existing.amount - finalAmount) < 0.01 &&
+              existing.description === normalizedDesc,
+          );
+
+          if (!isDup) {
+            res.push({
+              date: isoDate,
+              amount: finalAmount,
+              description: normalizedDesc,
+              selected: true,
+            });
+          }
         }
       }
 
