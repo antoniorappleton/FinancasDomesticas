@@ -764,6 +764,28 @@ export async function init({ sb, outlet } = {}) {
     return Number(String(s).replace(/\s+/g, "").replace(",", "."));
   }
 
+  function saveImportDraft() {
+    if (parsedItems && parsedItems.length > 0) {
+      localStorage.setItem("wb:import:draft", JSON.stringify(parsedItems));
+    } else {
+      localStorage.removeItem("wb:import:draft");
+    }
+  }
+
+  function loadImportDraft() {
+    const saved = localStorage.getItem("wb:import:draft");
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      if (Array.isArray(data) && data.length > 0) {
+        parsedItems = data;
+        renderReviewList();
+      }
+    } catch (e) {
+      console.warn("Falha ao restaurar rascunho:", e);
+    }
+  }
+
   function isNoiseLine(u) {
     return (
       u.includes("SALDO INICIAL") ||
@@ -908,7 +930,7 @@ export async function init({ sb, outlet } = {}) {
             lines.push(currentLine);
           } else {
             currentLine.items.push(it);
-            currentLine.text += "  " + it.str;
+            currentLine.text += " " + it.str;
           }
         }
 
@@ -927,7 +949,7 @@ export async function init({ sb, outlet } = {}) {
         }
 
         // 5. Detect Transactions
-        const moneyRegex = /(\d{1,3}(?:\s\d{3})*(?:[.,]\d{2}))/g;
+        const moneyRegex = /(\d{1,3}(?:[\s\xa0]\d{3})*(?:[.,]\d{2}))/g;
 
         for (const line of lines) {
           const raw = line.text;
@@ -1164,23 +1186,26 @@ export async function init({ sb, outlet } = {}) {
           e.target.closest(".card").style.background = e.target.checked
             ? "#fff"
             : "#f0f0f0";
+          saveImportDraft();
         }),
     );
     list
       .querySelectorAll(".imp-desc")
       .forEach(
         (el) =>
-          (el.oninput = (e) =>
-            (parsedItems[e.target.dataset.idx].description = e.target.value)),
+          (el.oninput = (e) => {
+            parsedItems[e.target.dataset.idx].description = e.target.value;
+            saveImportDraft();
+          }),
       );
     list
       .querySelectorAll(".imp-amt")
       .forEach(
         (el) =>
-          (el.onchange = (e) =>
-            (parsedItems[e.target.dataset.idx].amount = Number(
-              e.target.value,
-            ))),
+          (el.onchange = (e) => {
+            parsedItems[e.target.dataset.idx].amount = Number(e.target.value);
+            saveImportDraft();
+          }),
       );
     list.querySelectorAll(".imp-cat").forEach(
       (el) =>
@@ -1209,18 +1234,21 @@ export async function init({ sb, outlet } = {}) {
           );
           parsedItems[e.target.dataset.idx].expense_nature = defNature;
 
-          // Must re-render to show/hide nature select or update value?
-          // Ideally yes, but lazy way: just update underlying data.
-          // If we want UI update, we have to re-render.
+          // Must re-render to show/hide nature select or update value
           renderReviewList();
+          saveImportDraft();
         }),
     );
     list.querySelectorAll(".imp-nature").forEach(
       (el) =>
         (el.onchange = (e) => {
           parsedItems[e.target.dataset.idx].expense_nature = e.target.value;
+          saveImportDraft();
         }),
     );
+
+    // Persist list state
+    saveImportDraft();
   }
 
   // Event Listeners
@@ -1350,6 +1378,7 @@ export async function init({ sb, outlet } = {}) {
 
   $("#imp-clear")?.addEventListener("click", () => {
     parsedItems = [];
+    localStorage.removeItem("wb:import:draft");
     $("#imp-file").value = "";
     $("#imp-review-area").style.display = "none";
     $("#imp-info").textContent = "";
@@ -1425,24 +1454,31 @@ export async function init({ sb, outlet } = {}) {
               resolveExpenseNature(catObj, item.description)
             : null;
 
+        const amount = Math.abs(Number(item.amount) || 0);
+
         return {
           user_id: uid,
           account_id: accountId,
           type_id: typeMapLocal[typeCode],
-          amount: Math.abs(item.amount),
+          amount: amount,
           date: item.date,
           description: item.description,
           category_id: item.category_id || null,
           currency: "EUR",
           expense_nature: expNature,
         };
-      });
+      }).filter(p => p && p.amount > 0);
+
+      if (payload.length === 0) {
+        throw new Error("Nenhum movimento válido (valor > 0) para importar.");
+      }
 
       const { error } = await sb.from("transactions").insert(payload);
       if (error) throw error;
 
       alert(`Sucesso! ${payload.length} movimentos importados.`);
       parsedItems = [];
+      localStorage.removeItem("wb:import:draft");
       $("#imp-review-area").style.display = "none";
       $("#imp-file").value = "";
       $("#imp-info").textContent = "";
@@ -1586,6 +1622,9 @@ export async function init({ sb, outlet } = {}) {
   // Init
   loadAccounts();
   initNotificationUI();
+  
+  // Restore draft if exists
+  loadImportDraft();
 
   // Privacy Toggle
   const savedPrivacy = localStorage.getItem("wb:settings:privacy") === "true";

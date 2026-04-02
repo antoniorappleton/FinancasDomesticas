@@ -230,7 +230,21 @@ async function handleRoute() {
 }
 
 /* ===================== Auth callbacks ===================== */
-function onSignedIn() {
+let _lastUserId = null;
+
+async function onSignedIn() {
+  // Evitar reloads redundantes quando o token expira/renova no focus
+  try {
+    const {
+      data: { session },
+    } = await window.sb.auth.getSession();
+    const uid = session?.user?.id;
+    if (uid && uid === _lastUserId) return;
+    _lastUserId = uid;
+  } catch (e) {
+    console.warn("Erro ao validar sessão no onSignedIn:", e);
+  }
+
   setStyle(document.getElementById("app-main"), { display: "" });
   if (footer) footer.hidden = false;
   const login = document.getElementById("screen-login");
