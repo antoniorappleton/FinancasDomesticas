@@ -791,8 +791,8 @@ export async function init({ sb, outlet } = {}) {
       u.includes("SALDO INICIAL") ||
       u.includes("SALDO FINAL") ||
       u.includes("SALDO DISPONIVEL") ||
-      u.startsWith("A TRANSPORTAR") ||
-      u.startsWith("TRANSPORTE") ||
+      u.includes("A TRANSPORTAR") ||
+      u.includes("TRANSPORTE") ||
       u.includes("ULTRAPASSAGEM DE CREDITO") ||
       u.startsWith("DATA") ||
       u.startsWith("LANC") ||
@@ -821,8 +821,12 @@ export async function init({ sb, outlet } = {}) {
       descUpper.startsWith("CRED.") ||
       descUpper.includes("TRANSFERENCIA - VENCIMENTO") ||
       descUpper.includes("PAGAMENTO DE VENCIMENTO") ||
+      descUpper.includes("TRF. DE ") ||
       descUpper.includes("TRF DE ") ||
-      descUpper.includes("TRF MB WAY DE ")
+      descUpper.includes("TRF MB WAY DE ") ||
+      descUpper.includes("MB WAY DE ") ||
+      descUpper.includes("DEPOSITO") ||
+      descUpper.includes("CREDITO")
     )
       return +1;
     return -1; // Default expense
@@ -963,13 +967,20 @@ export async function init({ sb, outlet } = {}) {
           if (!mDate) continue;
 
           const dateToken = mDate[1];
-          const rest = mDate[3];
 
-          // Find money values
-          const monies = [...raw.matchAll(moneyRegex)].map((x) => x[1]);
-          if (monies.length === 0) continue;
+          // 5. Detection Logic
+          // We ignore matches that start early in the line (indices 0-12)
+          // because they are typically DD.MM (the transaction and lancamento dates).
+          const allMatches = [...raw.matchAll(moneyRegex)];
+          const monies = allMatches
+            .filter((m) => m.index > 10)
+            .map((x) => x[1]);
 
-          // Logic: Last is Balance, 2nd-Last is Amount
+          if (monies.length < 1) continue;
+
+          // If there are at least 2 money values after the dates, the last one is the balance.
+          // We want the penultimate money value (the transaction amount).
+          // If only 1 exists, we take that one.
           const targetMoneyStr =
             monies.length >= 2 ? monies[monies.length - 2] : monies[0];
           const mov = parseMoneyPt(targetMoneyStr);
