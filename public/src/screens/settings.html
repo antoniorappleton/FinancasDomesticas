@@ -103,8 +103,8 @@
         </div>
       </div>
 
-      <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis (um em cima do outro) -->
-      <div class="rpt-grid">
+      <!-- Gráficos: Despesas por categoria & Fixas vs Variáveis & Regularidade (3 colunas em desktop) -->
+      <div class="rpt-grid rpt-grid--3cols">
         <div class="rpt-card">
           <h3 class="rpt-card__title">Despesas por categoria</h3>
           <div class="chart"><canvas id="rpt-cat-pie"></canvas></div>
@@ -115,6 +115,11 @@
           <div class="chart"><canvas id="rpt-fixed-donut"></canvas></div>
           <div id="rpt-fv-legend" class="rpt-legend small"></div>
         </div>
+        <div class="rpt-card">
+          <h3 class="rpt-card__title">Despesas por regularidade</h3>
+          <div class="chart"><canvas id="rpt-regularity"></canvas></div>
+          <div id="rpt-reg-legend" class="rpt-legend small"></div>
+        </div>
       </div>
 
       <!-- Séries temporais -->
@@ -123,8 +128,8 @@
         <div class="chart chart--tall"><canvas id="rpt-series"></canvas></div>
       </div>
 
-      <!-- Tabelas -->
-      <div class="rpt-grid rpt-grid--tables">
+      <!-- Tabelas (3 colunas em desktop) -->
+      <div class="rpt-grid rpt-grid--tables rpt-grid--3cols">
         <div class="rpt-card">
           <h3 class="rpt-card__title">Receitas por categoria</h3>
           <div class="rpt-table-wrap">
@@ -143,29 +148,21 @@
             <table id="tbl-monthly"></table>
           </div>
         </div>
+      </div>
+
+      <!-- Top 6 + Taxas (3 colunas em desktop) -->
+      <div class="rpt-grid rpt-grid--3cols">
         <div class="rpt-card">
-          <h3 class="rpt-card__title">Despesas por regularidade</h3>
-          <div class="chart"><canvas id="rpt-regularity"></canvas></div>
+          <h3 class="rpt-card__title">Top 6 categorias de despesa</h3>
+          <div class="chart"><canvas id="rpt-top-exp"></canvas></div>
         </div>
-      </div>
-
-      <!-- Top 6 despesas (barras horizontais) -->
-      <div class="rpt-card">
-        <h3 class="rpt-card__title">Top 6 categorias de despesa</h3>
-        <div class="chart"><canvas id="rpt-top-exp"></canvas></div>
-      </div>
-
-      <!-- Linhas de percentagens -->
-      <div class="rpt-card">
-        <div style="display:grid;grid-template-columns:1fr;gap:12px">
-          <div>
-            <h3 class="rpt-card__title">Taxa de esforço mensal</h3>
-            <div class="chart"><canvas id="rpt-effort"></canvas></div>
-          </div>
-          <div>
-            <h3 class="rpt-card__title">Taxa de poupança mensal</h3>
-            <div class="chart"><canvas id="rpt-savings-rate"></canvas></div>
-          </div>
+        <div class="rpt-card">
+          <h3 class="rpt-card__title">Taxa de esforço mensal</h3>
+          <div class="chart"><canvas id="rpt-effort"></canvas></div>
+        </div>
+        <div class="rpt-card">
+          <h3 class="rpt-card__title">Taxa de poupança mensal</h3>
+          <div class="chart"><canvas id="rpt-savings-rate"></canvas></div>
         </div>
       </div>
 
@@ -206,6 +203,87 @@
     padding: 16px 20px 28px;
     position: relative;
     color: #111;
+  }
+
+  /* Browser: Dimensões próximas ao ecrã e Layout Dashboard */
+  @media (min-width: 1024px) {
+    .rpt-modal {
+      width: 96vw;
+      max-width: 1680px;
+      height: 94vh;
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    .rep-header {
+      padding: 16px 32px;
+      margin: 0;
+      border-bottom: 1px solid #f1f5f9;
+      background: #fff;
+      z-index: 20;
+    }
+
+    .rpt-content {
+      padding: 16px 32px;
+      overflow-y: auto;
+      flex: 1;
+      background: #f8fafc;
+    }
+
+    /* Grelhas Dashboard Alta Densidade */
+    .rpt-grid--3cols {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 16px;
+    }
+
+    .rpt-grid--split {
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .rpt-grid--compact {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .rpt-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+      box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+
+    .rpt-card__title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+
+    .rpt-kpis {
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .rpt-kpi {
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+    }
+
+    .rpt-kpi strong {
+      font-size: 1.25rem;
+      display: block;
+      margin-top: 2px;
+    }
+
+    .rpt-controls {
+      padding: 8px 16px;
+      margin: 8px 0 16px;
+    }
   }
 
   /* Header com logo */
@@ -538,6 +616,14 @@
     position: relative;
     color: #111;
     box-sizing: border-box;
+  }
+
+  @media (min-width: 1024px) {
+    .rpt-modal {
+      max-height: 94vh;
+      width: 96vw;
+      max-width: 1680px;
+    }
   }
 
   /* Evita overflow lateral por causa de margins internas */

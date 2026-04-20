@@ -2266,6 +2266,8 @@ export async function init({ sb, outlet } = {}) {
       const regSorted = [...regAgg.entries()].sort((a, b) => b[1] - a[1]);
       const regLabels = regSorted.map(([k]) => k);
       const regValues = regSorted.map(([, v]) => v);
+      const regTotal = regValues.reduce((a, b) => a + b, 0);
+
       _regularityAggPDF = regSorted.map(([label, value]) => ({ label, value }));
 
       _rptReg = makeChart($("#rpt-regularity"), {
@@ -2291,6 +2293,17 @@ export async function init({ sb, outlet } = {}) {
           scales: { y: { beginAtZero: true } },
         },
       });
+
+      const regColors = _rptReg?.data?.datasets?.[0]?.backgroundColor || [];
+      const regLegend = regLabels.map((lab, i) => ({
+        label: lab,
+        value: regValues[i],
+        pct: regTotal ? regValues[i] / regTotal : 0,
+        color: regColors[i] || "#64748b",
+      }));
+      if ($("#rpt-reg-legend")) {
+        $("#rpt-reg-legend").innerHTML = legendHTML(regLegend);
+      }
 
       // ===== 6) Top 6 despesas (barras horizontais) =====
       const top6 = expCat.slice(0, 6);
