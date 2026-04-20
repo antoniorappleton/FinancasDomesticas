@@ -46,6 +46,7 @@ function setupDashboardModal(ds, rawData) {
   const close = () => {
     modal.hidden = true;
     extraEl.innerHTML = "";
+    if (canvas.parentElement) canvas.parentElement.style.display = "block";
     if (chart) {
       chart.destroy();
       chart = null;
@@ -2366,6 +2367,158 @@ export async function init({ sb, outlet } = {}) {
       }
 
       upcoming.sort((a, b) => a.next - b.next);
+
+      // ===================== LIFE DIMENSIONS =====================
+      const DIMENSIONS = [
+        { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'utilidades', 'água', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas'] },
+        { key: 'saude', name: 'Saúde', icon: 'medical_services', hints: ['saúde', 'farmácia', 'médico', 'consulta', 'exame', 'hospital', 'dentista', 'seguro saúde'] },
+        { key: 'carro', name: 'Carro', icon: 'directions_car', hints: ['carro', 'transporte', 'combustível', 'oficina', 'pedágio', 'seguro auto', 'via verde', 'gasolina', 'gasóleo', 'iuc', 'reparação'] },
+        { key: 'escolas', name: 'Escolas', icon: 'school', hints: ['escola', 'colégio', 'mensalidade escolar', 'educação', 'estudos', 'cursos', 'universidade', 'propinas', 'explicações'] },
+        { key: 'investimentos', name: 'Investimentos', icon: 'trending_up', hints: ['investimento', 'poupança', 'ações', 'etf', 'portfolio', 'corretora', 'dca', 'cripto', 'reforço'] },
+        { key: 'outros', name: 'Outros', icon: 'more_horiz', hints: [] }
+      ];
+
+      const getDimension = (path) => {
+        const p = (path || '').toLowerCase();
+        for (const d of DIMENSIONS) {
+          if (d.hints.some(h => p.includes(h))) return d.key;
+        }
+        return 'outros';
+      };
+
+      const dimData = {};
+      DIMENSIONS.forEach(d => dimData[d.key] = { ...d, thisMonth: 0, next: null, past: [], present: [], future: [] });
+
+      // Process historical rows for past/present
+      const todayDate = new Date();
+      const currentMonth = todayDate.getMonth();
+      const currentYear = todayDate.getFullYear();
+
+      rows.forEach(r => {
+        const d = new Date(r.date);
+        const path = catPathName(r);
+        const dk = getDimension(path);
+        const amt = Math.abs(Number(r.amount));
+        
+        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+          dimData[dk].thisMonth += amt;
+          dimData[dk].present.push({ date: r.date, amount: amt, label: path });
+        } else if (d < todayDate) {
+          dimData[dk].past.push({ date: d, amount: amt, label: path });
+        }
+      });
+
+      // Process upcoming for future
+      upcoming.forEach(u => {
+        const dk = getDimension(u.name);
+        if (!dimData[dk].next || u.next < dimData[dk].next.date) {
+            dimData[dk].next = { date: u.next, amount: u.amount, label: u.name };
+        }
+        dimData[dk].future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
+      });
+
+      // Show Timeline helper (reusing modal)
+      const showDimensionTimeline = (data) => {
+        const modal = document.getElementById("dash-modal");
+        const titleEl = document.getElementById("dash-modal-title");
+        const canvas = document.getElementById("dash-modal-canvas");
+        const extraEl = document.getElementById("dash-modal-extra");
+
+        titleEl.textContent = `${data.name}`;
+        if (canvas.parentElement) canvas.parentElement.style.display = 'none';
+        
+        // Sort and slice data
+        const past = data.past.sort((a,b) => b.date - a.date).slice(0, 10);
+        const present = data.present.sort((a,b) => b.date - a.date);
+        const future = data.future.sort((a,b) => a.date - b.next);
+
+        let html = '<div class="timeline">';
+
+        // Future
+        future.forEach(f => {
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-dot timeline-dot--future"><span class="material-symbols-outlined" style="font-size:14px">event</span></div>
+              <div class="timeline-content">
+                <div class="timeline-date">${f.date.toLocaleDateString('pt-PT', {day:'2-digit', month:'short', year:'numeric'})} (Previsto)</div>
+                <div class="timeline-info">
+                  <span class="timeline-label">${f.label.split('>').pop()}</span>
+                  <span class="timeline-amount">${money(f.amount)}</span>
+                </div>
+                <div class="timeline-subtext">Em ${f.daysLeft} dias</div>
+              </div>
+            </div>
+          `;
+        });
+
+        // Present
+        present.forEach(p => {
+            const dateStr = typeof p.date === 'string' ? p.date : p.date.toISOString().slice(0,10);
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-dot timeline-dot--present"><span class="material-symbols-outlined" style="font-size:14px">payments</span></div>
+              <div class="timeline-content">
+                <div class="timeline-date">${new Date(dateStr).toLocaleDateString('pt-PT', {day:'2-digit', month:'short'})} (Este mês)</div>
+                <div class="timeline-info">
+                  <span class="timeline-label">${p.label.split('>').pop()}</span>
+                  <span class="timeline-amount">${money(p.amount)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        // Past
+        past.forEach(p => {
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-dot timeline-dot--past"><span class="material-symbols-outlined" style="font-size:14px">history</span></div>
+              <div class="timeline-content">
+                <div class="timeline-date">${p.date.toLocaleDateString('pt-PT', {day:'2-digit', month:'short', year:'numeric'})}</div>
+                <div class="timeline-info">
+                  <span class="timeline-label">${p.label.split('>').pop()}</span>
+                  <span class="timeline-amount">${money(p.amount)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        if (!past.length && !present.length && !future.length) {
+            html += '<div class="muted" style="text-align:center; padding: 20px;">Nenhum movimento encontrado para esta dimensão.</div>';
+        }
+
+        html += '</div>';
+        extraEl.innerHTML = html;
+        modal.hidden = false;
+        trapFocus(modal);
+      };
+
+      // Render Life Dimensions
+      const lifeBox = outlet.querySelector("#life-dimensions-list");
+      if (lifeBox) {
+        lifeBox.innerHTML = DIMENSIONS.map(d => {
+          const data = dimData[d.key];
+          const nextText = data.next ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` : 'Sem previsão';
+          return `
+            <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
+              <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
+              <h3 class="dimension-card__title">${d.name}</h3>
+              <div class="dimension-card__value">${money(data.thisMonth)}</div>
+              <div class="dimension-card__status">${nextText}</div>
+            </div>
+          `;
+        }).join('');
+
+        // Modal integration
+        lifeBox.querySelectorAll('.dimension-card').forEach(card => {
+          card.addEventListener('click', () => {
+            const dk = card.dataset.dim;
+            const data = dimData[dk];
+            showDimensionTimeline(data);
+          });
+        });
+      }
 
       // Render
       // Render

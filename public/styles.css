@@ -2232,7 +2232,7 @@ td:nth-child(5) {
   width: min(920px, 100%);
   background: #fff;
   border-radius: 16px;
-  overflow: hidden;
+  overflow-y: auto;
   box-shadow: 0 20px 50px rgba(2, 6, 23, .4);
   max-height: calc(100vh - 32px);
   display: flex;
@@ -4163,3 +4163,162 @@ label,
 .mr-btn-close:hover {
   background: #e2e8f0;
 }
+
+/* =========================
+   Life Dimensions (Responsabilidades)
+   ========================= */
+.dimensions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.dimension-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.dimension-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--blue-500);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.12);
+}
+
+.dimension-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--blue-100);
+  color: var(--blue-500);
+  margin-bottom: 2px;
+  font-size: 24px;
+}
+
+.dimension-card__title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  margin: 0;
+}
+
+.dimension-card__value {
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dimension-card__status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.dimension-card--casa .dimension-card__icon { background: #e0f2fe; color: #0369a1; }
+.dimension-card--saude .dimension-card__icon { background: #fef2f2; color: #b91c1c; }
+.dimension-card--carro .dimension-card__icon { background: #fefce8; color: #a16207; }
+.dimension-card--escolas .dimension-card__icon { background: #f0fdf4; color: #15803d; }
+.dimension-card--investimentos .dimension-card__icon { background: #e0e7ff; color: #4338ca; }
+.dimension-card--outros .dimension-card__icon { background: #f1f5f9; color: #475569; }
+
+/* Timeline in Modal */
+.timeline {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  padding: 0 0 20px 0;
+}
+
+.timeline-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.timeline-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+}
+
+.timeline-dot--past { background: #e2e8f0; color: #64748b; }
+.timeline-dot--present { background: #3b82f6; color: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); }
+.timeline-dot--future { background: #10b981; color: #fff; border: 2px solid #fff; }
+
+.timeline-content {
+  flex: 1;
+  background: var(--surface-2);
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.timeline-date {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.timeline-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.timeline-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.timeline-amount {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.timeline-subtext {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
