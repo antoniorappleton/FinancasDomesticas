@@ -2368,8 +2368,8 @@ export async function init({ sb, outlet } = {}) {
 
       upcoming.sort((a, b) => a.next - b.next);
 
-      // ===================== LIFE DIMENSIONS =====================
-      const DIMENSIONS = [
+      // ===================== LIFE DIMENSIONS (DYNAMIC) =====================
+      const DEFAULT_DIMENSIONS = [
         { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'utilidades', 'água', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas'] },
         { key: 'saude', name: 'Saúde', icon: 'medical_services', hints: ['saúde', 'farmácia', 'médico', 'consulta', 'exame', 'hospital', 'dentista', 'seguro saúde'] },
         { key: 'carro', name: 'Carro', icon: 'directions_car', hints: ['carro', 'transporte', 'combustível', 'oficina', 'pedágio', 'seguro auto', 'via verde', 'gasolina', 'gasóleo', 'iuc', 'reparação'] },
@@ -2378,43 +2378,210 @@ export async function init({ sb, outlet } = {}) {
         { key: 'outros', name: 'Outros', icon: 'more_horiz', hints: [] }
       ];
 
+      const loadDimensions = () => {
+        try {
+          const saved = localStorage.getItem('wb:dimensions');
+          return saved ? JSON.parse(saved) : DEFAULT_DIMENSIONS;
+        } catch { return DEFAULT_DIMENSIONS; }
+      };
+
+      const DIMENSIONS = loadDimensions();
+
       const getDimension = (path) => {
         const p = (path || '').toLowerCase();
         for (const d of DIMENSIONS) {
-          if (d.hints.some(h => p.includes(h))) return d.key;
+          if (d.hints && d.hints.some(h => p.includes(h))) return d.key;
         }
         return 'outros';
       };
 
-      const dimData = {};
-      DIMENSIONS.forEach(d => dimData[d.key] = { ...d, thisMonth: 0, next: null, past: [], present: [], future: [] });
+      // Modal Manager logic
+      document.getElementById('manage-dimensions-btn')?.addEventListener('click', () => {
+        const modal = document.getElementById("dash-modal");
+        const titleEl = document.getElementById("dash-modal-title");
+        const extraEl = document.getElementById("dash-modal-extra");
+        const canvasWrapper = document.getElementById("dash-modal-canvas")?.parentElement;
 
-      // Process historical rows for past/present
+        titleEl.textContent = "Personalizar Painéis";
+        if (canvasWrapper) canvasWrapper.style.display = 'none';
+
+        // Helper to get all categories for the picker
+        const allPossibleCats = Array.from(new Set(rows.map(r => catPathName(r).split('>').pop().trim()))).sort();
+
+        const renderEditor = () => {
+            let html = `
+              <div style="padding: 10px;">
+                <p class="row-note" style="margin-bottom: 20px;">Ative, oculte ou configure os seus painéis temáticos.</p>
+                <div id="dim-editor-list" style="display: grid; gap: 12px;">
+            `;
+
+            DIMENSIONS.forEach((d, idx) => {
+              const isHidden = d.hidden === true;
+              html += `
+                <div class="card" style="padding: 12px; background: ${isHidden ? 'var(--bg)' : 'var(--surface)'}; opacity: ${isHidden ? 0.6 : 1}; border: 1px solid var(--border); position: relative;">
+                  <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 8px;">
+                     <button class="toggle-dim-btn icon-btn" data-idx="${idx}" title="${isHidden ? 'Mostrar na Dashboard' : 'Ocultar da Dashboard'}">
+                        <span class="material-symbols-outlined" style="font-size: 20px; color: ${isHidden ? 'var(--muted)' : 'var(--blue-500)'}">${isHidden ? 'visibility_off' : 'visibility'}</span>
+                     </button>
+                     <button class="remove-dim-btn icon-btn" data-idx="${idx}" title="Eliminar Permanentemente">
+                        <span class="material-symbols-outlined" style="font-size: 20px; color: var(--red-500)">delete</span>
+                     </button>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; margin-bottom: 12px;">
+                    <input type="text" class="dim-icon-edit" data-idx="${idx}" value="${d.icon}" style="width: 40px; text-align: center; border: 1px solid var(--border); border-radius: 6px; font-family: 'Material Symbols Outlined'; font-size: 20px; padding: 4px;">
+                    <input type="text" class="dim-name-edit" data-idx="${idx}" value="${d.name}" placeholder="Nome do Tema" style="font-weight: 800; border: none; background: transparent; font-size: 15px; color: var(--text);">
+                  </div>
+
+                  <div style="margin-top: 8px;">
+                    <label style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 6px;">Sugestão de Categorias:</label>
+                    <select class="dim-cat-picker" data-idx="${idx}" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; margin-bottom: 8px;">
+                        <option value="">-- Escolher Categoria para adicionar --</option>
+                        ${allPossibleCats.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+
+                    <label style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 4px;">Palavras-chave Filtro:</label>
+                    <textarea class="dim-hints-edit" id="hints-${idx}" data-idx="${idx}" placeholder="Ex: aluguer, luz, internet..." style="width: 100%; min-height: 50px; font-size: 12px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">${(d.hints || []).join(', ')}</textarea>
+                  </div>
+                </div>
+              `;
+            });
+
+            html += `
+                </div>
+                <button class="btn btn--outline" id="add-dim-btn" style="width: 100%; margin-top: 15px; border-style: dashed; padding: 12px;">
+                    <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 6px;">add_circle</span> Criar Novo Tema
+                </button>
+                <div class="actions" style="margin-top: 25px; display: flex; gap: 10px;">
+                  <button class="btn btn--primary" id="save-dimensions-config" style="flex: 2;">Guardar Alterações</button>
+                  <button class="btn" id="reset-dimensions-config" style="flex: 1;">Reset</button>
+                </div>
+              </div>
+            `;
+            extraEl.innerHTML = html;
+
+            // Bind events
+            extraEl.querySelectorAll('.toggle-dim-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const idx = btn.dataset.idx;
+                    DIMENSIONS[idx].hidden = !DIMENSIONS[idx].hidden;
+                    renderEditor();
+                };
+            });
+
+            extraEl.querySelectorAll('.remove-dim-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (confirm("Tens a certeza que queres eliminar este tema permanentemente?")) {
+                        DIMENSIONS.splice(btn.dataset.idx, 1);
+                        renderEditor();
+                    }
+                };
+            });
+
+            extraEl.querySelectorAll('.dim-cat-picker').forEach(sel => {
+                sel.onchange = (e) => {
+                    const idx = sel.dataset.idx;
+                    const val = e.target.value;
+                    if (!val) return;
+                    const area = document.getElementById(`hints-${idx}`);
+                    let current = area.value.split(',').map(s => s.trim()).filter(Boolean);
+                    if (!current.includes(val.toLowerCase())) {
+                        current.push(val.toLowerCase());
+                        area.value = current.join(', ');
+                    }
+                    sel.value = "";
+                };
+            });
+
+            document.getElementById('add-dim-btn').onclick = () => {
+                DIMENSIONS.push({ key: 'custom_' + Date.now(), name: 'Novo Tema', icon: 'category', hints: [], hidden: false });
+                renderEditor();
+            };
+
+            document.getElementById('save-dimensions-config').onclick = () => {
+                const names = extraEl.querySelectorAll('.dim-name-edit');
+                const icons = extraEl.querySelectorAll('.dim-icon-edit');
+                const hints = extraEl.querySelectorAll('.dim-hints-edit');
+                
+                names.forEach((inp, idx) => {
+                    DIMENSIONS[idx].name = inp.value;
+                    DIMENSIONS[idx].icon = icons[idx].value;
+                    DIMENSIONS[idx].hints = hints[idx].value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                });
+
+                localStorage.setItem('wb:dimensions', JSON.stringify(DIMENSIONS));
+                Toast.success("Dashboard atualizada!");
+                setTimeout(() => location.reload(), 300);
+            };
+
+            document.getElementById('reset-dimensions-config').onclick = () => {
+                if (confirm("Repor temas originais?")) {
+                    localStorage.removeItem('wb:dimensions');
+                    location.reload();
+                }
+            };
+        };
+
+        renderEditor();
+        modal.hidden = false;
+        trapFocus(modal);
+      });
+
+      const dimData = {};
+      // Ensure 'outros' is always present as fallback
+      const allKeys = new Set(DIMENSIONS.map(d => d.key));
+      allKeys.add('outros');
+      
+      allKeys.forEach(k => {
+          const d = DIMENSIONS.find(x => x.key === k) || { key: 'outros', name: 'Outros', icon: 'more_horiz', hints: [] };
+          dimData[k] = { ...d, thisMonth: 0, next: null, past: [], present: [], future: [], bySubCat: new Map(), monthlyHistory: new Map() };
+      });
+
       const todayDate = new Date();
       const currentMonth = todayDate.getMonth();
       const currentYear = todayDate.getFullYear();
+
+      // Get Total Income for calculations (use currentMonth data if available in global scope or re-calculate)
+      const totalMonthlyIncome = typeof monthly !== 'undefined' ? (monthly.find(m => m.key === todayDate.toISOString().slice(0, 7))?.income || 0) : 0;
+      const avgMonthlyIncome = typeof monthly !== 'undefined' ? (monthly.reduce((a, b) => a + Number(b.income || 0), 0) / (monthly.length || 1)) : 1000;
+
+      // Process historical rows for past/present
 
       rows.forEach(r => {
         const d = new Date(r.date);
         const path = catPathName(r);
         const dk = getDimension(path);
         const amt = Math.abs(Number(r.amount));
+        const monthKey = d.toISOString().slice(0, 7);
+        
+        const targetStore = dimData[dk] || dimData['outros'];
         
         if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-          dimData[dk].thisMonth += amt;
-          dimData[dk].present.push({ date: r.date, amount: amt, label: path });
+          targetStore.thisMonth += amt;
+          targetStore.present.push({ date: r.date, amount: amt, label: path });
         } else if (d < todayDate) {
-          dimData[dk].past.push({ date: d, amount: amt, label: path });
+          targetStore.past.push({ date: d, amount: amt, label: path });
+          
+          // History for Average (last 12 months)
+          const diffMonths = (todayDate.getFullYear() - d.getFullYear()) * 12 + (todayDate.getMonth() - d.getMonth());
+          if (diffMonths <= 12) {
+              targetStore.monthlyHistory.set(monthKey, (targetStore.monthlyHistory.get(monthKey) || 0) + amt);
+              
+              // Subcat breakdown (last 12m)
+              const subName = path.split('>').pop().trim();
+              targetStore.bySubCat.set(subName, (targetStore.bySubCat.get(subName) || 0) + amt);
+          }
         }
       });
 
       // Process upcoming for future
       upcoming.forEach(u => {
         const dk = getDimension(u.name);
-        if (!dimData[dk].next || u.next < dimData[dk].next.date) {
-            dimData[dk].next = { date: u.next, amount: u.amount, label: u.name };
+        const targetStore = dimData[dk] || dimData['outros'];
+        if (!targetStore.next || u.next < targetStore.next.date) {
+            targetStore.next = { date: u.next, amount: u.amount, label: u.name };
         }
-        dimData[dk].future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
+        targetStore.future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
       });
 
       // Show Timeline helper (reusing modal)
@@ -2424,85 +2591,148 @@ export async function init({ sb, outlet } = {}) {
         const canvas = document.getElementById("dash-modal-canvas");
         const extraEl = document.getElementById("dash-modal-extra");
 
-        titleEl.textContent = `${data.name}`;
+        titleEl.innerHTML = `<span class="material-symbols-outlined" style="vertical-align:middle; margin-right:8px;">${data.icon}</span> ${data.name}`;
+        
+        // Hide the default single canvas to build our own visual grid
         if (canvas.parentElement) canvas.parentElement.style.display = 'none';
         
-        // Sort and slice data
-        const past = data.past.sort((a,b) => b.date - a.date).slice(0, 10);
-        const present = data.present.sort((a,b) => b.date - a.date);
-        const future = data.future.sort((a,b) => a.date - b.next);
+        // Calculate Metrics
+        const avgValue = data.monthlyHistory.size > 0 
+            ? Array.from(data.monthlyHistory.values()).reduce((a,b) => a+b, 0) / 12 
+            : 0;
+        const totalFuture = data.future.reduce((a,b) => a + Number(b.amount), 0);
+        const incomeRef = totalMonthlyIncome || avgMonthlyIncome || 1;
+        const pctIncome = ((data.thisMonth / incomeRef) * 100).toFixed(1);
+        const pctEffort = (((data.thisMonth + totalFuture) / incomeRef) * 100).toFixed(1);
 
-        let html = '<div class="timeline">';
-
-        // Future
-        future.forEach(f => {
-          html += `
-            <div class="timeline-item">
-              <div class="timeline-dot timeline-dot--future"><span class="material-symbols-outlined" style="font-size:14px">event</span></div>
-              <div class="timeline-content">
-                <div class="timeline-date">${f.date.toLocaleDateString('pt-PT', {day:'2-digit', month:'short', year:'numeric'})} (Previsto)</div>
-                <div class="timeline-info">
-                  <span class="timeline-label">${f.label.split('>').pop()}</span>
-                  <span class="timeline-amount">${money(f.amount)}</span>
+        // Prepare Grid Layout for Charts
+        let html = `
+            <div class="grid grid-responsive-3" style="gap: 10px; margin-bottom: 25px;">
+                <div class="kpi-mini">
+                    <div class="kpi-mini__label">Executado</div>
+                    <div class="kpi-mini__value">${money(data.thisMonth)}</div>
                 </div>
-                <div class="timeline-subtext">Em ${f.daysLeft} dias</div>
+                <div class="kpi-mini">
+                    <div class="kpi-mini__label">Previsto</div>
+                    <div class="kpi-mini__value" style="color: var(--blue-500)">${money(totalFuture)}</div>
+                </div>
+                <div class="kpi-mini">
+                    <div class="kpi-mini__label">% Receitas</div>
+                    <div class="kpi-mini__value">${pctIncome}%</div>
+                </div>
+            </div>
+
+            <div class="grid-report" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div class="chart-box" style="background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border);">
+                    <h5 style="margin: 0 0 15px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Tendência (6 Meses)</h5>
+                    <div style="height: 180px;"><canvas id="chart-trend"></canvas></div>
+                </div>
+                <div class="chart-box" style="background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border);">
+                    <h5 style="margin: 0 0 15px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Distribuição Subcategorias</h5>
+                    <div style="height: 180px;"><canvas id="chart-pie"></canvas></div>
+                </div>
+            </div>
+
+            <h4 style="margin: 20px 0 10px; font-weight: 800; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px;">Fluxo de Pagamentos</h4>
+            <div class="timeline-h-container">
+              <div class="timeline-h-scroll">
+        `;
+
+        // Timeline Items logic
+        const allItems = [
+            ...data.past.map(i => ({ ...i, type: 'past' })),
+            ...data.present.map(i => ({ ...i, type: 'present' })),
+            ...data.future.map(i => ({ ...i, type: 'future' }))
+        ].sort((a,b) => (a.date instanceof Date ? a.date : new Date(a.date)) - (b.date instanceof Date ? b.date : new Date(b.date)));
+
+        const fifteenDaysAgo = new Date(); fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+        const filteredTimeline = allItems.filter(it => (it.date instanceof Date ? it.date : new Date(it.date)) >= fifteenDaysAgo);
+
+        filteredTimeline.forEach(it => {
+          const d = it.date instanceof Date ? it.date : new Date(it.date);
+          html += `
+            <div class="timeline-h-item timeline-h-item--${it.type}">
+              <div class="timeline-h-info"><div class="timeline-h-date">${d.toLocaleDateString('pt-PT', {day:'2-digit', month:'short'})}</div></div>
+              <div class="timeline-h-dot"></div>
+              <div class="timeline-h-details">
+                <span class="timeline-h-label">${it.label.split('>').pop()}</span>
+                <span class="timeline-h-amount">${money(it.amount)}</span>
               </div>
             </div>
           `;
         });
+        html += '</div></div>';
 
-        // Present
-        present.forEach(p => {
-            const dateStr = typeof p.date === 'string' ? p.date : p.date.toISOString().slice(0,10);
-          html += `
-            <div class="timeline-item">
-              <div class="timeline-dot timeline-dot--present"><span class="material-symbols-outlined" style="font-size:14px">payments</span></div>
-              <div class="timeline-content">
-                <div class="timeline-date">${new Date(dateStr).toLocaleDateString('pt-PT', {day:'2-digit', month:'short'})} (Este mês)</div>
-                <div class="timeline-info">
-                  <span class="timeline-label">${p.label.split('>').pop()}</span>
-                  <span class="timeline-amount">${money(p.amount)}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-
-        // Past
-        past.forEach(p => {
-          html += `
-            <div class="timeline-item">
-              <div class="timeline-dot timeline-dot--past"><span class="material-symbols-outlined" style="font-size:14px">history</span></div>
-              <div class="timeline-content">
-                <div class="timeline-date">${p.date.toLocaleDateString('pt-PT', {day:'2-digit', month:'short', year:'numeric'})}</div>
-                <div class="timeline-info">
-                  <span class="timeline-label">${p.label.split('>').pop()}</span>
-                  <span class="timeline-amount">${money(p.amount)}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        });
-
-        if (!past.length && !present.length && !future.length) {
-            html += '<div class="muted" style="text-align:center; padding: 20px;">Nenhum movimento encontrado para esta dimensão.</div>';
-        }
-
-        html += '</div>';
         extraEl.innerHTML = html;
         modal.hidden = false;
         trapFocus(modal);
+
+        // Initialize Charts with Delay to ensure DOM is ready
+        setTimeout(() => {
+            if (!window.Chart) return;
+
+            // 1. Trend Chart
+            const last6 = [];
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(); d.setMonth(d.getMonth() - i);
+                const k = d.toISOString().slice(0, 7);
+                last6.push({ label: d.toLocaleDateString('pt-PT', { month: 'short' }), val: data.monthlyHistory.get(k) || 0 });
+            }
+            new window.Chart(document.getElementById('chart-trend'), {
+                type: 'line',
+                data: {
+                    labels: last6.map(m => m.label),
+                    datasets: [{
+                        data: last6.map(m => m.val),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 2
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
+                           scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } } } }
+            });
+
+            // 2. Pie Chart
+            const subCats = Array.from(data.bySubCat.entries()).sort((a,b) => b[1] - a[1]).slice(0, 5);
+            new window.Chart(document.getElementById('chart-pie'), {
+                type: 'doughnut',
+                data: {
+                    labels: subCats.map(s => s[0]),
+                    datasets: [{
+                        data: subCats.map(s => s[1]),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    cutout: '70%',
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 8, font: { size: 10 } } } 
+                    } 
+                }
+            });
+
+            // Auto-scroll timeline
+            const pres = extraEl.querySelector('.timeline-h-item--present');
+            if (pres) pres.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+        }, 300);
       };
 
       // Render Life Dimensions
       const lifeBox = outlet.querySelector("#life-dimensions-list");
       if (lifeBox) {
-        lifeBox.innerHTML = DIMENSIONS.map(d => {
-          const data = dimData[d.key];
-          const nextText = data.next ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` : 'Sem previsão';
-          return `
-            <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
-              <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
+        lifeBox.innerHTML = DIMENSIONS
+          .filter(d => !d.hidden) // Skip hidden ones
+          .map(d => {
+            const data = dimData[d.key];
+            const nextText = data.next ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` : 'Sem previsão';
+            return `
+              <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
+                <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
               <h3 class="dimension-card__title">${d.name}</h3>
               <div class="dimension-card__value">${money(data.thisMonth)}</div>
               <div class="dimension-card__status">${nextText}</div>
