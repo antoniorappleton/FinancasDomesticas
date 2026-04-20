@@ -868,10 +868,10 @@ export async function init({ sb, outlet } = {}) {
     if (!box || !track) return;
 
     // Identify target carousels
-    const isMini =
-      box.classList.contains("mini-carousel") || track.id === "mini-track";
+    const isMini = box.classList.contains("mini-carousel") || track.id === "mini-track";
     const isUpcoming = box.classList.contains("upcoming-carousel");
-    const isMulti = isMini || isUpcoming;
+    const isDimensions = box.classList.contains("dimensions-carousel");
+    const isMulti = isMini || isUpcoming || isDimensions;
 
     // Only count items that are NOT hidden
     const allItems = Array.from(track.querySelectorAll(".carousel-item"));
@@ -896,10 +896,16 @@ export async function init({ sb, outlet } = {}) {
 
       // Upcoming Expenses (Slightly Wider)
       if (isUpcoming) {
-        if (w >= 900) return 5; // Wider than mini
-        if (w >= 600) return 3; // Tablet: 3 instead of 5
-        if (w >= 420) return 2; // Mobile Wide: 2 instead of 4
-        return 2; // Mobile Tiny: 2 instead of 3 (or maybe 1.5 if using fractional? sticking to int for now. 2 is good.)
+        if (w >= 900) return 5; 
+        if (w >= 600) return 3; 
+        return 2; 
+      }
+
+      if (isDimensions) {
+        if (w >= 1100) return 6;
+        if (w >= 800) return 4;
+        if (w >= 600) return 3;
+        return 1.4; 
       }
 
       return 1; // Fallback for others
@@ -2760,7 +2766,7 @@ export async function init({ sb, outlet } = {}) {
         // Initialize Carousel
         const carBox = outlet.querySelector("#life-dims-car-box");
         const carDots = outlet.querySelector("#life-dims-dots");
-        if (carBox && window.setupCarousel) {
+        if (carBox && setupCarousel) {
             setupCarousel(carBox, lifeBox, carDots);
         }
 
