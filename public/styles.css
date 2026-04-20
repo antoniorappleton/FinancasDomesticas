@@ -4459,3 +4459,16 @@ label,
   color: var(--text);
   margin-top: 2px;
 }
+
+/* Carousel System */
+.carousel-container { position: relative; width: 100%; overflow: hidden; margin: 10px 0; }
+.carousel-track { display: flex; gap: 12px; overflow-x: auto; scroll-behavior: smooth; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding: 10px 4px 15px; }
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-item { flex: 0 0 auto; scroll-snap-align: start; }
+.carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: -5px; margin-bottom: 10px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: #e2e8f0; transition: all 0.3s ease; cursor: pointer; }
+.dot.active { width: 20px; background: #3b82f6; border-radius: 4px; }
+.dimensions-carousel .carousel-item { width: 145px; }
+.dimensions-carousel .dimension-card { background: #ffffff !important; color: #0f172a !important; border: 1px solid #e2e8f0 !important; padding: 16px 12px; min-height: 140px; justify-content: center; }
+.dimensions-carousel .dimension-card__title, .dimensions-carousel .dimension-card__value { color: #1e293b !important; }
+

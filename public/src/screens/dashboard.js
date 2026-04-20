@@ -2746,14 +2746,23 @@ export async function init({ sb, outlet } = {}) {
             const data = dimData[d.key];
             const nextText = data.next ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` : 'Sem previsão';
             return `
-              <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
-                <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
-              <h3 class="dimension-card__title">${d.name}</h3>
-              <div class="dimension-card__value">${money(data.thisMonth)}</div>
-              <div class="dimension-card__status">${nextText}</div>
-            </div>
-          `;
-        }).join('');
+              <div class="carousel-item">
+                <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
+                  <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
+                  <h3 class="dimension-card__title">${d.name}</h3>
+                  <div class="dimension-card__value">${money(data.thisMonth)}</div>
+                  <div class="dimension-card__status">${nextText}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+        // Initialize Carousel
+        const carBox = outlet.querySelector("#life-dims-car-box");
+        const carDots = outlet.querySelector("#life-dims-dots");
+        if (carBox && window.setupCarousel) {
+            setupCarousel(carBox, lifeBox, carDots);
+        }
 
         // Modal integration
         lifeBox.querySelectorAll('.dimension-card').forEach(card => {
