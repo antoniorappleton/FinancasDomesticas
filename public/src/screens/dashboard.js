@@ -2409,51 +2409,58 @@ export async function init({ sb, outlet } = {}) {
         const allPossibleCats = Array.from(new Set(rows.map(r => catPathName(r).split('>').pop().trim()))).sort();
 
         const renderEditor = () => {
-            let html = `
-              <div style="padding: 10px;">
-                <p class="row-note" style="margin-bottom: 20px;">Ative, oculte ou configure os seus painéis temáticos.</p>
-                <div id="dim-editor-list" style="display: grid; gap: 12px;">
-            `;
+            const active = DIMENSIONS.filter(d => !d.hidden);
+            const hidden = DIMENSIONS.filter(d => d.hidden);
 
-            DIMENSIONS.forEach((d, idx) => {
-              const isHidden = d.hidden === true;
-              html += `
-                <div class="card" style="padding: 12px; background: ${isHidden ? 'var(--bg)' : 'var(--surface)'}; opacity: ${isHidden ? 0.6 : 1}; border: 1px solid var(--border); position: relative;">
+            const renderCard = (d, idxInOriginal) => {
+                const isHidden = d.hidden === true;
+                return `
+                <div class="card" style="padding: 12px; background: ${isHidden ? 'var(--bg)' : 'var(--surface)'}; opacity: ${isHidden ? 0.7 : 1}; border: 1px solid var(--border); position: relative; margin-bottom: 12px;">
                   <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 8px;">
-                     <button class="toggle-dim-btn icon-btn" data-idx="${idx}" title="${isHidden ? 'Mostrar na Dashboard' : 'Ocultar da Dashboard'}">
+                     <button class="toggle-dim-btn icon-btn" data-idx="${idxInOriginal}" title="${isHidden ? 'Ativar' : 'Ocultar'}">
                         <span class="material-symbols-outlined" style="font-size: 20px; color: ${isHidden ? 'var(--muted)' : 'var(--blue-500)'}">${isHidden ? 'visibility_off' : 'visibility'}</span>
                      </button>
-                     <button class="remove-dim-btn icon-btn" data-idx="${idx}" title="Eliminar Permanentemente">
-                        <span class="material-symbols-outlined" style="font-size: 20px; color: var(--red-500)">delete</span>
+                     <button class="remove-dim-btn icon-btn" data-idx="${idxInOriginal}" title="Eliminar Permanentemente">
+                        <span class="material-symbols-outlined" style="font-size: 18px; color: var(--red-500)">delete</span>
                      </button>
                   </div>
 
                   <div style="display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; margin-bottom: 12px;">
-                    <input type="text" class="dim-icon-edit" data-idx="${idx}" value="${d.icon}" style="width: 40px; text-align: center; border: 1px solid var(--border); border-radius: 6px; font-family: 'Material Symbols Outlined'; font-size: 20px; padding: 4px;">
-                    <input type="text" class="dim-name-edit" data-idx="${idx}" value="${d.name}" placeholder="Nome do Tema" style="font-weight: 800; border: none; background: transparent; font-size: 15px; color: var(--text);">
+                    <input type="text" class="dim-icon-edit" data-idx="${idxInOriginal}" value="${d.icon}" style="width: 40px; text-align: center; border: 1px solid var(--border); border-radius: 6px; font-family: 'Material Symbols Outlined'; font-size: 20px; padding: 4px;">
+                    <input type="text" class="dim-name-edit" data-idx="${idxInOriginal}" value="${d.name}" placeholder="Nome do Tema" style="font-weight: 800; border: none; background: transparent; font-size: 15px; color: var(--text);">
                   </div>
 
-                  <div style="margin-top: 8px;">
+                  <div style="margin-top: 8px; ${isHidden ? 'display:none' : ''}">
                     <label style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 6px;">Sugestão de Categorias:</label>
-                    <select class="dim-cat-picker" data-idx="${idx}" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; margin-bottom: 8px;">
-                        <option value="">-- Escolher Categoria para adicionar --</option>
+                    <select class="dim-cat-picker" data-idx="${idxInOriginal}" style="width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; margin-bottom: 8px;">
+                        <option value="">-- Escolher Categoria --</option>
                         ${allPossibleCats.map(c => `<option value="${c}">${c}</option>`).join('')}
                     </select>
 
                     <label style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 800; display: block; margin-bottom: 4px;">Palavras-chave Filtro:</label>
-                    <textarea class="dim-hints-edit" id="hints-${idx}" data-idx="${idx}" placeholder="Ex: aluguer, luz, internet..." style="width: 100%; min-height: 50px; font-size: 12px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">${(d.hints || []).join(', ')}</textarea>
+                    <textarea class="dim-hints-edit" id="hints-${idxInOriginal}" data-idx="${idxInOriginal}" placeholder="Ex: aluguer, luz, internet..." style="width: 100%; min-height: 40px; font-size: 12px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">${(d.hints || []).join(', ')}</textarea>
                   </div>
                 </div>
-              `;
-            });
+                `;
+            };
 
-            html += `
-                </div>
+            let html = `
+              <div style="padding: 10px;">
+                <p class="row-note" style="margin-bottom: 20px;">Organize os seus painéis temáticos. Painéis ocultos continuam a guardar histórico.</p>
+                
+                <h6 style="margin: 0 0 10px; font-size: 11px; text-transform: uppercase; color: var(--blue-500);">Painéis Ativos</h6>
+                <div id="active-list">${active.map(d => renderCard(d, DIMENSIONS.indexOf(d))).join('')}</div>
+
+                ${hidden.length ? `
+                  <h6 style="margin: 30px 0 10px; font-size: 11px; text-transform: uppercase; color: var(--muted);">Painéis Ocultos (Arquivados)</h6>
+                  <div id="hidden-list">${hidden.map(d => renderCard(d, DIMENSIONS.indexOf(d))).join('')}</div>
+                ` : ''}
+
                 <button class="btn btn--outline" id="add-dim-btn" style="width: 100%; margin-top: 15px; border-style: dashed; padding: 12px;">
                     <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 6px;">add_circle</span> Criar Novo Tema
                 </button>
                 <div class="actions" style="margin-top: 25px; display: flex; gap: 10px;">
-                  <button class="btn btn--primary" id="save-dimensions-config" style="flex: 2;">Guardar Alterações</button>
+                  <button class="btn btn--primary" id="save-dimensions-config" style="flex: 2;">Guardar e Atualizar</button>
                   <button class="btn" id="reset-dimensions-config" style="flex: 1;">Reset</button>
                 </div>
               </div>
@@ -2471,7 +2478,7 @@ export async function init({ sb, outlet } = {}) {
 
             extraEl.querySelectorAll('.remove-dim-btn').forEach(btn => {
                 btn.onclick = () => {
-                    if (confirm("Tens a certeza que queres eliminar este tema permanentemente?")) {
+                    if (confirm("Eliminar permanentemente este tema e as suas configurações?")) {
                         DIMENSIONS.splice(btn.dataset.idx, 1);
                         renderEditor();
                     }
@@ -2503,14 +2510,22 @@ export async function init({ sb, outlet } = {}) {
                 const icons = extraEl.querySelectorAll('.dim-icon-edit');
                 const hints = extraEl.querySelectorAll('.dim-hints-edit');
                 
+                // Note: we must map back to the original objects in DIMENSIONS properly
+                // Since we didn't filter the actual objects but just their rendering,
+                // we use data-idx to find them.
                 names.forEach((inp, idx) => {
-                    DIMENSIONS[idx].name = inp.value;
-                    DIMENSIONS[idx].icon = icons[idx].value;
-                    DIMENSIONS[idx].hints = hints[idx].value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                    const originalIdx = inp.dataset.idx;
+                    DIMENSIONS[originalIdx].name = inp.value;
+                    DIMENSIONS[originalIdx].icon = icons[idx].value;
+                    // hints might be hidden for hidden items, only update if textarea exists
+                    const hintArea = hints[idx];
+                    if (hintArea && hintArea.offsetParent !== null) {
+                        DIMENSIONS[originalIdx].hints = hintArea.value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+                    }
                 });
 
                 localStorage.setItem('wb:dimensions', JSON.stringify(DIMENSIONS));
-                Toast.success("Dashboard atualizada!");
+                Toast.success("Configuração de Temas Guardada!");
                 setTimeout(() => location.reload(), 300);
             };
 
