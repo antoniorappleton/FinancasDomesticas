@@ -2769,19 +2769,21 @@ export async function init({ sb, outlet } = {}) {
                     <div style="height:160px; width:100%;"><canvas id="chart-theme-evolution"></canvas></div>
                 </div>
 
-                <div class="chart-block">
-                    <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
-                    <div style="height:200px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
-                </div>
-
-                <div style="display:flex; flex-wrap:wrap; gap:15px;">
-                    <div class="chart-block" style="flex:1; min-width:min(100%, 250px);">
-                        <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Top Categorias</h6>
-                        <div style="height:140px;"><canvas id="chart-theme-pie"></canvas></div>
+                <!-- Linha 2 & 3: Composição e Distribuição (Vertical Stack) -->
+                <div class="charts-wrap" style="display:flex; flex-direction:column; gap:15px; width:100%; overflow:hidden;">
+                    <div class="chart-block" style="width:100%; min-width:0;">
+                        <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
+                        <div style="height:140px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
                     </div>
-                    <div class="chart-block" style="flex:1; min-width:min(100%, 250px);">
-                        <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Fixas vs Variáveis</h6>
-                        <div style="height:140px;"><canvas id="chart-theme-nature"></canvas></div>
+                    <div style="display:flex; flex-wrap:wrap; gap:10px; width:100%;">
+                        <div class="chart-block" style="flex:1; min-width:140px;">
+                            <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Top Categorias</h6>
+                            <div style="height:140px; width:100%;"><canvas id="chart-theme-pie"></canvas></div>
+                        </div>
+                        <div class="chart-block" style="flex:1; min-width:140px;">
+                            <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Natureza</h6>
+                            <div style="height:140px; width:100%;"><canvas id="chart-theme-nature"></canvas></div>
+                        </div>
                     </div>
                 </div>
             </div>
