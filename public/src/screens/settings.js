@@ -2255,55 +2255,98 @@ export async function init({ sb, outlet } = {}) {
         monthlyRows,
       );
 
-      // ===== 5) Despesas por regularidade (agg) =====
-      const regAgg = new Map(); // key: label; val: total
-      expRows.forEach((r) => {
-        const lab =
-          REG_LABEL_BY_ID.get(r.regularity_id) ||
-          (r.regularity_id ? String(r.regularity_id) : "Sem regularidade");
-        regAgg.set(lab, (regAgg.get(lab) || 0) + Number(r.amount || 0));
+      // ===== 5) Despesas por regularidade (BUBBLE CHART) =====
+      // Eixo X: Meses (mlabels)
+      // Eixo Y: Tipos de Regularidade
+      // Raio: Montante
+      const regsFound = new Set();
+      expRows.forEach(r => {
+          const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
+          regsFound.add(lab);
       });
-      const regSorted = [...regAgg.entries()].sort((a, b) => b[1] - a[1]);
-      const regLabels = regSorted.map(([k]) => k);
-      const regValues = regSorted.map(([, v]) => v);
-      const regTotal = regValues.reduce((a, b) => a + b, 0);
+      const regList = Array.from(regsFound).sort();
+      
+      const bubbleMap = new Map(); // key: "month|reg"; val: amount
+      const totalsPerReg = new Map(); // for PDF
 
-      _regularityAggPDF = regSorted.map(([label, value]) => ({ label, value }));
+      expRows.forEach(r => {
+          const mKey = new Date(r.date).toISOString().slice(0, 7);
+          const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
+          
+          totalsPerReg.set(lab, (totalsPerReg.get(lab) || 0) + Math.abs(Number(r.amount || 0)));
+
+          if (!mlabels.includes(mKey)) return;
+          const k = `${mKey}|${lab}`;
+          bubbleMap.set(k, (bubbleMap.get(k) || 0) + Math.abs(Number(r.amount || 0)));
+      });
+
+      _regularityAggPDF = Array.from(totalsPerReg.entries())
+          .sort((a,b) => b[1] - a[1])
+          .map(([label, value]) => ({ label, value }));
+
+      // Calcular escala para o raio (max valor -> ~25px)
+      const maxAmt = Math.max(...Array.from(bubbleMap.values()), 1);
+      const radiusScale = 25 / Math.sqrt(maxAmt);
+
+      const bubbleDatasets = regList.map((reg, i) => {
+          const data = mlabels.map((m, mIdx) => {
+              const amt = bubbleMap.get(`${m}|${reg}`) || 0;
+              if (amt === 0) return null;
+              return {
+                  x: mIdx,
+                  y: i,
+                  r: Math.sqrt(amt) * radiusScale,
+                  val: amt,
+                  month: m,
+                  reg: reg
+              };
+          }).filter(Boolean);
+
+          return {
+              label: reg,
+              data: data,
+              backgroundColor: palette(regList.length)[i],
+              borderColor: 'rgba(255,255,255,0.2)',
+              borderWidth: 1
+          };
+      });
 
       _rptReg = makeChart($("#rpt-regularity"), {
-        type: "bar",
-        data: {
-          labels: regLabels,
-          datasets: [
-            {
-              label: "Despesas por regularidade",
-              data: regValues,
-              backgroundColor: palette(regValues.length),
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          plugins: {
-            legend: { display: false },
-            datalabels: { display: false },
-          },
-          scales: { y: { beginAtZero: true } },
-        },
+          type: "bubble",
+          data: { datasets: bubbleDatasets },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                  tooltip: {
+                      callbacks: {
+                          label: (ctx) => {
+                              const d = ctx.raw;
+                              return `${d.reg} (${d.month}): ${money(d.val)}`;
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  x: {
+                      ticks: {
+                          callback: (val) => mlabels[val] ? mlabels[val].split('-')[1] + '/' + mlabels[val].split('-')[0].slice(2) : ''
+                      }
+                  },
+                  y: {
+                      ticks: {
+                          callback: (val) => regList[val] || '',
+                          stepSize: 1
+                      },
+                      min: -0.5,
+                      max: regList.length - 0.5
+                  }
+              }
+          }
       });
 
-      const regColors = _rptReg?.data?.datasets?.[0]?.backgroundColor || [];
-      const regLegend = regLabels.map((lab, i) => ({
-        label: lab,
-        value: regValues[i],
-        pct: regTotal ? regValues[i] / regTotal : 0,
-        color: regColors[i] || "#64748b",
-      }));
-      if ($("#rpt-reg-legend")) {
-        $("#rpt-reg-legend").innerHTML = legendHTML(regLegend);
-      }
+      if ($("#rpt-reg-legend")) $("#rpt-reg-legend").innerHTML = '';
 
       // ===== 6) Top 6 despesas (barras horizontais) =====
       const top6 = expCat.slice(0, 6);
