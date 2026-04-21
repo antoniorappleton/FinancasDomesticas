@@ -2404,7 +2404,7 @@ export async function init({ sb, outlet } = {}) {
 
       const getDimension = (path) => {
         const p = (path || '').toLowerCase().trim();
-        const segments = p.split('>').map(s => s.trim());
+        const segments = p.split('>').map(s => s.trim().toLowerCase());
         const leaf = segments[segments.length - 1]; // The most specific category (e.g. "Cinema")
         
         for (const d of DIMENSIONS) {
@@ -2412,17 +2412,20 @@ export async function init({ sb, outlet } = {}) {
           
           const matches = d.hints.some(h => {
               const hint = h.toLowerCase().trim();
-              if (hint.length < 2) return false; // Ignore too short hints like "e", "a", ","
+              if (hint.length < 2) return false;
               
-              // 1. Priority: Perfect match with the SPECIFIC subcategory (leaf)
+              // 1. Priority: Perfect match with the FULL PATH
+              // (Essential for specific selections from the picker)
+              if (p === hint) return true;
+
+              // 2. Secondary: If the hint contains '>', it's a path intent, 
+              // so we don't allow partial matches for safety.
+              if (hint.includes('>')) return false;
+              
+              // 3. Perfect match with the SPECIFIC subcategory (leaf)
               if (leaf === hint) return true;
               
-              // 2. Secondary: Perfect match with the full path
-              if (p === hint) return true;
-              
-              // 3. Optional: Parent match - only if the hint is NOT a common broad category 
-              // that might have unrelated children the user wants to keep separate.
-              // We'll keep segments.includes but only if it's an exact segment match.
+              // 4. Manual keywords match only full segments to avoid partial word overlap
               return segments.includes(hint);
           });
           
@@ -2441,8 +2444,8 @@ export async function init({ sb, outlet } = {}) {
         titleEl.textContent = "Personalizar Painéis";
         if (canvasWrapper) canvasWrapper.style.display = 'none';
 
-        // Helper to get all categories for the picker
-        const allPossibleCats = Array.from(new Set(rows.map(r => catPathName(r).split('>').pop().trim()))).sort();
+        // Helper to get all categories for the picker (Full Paths for precision)
+        const allPossibleCats = Array.from(new Set(rows.map(r => catPathName(r)))).sort();
 
         const renderEditor = () => {
             const active = DIMENSIONS.filter(d => !d.hidden);
