@@ -2404,18 +2404,26 @@ export async function init({ sb, outlet } = {}) {
 
       const getDimension = (path) => {
         const p = (path || '').toLowerCase().trim();
-        // Split path into segments (e.g. "Alimentação > Restaurante" -> ["alimentação", "restaurante"])
         const segments = p.split('>').map(s => s.trim());
+        const leaf = segments[segments.length - 1]; // The most specific category (e.g. "Cinema")
         
         for (const d of DIMENSIONS) {
           if (!d.hints || !d.hints.length) continue;
           
-          // Check if any hint matches any segment EXACTLY or matches the full path EXACTLY
           const matches = d.hints.some(h => {
               const hint = h.toLowerCase().trim();
-              if (!hint) return false;
-              // Exact match with full path OR exact match with any segment
-              return p === hint || segments.includes(hint);
+              if (hint.length < 2) return false; // Ignore too short hints like "e", "a", ","
+              
+              // 1. Priority: Perfect match with the SPECIFIC subcategory (leaf)
+              if (leaf === hint) return true;
+              
+              // 2. Secondary: Perfect match with the full path
+              if (p === hint) return true;
+              
+              // 3. Optional: Parent match - only if the hint is NOT a common broad category 
+              // that might have unrelated children the user wants to keep separate.
+              // We'll keep segments.includes but only if it's an exact segment match.
+              return segments.includes(hint);
           });
           
           if (matches) return d.key;
