@@ -2403,9 +2403,22 @@ export async function init({ sb, outlet } = {}) {
       const DIMENSIONS = loadDimensions();
 
       const getDimension = (path) => {
-        const p = (path || '').toLowerCase();
+        const p = (path || '').toLowerCase().trim();
+        // Split path into segments (e.g. "Alimentação > Restaurante" -> ["alimentação", "restaurante"])
+        const segments = p.split('>').map(s => s.trim());
+        
         for (const d of DIMENSIONS) {
-          if (d.hints && d.hints.some(h => p.includes(h))) return d.key;
+          if (!d.hints || !d.hints.length) continue;
+          
+          // Check if any hint matches any segment EXACTLY or matches the full path EXACTLY
+          const matches = d.hints.some(h => {
+              const hint = h.toLowerCase().trim();
+              if (!hint) return false;
+              // Exact match with full path OR exact match with any segment
+              return p === hint || segments.includes(hint);
+          });
+          
+          if (matches) return d.key;
         }
         return 'outros';
       };
