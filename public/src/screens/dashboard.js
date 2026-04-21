@@ -2823,12 +2823,12 @@ export async function init({ sb, outlet } = {}) {
                     datasets: [{
                         label: 'Total',
                         data: analytics.sortedMonths.map(m => analytics.monthlyHistory.get(m)),
-                        borderColor: 'var(--blue-500)',
+                        borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         fill: true,
                         tension: 0.3,
                         pointRadius: 4,
-                        pointBackgroundColor: 'var(--blue-500)'
+                        pointBackgroundColor: '#3b82f6'
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) } } }, plugins: { legend: { display: false } } }
@@ -2871,7 +2871,7 @@ export async function init({ sb, outlet } = {}) {
                     labels: ['Fixas', 'Variáveis'],
                     datasets: [{
                         data: [analytics.fixed12m, analytics.variable12m],
-                        backgroundColor: ['var(--blue-500)', 'var(--orange-500)']
+                        backgroundColor: ['#3b82f6', '#f97316']
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
