@@ -2810,8 +2810,44 @@ export async function init({ sb, outlet } = {}) {
                     ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Este mês está <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da tua média habitual.</li>` : ''}
                 </ul>
             </div>
+
+            <!-- 5. LINHA TEMPORAL (EVENTOS E FUTURO) -->
+            <div class="theme-timeline-section" style="margin-top:10px;">
+                <h6 style="margin:0 0 15px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Próximos & Recentes</h6>
+                
+                <div class="timeline">
+                    ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map(item => {
+                        const isFuture = analytics.future.includes(item);
+                        const isPast = analytics.past.includes(item);
+                        const isPresent = analytics.present.includes(item);
+                        
+                        let dotClass = 'timeline-dot--present';
+                        if (isFuture) dotClass = 'timeline-dot--future';
+                        if (isPast) dotClass = 'timeline-dot--past';
+
+                        const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+                        
+                        return `
+                        <div class="timeline-item">
+                            <div class="timeline-dot ${dotClass}">
+                                ${isFuture ? '<span class="material-symbols-outlined" style="font-size:14px;">event</span>' : ''}
+                            </div>
+                            <div class="timeline-content">
+                                <div class="timeline-date">${dateStr} ${isFuture ? '(Previsto)' : ''}</div>
+                                <div class="timeline-info">
+                                    <div class="timeline-label">${item.label.split('>').pop().trim()}</div>
+                                    <div class="timeline-amount">${format(item.amount)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                    ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="text-align:center; padding:20px;">Sem eventos registados para este tema.</div>' : ''}
+                </div>
+            </div>
         </div>
         `;
+
 
         extraEl.innerHTML = html;
         modal.hidden = false;
