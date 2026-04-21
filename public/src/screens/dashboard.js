@@ -2777,12 +2777,12 @@ export async function init({ sb, outlet } = {}) {
                 </div>
 
                 <!-- COMPOSIÇÃO MENSAL -->
-                <div class="chart-block">
+                <div class="chart-block" style="flex: 1; min-width: min(100%, 500px);">
                     <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Composição Mensal Detalhada</h6>
                     <div style="height:250px;"><canvas id="chart-theme-stacked"></canvas></div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:15px;">
                     <!-- DISTRIBUIÇÃO INTERNA -->
                     <div class="chart-block">
                         <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Distribuição Interna</h6>
@@ -2836,6 +2836,7 @@ export async function init({ sb, outlet } = {}) {
 
             // 2. Stacked Bar Chart (Composition)
             const subTypes = Array.from(analytics.bySubCat12m.keys());
+            const catColors = palette(subTypes.length);
             new Chart(document.getElementById("chart-theme-stacked").getContext("2d"), {
                 type: 'bar',
                 data: {
@@ -2843,7 +2844,7 @@ export async function init({ sb, outlet } = {}) {
                     datasets: subTypes.map((sub, i) => ({
                         label: sub,
                         data: analytics.sortedMonths.map(m => analytics.subCatByMonth.get(m)?.get(sub) || 0),
-                        backgroundColor: palette[i % palette.length],
+                        backgroundColor: catColors[i],
                         stack: 'S1'
                     }))
                 },
@@ -2857,7 +2858,7 @@ export async function init({ sb, outlet } = {}) {
                     labels: analytics.subCats.slice(0, 5).map(s => s.label),
                     datasets: [{
                         data: analytics.subCats.slice(0, 5).map(s => s.value),
-                        backgroundColor: palette
+                        backgroundColor: palette(5)
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
