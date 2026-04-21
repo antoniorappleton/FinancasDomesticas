@@ -2770,32 +2770,32 @@ export async function init({ sb, outlet } = {}) {
                 </div>
             ` : ''}
 
-            <!-- 3. CHARTS GRID (RESPONSIVO) -->
-            <div class="theme-charts-grid" style="display:flex; flex-direction:column; gap:15px; width:100%; overflow-x:hidden;">
+            <!-- 3. CHARTS GRID (READABLE & RESPONSIVE) -->
+            <div class="theme-charts-grid" style="display:flex; flex-direction:column; gap:25px; width:100%;">
                 
                 <!-- EVOLUÇÃO 12M -->
                 <div class="chart-block" style="width:100%;">
-                    <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
-                    <div style="height:150px; width:100%;"><canvas id="chart-theme-evolution"></canvas></div>
+                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
+                    <div style="height:200px; width:100%;"><canvas id="chart-theme-evolution"></canvas></div>
                 </div>
 
                 <!-- COMPOSIÇÃO MENSAL -->
                 <div class="chart-block" style="width:100%;">
-                    <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
-                    <div style="height:180px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
+                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
+                    <div style="height:240px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
                 </div>
 
-                <!-- GRELHA PEQUENA (Lado a lado apenas se houver espaço) -->
-                <div style="display:flex; flex-wrap:wrap; gap:10px; width:100%;">
+                <!-- GRELHA PEQUENA (Responsiva) -->
+                <div style="display:flex; flex-wrap:wrap; gap:20px; width:100%;">
                     <!-- DISTRIBUIÇÃO INTERNA -->
-                    <div class="chart-block" style="flex: 1; min-width: min(100%, 260px);">
-                        <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Top 5 Categorias</h6>
-                        <div style="height:120px;"><canvas id="chart-theme-pie"></canvas></div>
+                    <div class="chart-block" style="flex: 1; min-width: min(100%, 280px);">
+                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Top 5 Categorias</h6>
+                        <div style="height:160px;"><canvas id="chart-theme-pie"></canvas></div>
                     </div>
                     <!-- FIXO VS VARIÁVEL -->
-                    <div class="chart-block" style="flex: 1; min-width: min(100%, 260px);">
-                        <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Fixo vs Variável</h6>
-                        <div style="height:120px;"><canvas id="chart-theme-nature"></canvas></div>
+                    <div class="chart-block" style="flex: 1; min-width: min(100%, 280px);">
+                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Fixo vs Variável</h6>
+                        <div style="height:160px;"><canvas id="chart-theme-nature"></canvas></div>
                     </div>
                 </div>
             </div>
