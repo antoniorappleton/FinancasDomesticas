@@ -2771,30 +2771,30 @@ export async function init({ sb, outlet } = {}) {
             ` : ''}
 
             <!-- 3. CHARTS GRID -->
-            <div style="display:flex; flex-direction:column; gap:25px;">
+            <div style="display:flex; flex-direction:column; gap:15px;">
                 
                 <!-- EVOLUÇÃO 12M -->
                 <div class="chart-block">
-                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
-                    <div style="height:200px;"><canvas id="chart-theme-evolution"></canvas></div>
+                    <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
+                    <div style="height:150px;"><canvas id="chart-theme-evolution"></canvas></div>
                 </div>
 
                 <!-- COMPOSIÇÃO MENSAL -->
-                <div class="chart-block" style="flex: 1; min-width: min(100%, 500px);">
-                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Composição Mensal Detalhada</h6>
-                    <div style="height:250px;"><canvas id="chart-theme-stacked"></canvas></div>
+                <div class="chart-block">
+                    <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
+                    <div style="height:180px;"><canvas id="chart-theme-stacked"></canvas></div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:15px;">
+                <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
                     <!-- DISTRIBUIÇÃO INTERNA -->
                     <div class="chart-block">
-                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Distribuição Interna</h6>
-                        <div style="height:160px;"><canvas id="chart-theme-pie"></canvas></div>
+                        <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Top 5 Categorias</h6>
+                        <div style="height:120px;"><canvas id="chart-theme-pie"></canvas></div>
                     </div>
                     <!-- FIXO VS VARIÁVEL -->
                     <div class="chart-block">
-                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Rigidez Estructural</h6>
-                        <div style="height:160px;"><canvas id="chart-theme-nature"></canvas></div>
+                        <h6 style="margin:0 0 5px; font-size:10px; text-transform:uppercase; color:var(--muted);">Fixo vs Variável</h6>
+                        <div style="height:120px;"><canvas id="chart-theme-nature"></canvas></div>
                     </div>
                 </div>
             </div>
@@ -2809,6 +2809,28 @@ export async function init({ sb, outlet } = {}) {
                     ${analytics.deltaAvg > 20 ? `<li style="color:var(--red-500)">Este mês está <strong>${analytics.deltaAvg.toFixed(0)}% ACIMA</strong> da tua média habitual.</li>` : ''}
                     ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Este mês está <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da tua média habitual.</li>` : ''}
                 </ul>
+            </div>
+            <!-- 5. LINHA TEMPORAL (SCROLL HORIZONTAL COMPACTO) -->
+            <div class="theme-timeline-section" style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 5px 0;">
+                    <div style="display: flex; gap: 10px; min-width: max-content; padding: 0 5px;">
+                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item) => {
+                            const isFuture = analytics.future.includes(item);
+                            const isPast = analytics.past.includes(item);
+                            let color = 'var(--blue-500)';
+                            if (isFuture) color = 'var(--green-500)';
+                            if (isPast) color = 'var(--muted)';
+                            const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+                            return `
+                            <div style="flex: 0 0 110px; background: var(--surface); border: 1px solid var(--border); padding: 8px; border-radius: 10px; font-size: 11px;">
+                                <div style="font-size: 9px; font-weight: 800; color: ${color}; text-transform: uppercase;">${dateStr} ${isFuture ? '★' : ''}</div>
+                                <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0;">${item.label.split('>').pop().trim()}</div>
+                                <div style="font-weight: 800;">${format(item.amount)}</div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
             </div>
         </div>
         `;
