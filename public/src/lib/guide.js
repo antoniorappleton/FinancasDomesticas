@@ -1,4 +1,4 @@
-﻿// src/lib/guide.js
+// src/lib/guide.js
 
 // === SVG ICONS ===
 const ICONS = {
@@ -42,15 +42,19 @@ const CONTENT = {
     title: "Dashboard",
     what: [
       "Ver resumo: Receitas, Despesas, Poupança, Saldo",
-      "Ver análises rápidas (mini-cards)",
-      "Consultar próximas despesas e alertas",
+      "<strong>Análise por Temas</strong>: Painéis dedicados (Casa, Carro, etc) com 'Zoom' analítico.",
+      "Ver análises rápidas (mini-cards) para tendências e previsões.",
+      "Consultar próximas despesas e alertas dinâmicos.",
     ],
     how: [
-      "Toque nos cartões grandes para ver gráficos detalhados",
-      "Deslize para ver os widgets inferiores",
+      "<strong>Temas</strong>: Clique num tema para abrir um painel com 4 gráficos: Evolução (12 meses), Composição Mensal, Top 5 Subcategorias e Rigidez (Fixo vs Variável).",
+      "<strong>KPIs de Resumo</strong>: Toque nos cartões de Receitas ou Despesas para ver gráficos de barras anuais.",
+      "<strong>Carrosséis</strong>: Deslize lateralmente para navegar entre os temas e as análises rápidas.",
+      "<strong>Gerir Temas</strong>: Use o ícone da engrenagem para associar categorias a cada tema.",
     ],
     tips: [
-      "É possível ocultar os mini-cards nas Definições para um visual mais limpo.",
+      "No modal do tema, compare o gasto atual com a 'Média 12m' para detetar anomalias no orçamento.",
+      "Pode ocultar os mini-cards nas Definições para um visual mais limpo.",
     ],
   },
   new: {
