@@ -2744,99 +2744,157 @@ export async function init({ sb, outlet } = {}) {
         const redGreen = (v) => v > 0 ? "color:var(--red-500)" : "color:var(--green-500)";
 
         let html = `
-        <div class="theme-analysis" style="display:flex; flex-direction:column; gap:20px; padding:10px;">
+        <div class="theme-analysis-v2" style="display:flex; flex-direction:column; gap:20px; padding:10px;">
             
-            <!-- 1. HEADER KPIs -->
-            <div class="theme-kpis" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
-                <div class="card" style="padding:15px; text-align:center; background:var(--surface); border:1px solid var(--border);">
-                    <small style="color:var(--muted); font-size:10px; display:block; text-transform:uppercase;">Mês Atual</small>
-                    <div style="font-size:20px; font-weight:800;">${format(analytics.currentTotal)}</div>
-                    <small style="font-size:11px; ${redGreen(analytics.deltaPrev)}">
-                        ${analytics.deltaPrev > 0 ? '▲' : '▼'} ${Math.abs(analytics.deltaPrev).toFixed(1)}% vs ant.
-                    </small>
+            <!-- 1. KPIs -->
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+                <div class="card" style="padding:12px; text-align:center; background:var(--surface); border:1px solid var(--border);">
+                    <small style="color:var(--muted); font-size:10px; display:block; text-transform:uppercase;">Este Mês</small>
+                    <div style="font-size:18px; font-weight:800;">${format(analytics.currentTotal)}</div>
+                    <div style="font-size:10px; ${redGreen(analytics.deltaPrev)} font-weight:700;">
+                        ${analytics.deltaPrev > 0 ? '↑' : '↓'} ${Math.abs(analytics.deltaPrev).toFixed(1)}% vs anterior
+                    </div>
                 </div>
-                <div class="card" style="padding:15px; text-align:center; background:var(--surface); border:1px solid var(--border);">
+                <div class="card" style="padding:12px; text-align:center; background:var(--surface); border:1px solid var(--border);">
                     <small style="color:var(--muted); font-size:10px; display:block; text-transform:uppercase;">Média 12m</small>
-                    <div style="font-size:20px; font-weight:800;">${format(analytics.avg12m)}</div>
-                    <small style="font-size:11px; color:var(--muted);">Fatia: ${analytics.share.toFixed(1)}% das despesas</small>
+                    <div style="font-size:18px; font-weight:800;">${format(analytics.avg12m)}</div>
+                    <div style="font-size:10px; color:var(--muted);">Fatia: ${analytics.share.toFixed(1)}%</div>
                 </div>
             </div>
 
-            <!-- 2. ANOMALIES CALLOUT -->
-            ${analytics.anomalies.length ? `
-                <div style="padding:12px; border-radius:8px; background:rgba(239, 68, 68, 0.1); border:1px solid var(--red-500); color:var(--red-500); font-size:12px;">
-                    <span class="material-symbols-outlined" style="vertical-align:middle; font-size:18px; margin-right:5px;">warning</span>
-                    <strong>Anomalia detetada:</strong> Pico em ${analytics.anomalies.at(-1).month} (${format(analytics.anomalies.at(-1).total)})
-                </div>
-            ` : ''}
-
-            <!-- 3. CHARTS GRID (READABLE & RESPONSIVE) -->
-            <div class="theme-charts-grid" style="display:flex; flex-direction:column; gap:25px; width:100%;">
-                
-                <!-- EVOLUÇÃO 12M -->
-                <div class="chart-block" style="width:100%;">
-                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
-                    <div style="height:200px; width:100%;"><canvas id="chart-theme-evolution"></canvas></div>
+            <!-- 2. CHARTS -->
+            <div style="display:flex; flex-direction:column; gap:20px;">
+                <div class="chart-block">
+                    <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
+                    <div style="height:160px; width:100%;"><canvas id="chart-theme-evolution"></canvas></div>
                 </div>
 
-                <!-- COMPOSIÇÃO MENSAL -->
-                <div class="chart-block" style="width:100%;">
-                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
-                    <div style="height:240px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
+                <div class="chart-block">
+                    <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Composição Mensal</h6>
+                    <div style="height:200px; width:100%;"><canvas id="chart-theme-stacked"></canvas></div>
                 </div>
 
-                <!-- GRELHA PEQUENA (Responsiva) -->
-                <div style="display:flex; flex-wrap:wrap; gap:20px; width:100%;">
-                    <!-- DISTRIBUIÇÃO INTERNA -->
-                    <div class="chart-block" style="flex: 1; min-width: min(100%, 280px);">
-                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Top 5 Categorias</h6>
-                        <div style="height:160px;"><canvas id="chart-theme-pie"></canvas></div>
+                <div style="display:flex; flex-wrap:wrap; gap:15px;">
+                    <div class="chart-block" style="flex:1; min-width:min(100%, 250px);">
+                        <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Top Categorias</h6>
+                        <div style="height:140px;"><canvas id="chart-theme-pie"></canvas></div>
                     </div>
-                    <!-- FIXO VS VARIÁVEL -->
-                    <div class="chart-block" style="flex: 1; min-width: min(100%, 280px);">
-                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Fixo vs Variável</h6>
-                        <div style="height:160px;"><canvas id="chart-theme-nature"></canvas></div>
+                    <div class="chart-block" style="flex:1; min-width:min(100%, 250px);">
+                        <h6 style="margin:0 0 8px; font-size:10px; text-transform:uppercase; color:var(--muted);">Fixas vs Variáveis</h6>
+                        <div style="height:140px;"><canvas id="chart-theme-nature"></canvas></div>
                     </div>
                 </div>
             </div>
-        <div class="theme-timeline-vertical" style="padding:10px;">
-            <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Movimentos e previsões para este tema.</p>
-            
-            <div class="timeline">
-                ${[...themeData.future, ...themeData.present, ...themeData.past].slice(0, 30).map(item => {
-                    const isFuture = themeData.future.includes(item);
-                    const isPast = themeData.past.includes(item);
-                    
-                    let dotClass = 'timeline-dot--present';
-                    if (isFuture) dotClass = 'timeline-dot--future';
-                    if (isPast) dotClass = 'timeline-dot--past';
 
-                    const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-                    
-                    return `
-                    <div class="timeline-item">
-                        <div class="timeline-dot ${dotClass}"></div>
-                        <div class="timeline-content">
-                            <div class="timeline-date" style="font-size:10px; font-weight:800; color:var(--muted);">${dateStr} ${isFuture ? '(Previsto)' : ''}</div>
-                            <div class="timeline-info" style="display:flex; justify-content:space-between; align-items:center;">
-                                <div class="timeline-label" style="font-weight:700;">${item.label.split('>').pop().trim()}</div>
-                                <div class="timeline-amount" style="font-weight:800;">${format(item.amount)}</div>
-                            </div>
-                        </div>
-                    </div>
-                    `;
-                }).join('')}
-                ${(!themeData.future.length && !themeData.present.length && !themeData.past.length) ? '<div class="muted" style="text-align:center; padding:40px;">Sem movimentos registados.</div>' : ''}
+            <!-- 3. SMART INSIGHTS (LEITURA FINAL) -->
+            <div class="theme-insights" style="margin-top:20px; background:var(--bg); padding:15px; border-radius:16px; border:1px solid var(--border);">
+                <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px;">Smart Insights</h6>
+                <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--text); line-height:1.6;">
+                    <li>Este tema representa <strong>${analytics.share.toFixed(1)}%</strong> do teu orçamento total este mês.</li>
+                    ${analytics.currentTotal > analytics.avg12m * 1.15 ? `<li style="color:var(--red-500)">Gasto <strong>${analytics.deltaAvg.toFixed(0)}% ACIMA</strong> da tua média habitual (${format(analytics.avg12m)}/mês).</li>` : `<li>O teu gasto está controlado face à média (${format(analytics.avg12m)}/mês).</li>`}
+                    ${analytics.anomalies.length ? `<li style="color:var(--orange-500)">Detetada uma anomalia em ${analytics.anomalies.at(-1).month} (${format(analytics.anomalies.at(-1).total)}).</li>` : ''}
+                    ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Excelente! Estás <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da média histórica.</li>` : ''}
+                </ul>
             </div>
         </div>
         `;
 
         extraEl.innerHTML = html;
         modal.hidden = false;
+
+        // --- RENDER CHARTS ---
+        setTimeout(() => {
+            // 1. Line Chart
+            new Chart(document.getElementById("chart-theme-evolution").getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: analytics.sortedMonths.map(m => new Date(m + "-01").toLocaleDateString('pt-PT', { month: 'short' })),
+                    datasets: [{
+                        label: 'Despesa',
+                        data: analytics.sortedMonths.map(m => analytics.monthlyHistory.get(m) || 0),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { y: { ticks: { font: { size: 9 } } }, x: { ticks: { font: { size: 9 } } } }
+                }
             });
-        }, 100);
+
+            // 2. Composição (Barras)
+            const stackLabels = analytics.sortedMonths.map(m => new Date(m + "-01").toLocaleDateString('pt-PT', { month: 'short' }));
+            const subTypes = Array.from(analytics.bySubCat12m.keys()).slice(0, 5);
+            const datasets = subTypes.map((sub, i) => ({
+                label: sub,
+                data: analytics.sortedMonths.map(m => {
+                    const monthMap = themeData.subCatByMonth?.get(m);
+                    return monthMap ? (monthMap.get(sub) || 0) : 0;
+                }),
+                backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#a855f7', '#ec4899'][i]
+            }));
+
+            new Chart(document.getElementById("chart-theme-stacked").getContext("2d"), {
+                type: 'bar',
+                data: { labels: stackLabels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { x: { stacked: true, ticks: { font: { size: 9 } } }, y: { stacked: true, ticks: { font: { size: 9 } } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } }
+                }
+            });
+
+            // 3. Distribuição (Doughnut - Reforçado)
+            const pieData = (analytics.subCats || []).slice(0, 5);
+            if (pieData.length > 0) {
+                new Chart(document.getElementById("chart-theme-pie").getContext("2d"), {
+                    type: 'doughnut',
+                    data: {
+                        labels: pieData.map(s => s.label),
+                        datasets: [{
+                            data: pieData.map(s => s.value),
+                            backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#a855f7', '#ec4899']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false, 
+                        plugins: { legend: { display: false } },
+                        cutout: '70%'
+                    }
+                });
+            } else {
+                document.getElementById("chart-theme-pie").parentElement.innerHTML = '<div style="font-size:10px; color:var(--muted); text-align:center; padding:20px;">Dados insuficientes.</div>';
+            }
+
+            // 4. Natureza (Pie)
+            new Chart(document.getElementById("chart-theme-nature").getContext("2d"), {
+                type: 'pie',
+                data: {
+                    labels: ['Fixos', 'Variáveis'],
+                    datasets: [{
+                        data: [analytics.fixed12m || 0, analytics.variable12m || 0],
+                        backgroundColor: ['#6366f1', '#f43f5e']
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { boxWidth: 10, font: { size: 9, weight: 'bold' }, color: 'var(--text)' } 
+                        } 
+                    } 
+                }
+            });
+
+        }, 120);
+
+        document.getElementById("dash-modal-close").onclick = () => (modal.hidden = true);
+        modal.querySelector(".modal__close").onclick = () => (modal.hidden = true);
       };
 
       // Render Life Dimensions
