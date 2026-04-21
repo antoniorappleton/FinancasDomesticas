@@ -2435,7 +2435,7 @@ export async function init({ sb, outlet } = {}) {
       };
 
       // Modal Manager logic
-      document.getElementById('manage-dimensions-btn')?.addEventListener('click', () => {
+      document.getElementById('manage-dimensions-btn')?.addEventListener('click', async () => {
         const modal = document.getElementById("dash-modal");
         const titleEl = document.getElementById("dash-modal-title");
         const extraEl = document.getElementById("dash-modal-extra");
@@ -2444,8 +2444,17 @@ export async function init({ sb, outlet } = {}) {
         titleEl.textContent = "Personalizar Painéis";
         if (canvasWrapper) canvasWrapper.style.display = 'none';
 
-        // Helper to get all categories for the picker (Full Paths for precision)
-        const allPossibleCats = Array.from(new Set(rows.map(r => catPathName(r)))).sort();
+        // Helper to get all categories for the picker (Full Paths from Database + Historical)
+        const dbCats = await repo.refs.categories('expense');
+        const dbInc = await repo.refs.categories('income');
+        const dbSav = await repo.refs.categories('savings');
+        
+        const allPossibleCats = Array.from(new Set([
+            ...dbCats.map(c => c.label),
+            ...dbInc.map(c => c.label),
+            ...dbSav.map(c => c.label),
+            ...rows.map(r => catPathName(r))
+        ])).sort();
 
         const renderEditor = () => {
             const active = DIMENSIONS.filter(d => !d.hidden);
