@@ -2606,6 +2606,8 @@ export async function init({ sb, outlet } = {}) {
               thisMonth: 0, 
               next: null, 
               present: [], 
+              past: [],
+              future: [],
               bySubCat12m: new Map(), 
               monthlyHistory: new Map(),
               fixed12m: 0,
