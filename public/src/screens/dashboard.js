@@ -2831,7 +2831,7 @@ export async function init({ sb, outlet } = {}) {
                         pointBackgroundColor: 'var(--blue-500)'
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => axisMoney(v) } } }, plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) } } }, plugins: { legend: { display: false } } }
             });
 
             // 2. Stacked Bar Chart (Composition)
@@ -2847,7 +2847,7 @@ export async function init({ sb, outlet } = {}) {
                         stack: 'S1'
                     }))
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: true, ticks: { callback: v => axisMoney(v) } }, x: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } } }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: true, ticks: { callback: v => money(v) } }, x: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } } }
             });
 
             // 3. Pie Chart (Distribution 12m)
