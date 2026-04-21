@@ -132,6 +132,7 @@ export async function saveTheme(sb, settings) {
     "fab_bg",
     "text_main",
     "text_secondary",
+    "dimensions_json",
     "updated_at",
   ];
 

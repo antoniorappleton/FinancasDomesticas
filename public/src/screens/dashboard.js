@@ -2385,11 +2385,20 @@ export async function init({ sb, outlet } = {}) {
       ];
 
       const loadDimensions = () => {
+        // 1. Try to load from the synced user settings (Supabase via theme.js)
+        const visualSettings = JSON.parse(localStorage.getItem("wb:visuals") || "{}");
+        if (visualSettings.dimensions_json) {
+            return typeof visualSettings.dimensions_json === 'string' 
+                ? JSON.parse(visualSettings.dimensions_json) 
+                : visualSettings.dimensions_json;
+        }
+
+        // 2. Fallback to old localStorage key
+        const saved = localStorage.getItem('wb:dimensions');
         try {
-          const saved = localStorage.getItem('wb:dimensions');
           return saved ? JSON.parse(saved) : DEFAULT_DIMENSIONS;
         } catch { return DEFAULT_DIMENSIONS; }
-      };
+      }
 
       const DIMENSIONS = loadDimensions();
 
@@ -2531,6 +2540,15 @@ export async function init({ sb, outlet } = {}) {
                 });
 
                 localStorage.setItem('wb:dimensions', JSON.stringify(DIMENSIONS));
+                
+                // Sync to Supabase if possible
+                if (window.sb) {
+                    import("../lib/theme.js").then(m => {
+                        m.saveTheme(window.sb, { dimensions_json: DIMENSIONS })
+                         .catch(e => console.error("Sync failed", e));
+                    });
+                }
+
                 Toast.success("Configuração de Temas Guardada!");
                 setTimeout(() => location.reload(), 300);
             };
@@ -2538,7 +2556,14 @@ export async function init({ sb, outlet } = {}) {
             document.getElementById('reset-dimensions-config').onclick = () => {
                 if (confirm("Repor temas originais?")) {
                     localStorage.removeItem('wb:dimensions');
-                    location.reload();
+                    if (window.sb) {
+                        import("../lib/theme.js").then(m => {
+                            m.saveTheme(window.sb, { dimensions_json: null })
+                             .finally(() => location.reload());
+                        });
+                    } else {
+                        location.reload();
+                    }
                 }
             };
         };
