@@ -2811,38 +2811,37 @@ export async function init({ sb, outlet } = {}) {
                 </ul>
             </div>
 
-            <!-- 5. LINHA TEMPORAL HORIZONTAL (EVENTOS E FUTURO) -->
-            <div class="theme-timeline-section" style="margin-top:10px;">
-                <h6 style="margin:0 0 5px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Eventos Cronológicos</h6>
+            <!-- 5. EVENTOS CRONOLÓGICOS (SCROLL HORIZONTAL) -->
+            <div class="theme-timeline-section" style="margin-top:10px; border-top: 1px solid var(--border); padding-top: 20px;">
+                <h6 style="margin:0 0 15px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Timeline de Eventos</h6>
                 
-                <div class="timeline-h-container" style="background:var(--bg); border-radius:16px; margin-top:10px;">
-                    <div class="timeline-h-scroll" style="padding: 40px 20px 60px; min-height:180px;">
-                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item, idx) => {
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 10px;">
+                    <div style="display: flex; gap: 12px; min-width: max-content;">
+                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item) => {
                             const isFuture = analytics.future.includes(item);
                             const isPast = analytics.past.includes(item);
                             
-                            let typeClass = 'timeline-h-item--present';
-                            if (isFuture) typeClass = 'timeline-h-item--future';
-                            if (isPast) typeClass = 'timeline-h-item--past';
+                            let color = 'var(--blue-500)';
+                            if (isFuture) color = 'var(--green-500)';
+                            if (isPast) color = 'var(--muted)';
 
                             const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
                             
                             return `
-                            <div class="timeline-h-item ${typeClass}" style="flex: 0 0 140px;">
-                                <div class="timeline-h-info">
-                                    <div class="timeline-h-date" style="color: ${isFuture ? 'var(--green-500)' : 'var(--muted)'}">
-                                        ${dateStr} ${isFuture ? '★' : ''}
-                                    </div>
+                            <div style="flex: 0 0 140px; background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 12px; position: relative;">
+                                <div style="font-size: 10px; font-weight: 800; color: ${color}; text-transform: uppercase; margin-bottom: 4px;">
+                                    ${dateStr} ${isFuture ? '★' : ''}
                                 </div>
-                                <div class="timeline-h-dot"></div>
-                                <div class="timeline-h-details" style="width: 120px; left: 50%; transform: translateX(-50%); top: 85px;">
-                                    <div class="timeline-h-label">${item.label.split('>').pop().trim()}</div>
-                                    <div class="timeline-h-amount">${format(item.amount)}</div>
+                                <div style="font-weight: 700; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.label}">
+                                    ${item.label.split('>').pop().trim()}
+                                </div>
+                                <div style="font-weight: 800; font-size: 14px; margin-top: 4px; color: var(--text);">
+                                    ${format(item.amount)}
                                 </div>
                             </div>
                             `;
                         }).join('')}
-                        ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="width:100%; text-align:center; padding:40px;">Sem eventos registados.</div>' : ''}
+                        ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="padding:20px;">Sem movimentos recentes.</div>' : ''}
                     </div>
                 </div>
             </div>
