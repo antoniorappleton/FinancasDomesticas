@@ -2251,7 +2251,7 @@ export async function init({ sb, outlet } = {}) {
         const { data } = await sb
           .from("transactions")
           .select(
-            "date, amount, category_id, categories(name,parent_id), regularities(name_pt,code)",
+            "date, amount, category_id, expense_nature, categories(name,parent_id), regularities(name_pt,code)",
           )
           .eq("type_id", expId)
           .gte("date", ymd(back))
@@ -2601,7 +2601,17 @@ export async function init({ sb, outlet } = {}) {
       
       allKeys.forEach(k => {
           const d = DIMENSIONS.find(x => x.key === k) || { key: 'outros', name: 'Outros', icon: 'more_horiz', hints: [] };
-          dimData[k] = { ...d, thisMonth: 0, next: null, past: [], present: [], future: [], bySubCat: new Map(), monthlyHistory: new Map() };
+          dimData[k] = { 
+              ...d, 
+              thisMonth: 0, 
+              next: null, 
+              present: [], 
+              bySubCat12m: new Map(), 
+              monthlyHistory: new Map(),
+              fixed12m: 0,
+              variable12m: 0,
+              subCatByMonth: new Map() // Map<MonthKey, Map<SubCat, Value>>
+          };
       });
 
       const todayDate = new Date();
@@ -2626,18 +2636,25 @@ export async function init({ sb, outlet } = {}) {
         if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
           targetStore.thisMonth += amt;
           targetStore.present.push({ date: r.date, amount: amt, label: path });
-        } else if (d < todayDate) {
-          targetStore.past.push({ date: d, amount: amt, label: path });
-          
-          // History for Average (last 12 months)
-          const diffMonths = (todayDate.getFullYear() - d.getFullYear()) * 12 + (todayDate.getMonth() - d.getMonth());
-          if (diffMonths <= 12) {
-              targetStore.monthlyHistory.set(monthKey, (targetStore.monthlyHistory.get(monthKey) || 0) + amt);
-              
-              // Subcat breakdown (last 12m)
-              const subName = path.split('>').pop().trim();
-              targetStore.bySubCat.set(subName, (targetStore.bySubCat.get(subName) || 0) + amt);
-          }
+        }
+        
+        // Always track history for the last 12 months for deep analysis
+        const diffMonths = (todayDate.getFullYear() - d.getFullYear()) * 12 + (todayDate.getMonth() - d.getMonth());
+        if (diffMonths >= 0 && diffMonths < 12) {
+            targetStore.monthlyHistory.set(monthKey, (targetStore.monthlyHistory.get(monthKey) || 0) + amt);
+            
+            // Subcat monthly composition
+            const subName = path.split('>').pop().trim();
+            if (!targetStore.subCatByMonth.has(monthKey)) targetStore.subCatByMonth.set(monthKey, new Map());
+            const mData = targetStore.subCatByMonth.get(monthKey);
+            mData.set(subName, (mData.get(subName) || 0) + amt);
+
+            // Global subcat distribution
+            targetStore.bySubCat12m.set(subName, (targetStore.bySubCat12m.get(subName) || 0) + amt);
+
+            // Fixed vs Variable
+            if (r.expense_nature === 'fixed') targetStore.fixed12m += amt;
+            else targetStore.variable12m += amt;
         }
       });
 
@@ -2651,86 +2668,213 @@ export async function init({ sb, outlet } = {}) {
         targetStore.future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
       });
 
-      // Show Timeline helper (reusing modal)
-      const showDimensionTimeline = (data) => {
+      // Global Expenses per Month (for share calculation)
+      const globalMonthlyExpenses = new Map();
+      rows.forEach(r => {
+          const mKey = new Date(r.date).toISOString().slice(0, 7);
+          const amt = Math.abs(Number(r.amount));
+          globalMonthlyExpenses.set(mKey, (globalMonthlyExpenses.get(mKey) || 0) + amt);
+      });
+
+      // --- ANALYTICS ENGINE ---
+      const buildThemeAnalytics = (data) => {
+        const sortedMonths = Array.from(data.monthlyHistory.keys()).sort();
+        const currentMKey = todayDate.toISOString().slice(0, 7);
+        const prevMKey = new Date(todayDate.getFullYear(), todayDate.getMonth() - 1, 1).toISOString().slice(0, 7);
+
+        const currentTotal = data.thisMonth || 0;
+        const prevTotal = data.monthlyHistory.get(prevMKey) || 0;
+        
+        // Avg 12m (only considering months that have data or last 12)
+        const historyValues = Array.from(data.monthlyHistory.values());
+        const avg12m = historyValues.reduce((a, b) => a + b, 0) / 12;
+        
+        const deltaPrev = prevTotal ? ((currentTotal - prevTotal) / prevTotal) * 100 : 0;
+        const deltaAvg = avg12m ? ((currentTotal - avg12m) / avg12m) * 100 : 0;
+        
+        const globalExpCurrent = globalMonthlyExpenses.get(currentMKey) || 1;
+        const share = (currentTotal / globalExpCurrent) * 100;
+
+        // Anomalies: Total > 130% of avg12m
+        const anomalies = [];
+        data.monthlyHistory.forEach((val, m) => {
+            if (val > avg12m * 1.3 && avg12m > 0) {
+                anomalies.push({ month: m, total: val, reason: "Pico > 30% da média" });
+            }
+        });
+
+        // Top Subcategories 12m
+        const subCats = Array.from(data.bySubCat12m.entries())
+            .map(([label, value]) => ({ label, value }))
+            .sort((a,b) => b.value - a.value);
+
+        return {
+            ...data,
+            currentTotal,
+            prevTotal,
+            avg12m,
+            share,
+            deltaPrev,
+            deltaAvg,
+            anomalies,
+            subCats,
+            sortedMonths
+        };
+      };
+
+      // --- MODAL RENDERER ---
+      const showDimensionTimeline = (themeData) => {
+        const analytics = buildThemeAnalytics(themeData);
+        
         const modal = document.getElementById("dash-modal");
         const titleEl = document.getElementById("dash-modal-title");
         const canvas = document.getElementById("dash-modal-canvas");
         const extraEl = document.getElementById("dash-modal-extra");
+        const canvasWrapper = canvas.parentElement;
 
-        titleEl.innerHTML = `<span class="material-symbols-outlined" style="vertical-align:middle; margin-right:8px;">${data.icon}</span> ${data.name}`;
-        
-        // Hide the default single canvas to build our own visual grid
-        if (canvas.parentElement) canvas.parentElement.style.display = 'none';
-        
-        // Calculate Metrics
-        const avgValue = data.monthlyHistory.size > 0 
-            ? Array.from(data.monthlyHistory.values()).reduce((a,b) => a+b, 0) / 12 
-            : 0;
-        const totalFuture = data.future.reduce((a,b) => a + Number(b.amount), 0);
-        const incomeRef = totalMonthlyIncome || avgMonthlyIncome || 1;
-        const pctIncome = ((data.thisMonth / incomeRef) * 100).toFixed(1);
-        const pctEffort = (((data.thisMonth + totalFuture) / incomeRef) * 100).toFixed(1);
+        titleEl.innerHTML = `<span class="material-symbols-outlined" style="vertical-align:middle; margin-right:8px;">${analytics.icon}</span> ${analytics.name}`;
+        if (canvasWrapper) canvasWrapper.style.display = 'none';
 
-        // Prepare Grid Layout for Charts
+        const format = (v) => money(v);
+        const redGreen = (v) => v > 0 ? "color:var(--red-500)" : "color:var(--green-500)";
+
         let html = `
-            <div class="grid grid-responsive-3" style="gap: 10px; margin-bottom: 25px;">
-                <div class="kpi-mini">
-                    <div class="kpi-mini__label">Executado</div>
-                    <div class="kpi-mini__value">${money(data.thisMonth)}</div>
+        <div class="theme-analysis" style="display:flex; flex-direction:column; gap:20px; padding:10px;">
+            
+            <!-- 1. HEADER KPIs -->
+            <div class="theme-kpis" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:12px;">
+                <div class="card" style="padding:15px; text-align:center; background:var(--surface); border:1px solid var(--border);">
+                    <small style="color:var(--muted); font-size:10px; display:block; text-transform:uppercase;">Mês Atual</small>
+                    <div style="font-size:20px; font-weight:800;">${format(analytics.currentTotal)}</div>
+                    <small style="font-size:11px; ${redGreen(analytics.deltaPrev)}">
+                        ${analytics.deltaPrev > 0 ? '▲' : '▼'} ${Math.abs(analytics.deltaPrev).toFixed(1)}% vs ant.
+                    </small>
                 </div>
-                <div class="kpi-mini">
-                    <div class="kpi-mini__label">Previsto</div>
-                    <div class="kpi-mini__value" style="color: var(--blue-500)">${money(totalFuture)}</div>
-                </div>
-                <div class="kpi-mini">
-                    <div class="kpi-mini__label">% Receitas</div>
-                    <div class="kpi-mini__value">${pctIncome}%</div>
-                </div>
-            </div>
-
-            <div class="grid-report" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                <div class="chart-box" style="background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border);">
-                    <h5 style="margin: 0 0 15px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Tendência (6 Meses)</h5>
-                    <div style="height: 180px;"><canvas id="chart-trend"></canvas></div>
-                </div>
-                <div class="chart-box" style="background: var(--surface); padding: 15px; border-radius: 16px; border: 1px solid var(--border);">
-                    <h5 style="margin: 0 0 15px; font-size: 12px; color: var(--muted); text-transform: uppercase;">Distribuição Subcategorias</h5>
-                    <div style="height: 180px;"><canvas id="chart-pie"></canvas></div>
+                <div class="card" style="padding:15px; text-align:center; background:var(--surface); border:1px solid var(--border);">
+                    <small style="color:var(--muted); font-size:10px; display:block; text-transform:uppercase;">Média 12m</small>
+                    <div style="font-size:20px; font-weight:800;">${format(analytics.avg12m)}</div>
+                    <small style="font-size:11px; color:var(--muted);">Fatia: ${analytics.share.toFixed(1)}% das despesas</small>
                 </div>
             </div>
 
-            <h4 style="margin: 20px 0 10px; font-weight: 800; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: 1px;">Fluxo de Pagamentos</h4>
-            <div class="timeline-h-container">
-              <div class="timeline-h-scroll">
+            <!-- 2. ANOMALIES CALLOUT -->
+            ${analytics.anomalies.length ? `
+                <div style="padding:12px; border-radius:8px; background:rgba(239, 68, 68, 0.1); border:1px solid var(--red-500); color:var(--red-500); font-size:12px;">
+                    <span class="material-symbols-outlined" style="vertical-align:middle; font-size:18px; margin-right:5px;">warning</span>
+                    <strong>Anomalia detetada:</strong> Pico em ${analytics.anomalies.at(-1).month} (${format(analytics.anomalies.at(-1).total)})
+                </div>
+            ` : ''}
+
+            <!-- 3. CHARTS GRID -->
+            <div style="display:flex; flex-direction:column; gap:25px;">
+                
+                <!-- EVOLUÇÃO 12M -->
+                <div class="chart-block">
+                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Evolução 12 Meses</h6>
+                    <div style="height:200px;"><canvas id="chart-theme-evolution"></canvas></div>
+                </div>
+
+                <!-- COMPOSIÇÃO MENSAL -->
+                <div class="chart-block">
+                    <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Composição Mensal Detalhada</h6>
+                    <div style="height:250px;"><canvas id="chart-theme-stacked"></canvas></div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                    <!-- DISTRIBUIÇÃO INTERNA -->
+                    <div class="chart-block">
+                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Distribuição Interna</h6>
+                        <div style="height:160px;"><canvas id="chart-theme-pie"></canvas></div>
+                    </div>
+                    <!-- FIXO VS VARIÁVEL -->
+                    <div class="chart-block">
+                        <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted);">Rigidez Estructural</h6>
+                        <div style="height:160px;"><canvas id="chart-theme-nature"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. INSIGHTS -->
+            <div class="theme-insights" style="background:var(--bg); padding:15px; border-radius:12px; font-size:13px;">
+                <h6 style="margin:0 0 12px; font-size:12px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px;">Observações Smart</h6>
+                <ul style="margin:0; padding:0 0 0 20px; color:var(--text-secondary); display:grid; gap:8px;">
+                    <li>A maior subcategoria é <strong>${analytics.subCats[0]?.label || '-'}</strong> (${format(analytics.subCats[0]?.value)}).</li>
+                    <li>Este tema representa <strong>${analytics.share.toFixed(1)}%</strong> do teu custo de vida este mês.</li>
+                    <li>O custo médio é de <strong>${format(analytics.avg12m)}/mês</strong>.</li>
+                    ${analytics.deltaAvg > 20 ? `<li style="color:var(--red-500)">Este mês está <strong>${analytics.deltaAvg.toFixed(0)}% ACIMA</strong> da tua média habitual.</li>` : ''}
+                    ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Este mês está <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da tua média habitual.</li>` : ''}
+                </ul>
+            </div>
+        </div>
         `;
 
-        // Timeline Items logic
-        const allItems = [
-            ...data.past.map(i => ({ ...i, type: 'past' })),
-            ...data.present.map(i => ({ ...i, type: 'present' })),
-            ...data.future.map(i => ({ ...i, type: 'future' }))
-        ].sort((a,b) => (a.date instanceof Date ? a.date : new Date(a.date)) - (b.date instanceof Date ? b.date : new Date(b.date)));
-
-        const fifteenDaysAgo = new Date(); fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-        const filteredTimeline = allItems.filter(it => (it.date instanceof Date ? it.date : new Date(it.date)) >= fifteenDaysAgo);
-
-        filteredTimeline.forEach(it => {
-          const d = it.date instanceof Date ? it.date : new Date(it.date);
-          html += `
-            <div class="timeline-h-item timeline-h-item--${it.type}">
-              <div class="timeline-h-info"><div class="timeline-h-date">${d.toLocaleDateString('pt-PT', {day:'2-digit', month:'short'})}</div></div>
-              <div class="timeline-h-dot"></div>
-              <div class="timeline-h-details">
-                <span class="timeline-h-label">${it.label.split('>').pop()}</span>
-                <span class="timeline-h-amount">${money(it.amount)}</span>
-              </div>
-            </div>
-          `;
-        });
-        html += '</div></div>';
-
         extraEl.innerHTML = html;
+        modal.hidden = false;
+
+        // --- RENDER CHARTS ---
+        setTimeout(() => {
+            // 1. Line Chart (Evolution)
+            new Chart(document.getElementById("chart-theme-evolution").getContext("2d"), {
+                type: 'line',
+                data: {
+                    labels: analytics.sortedMonths.map(m => m.split('-')[1] + '/' + m.split('-')[0].slice(2)),
+                    datasets: [{
+                        label: 'Total',
+                        data: analytics.sortedMonths.map(m => analytics.monthlyHistory.get(m)),
+                        borderColor: 'var(--blue-500)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: 'var(--blue-500)'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => axisMoney(v) } } }, plugins: { legend: { display: false } } }
+            });
+
+            // 2. Stacked Bar Chart (Composition)
+            const subTypes = Array.from(analytics.bySubCat12m.keys());
+            new Chart(document.getElementById("chart-theme-stacked").getContext("2d"), {
+                type: 'bar',
+                data: {
+                    labels: analytics.sortedMonths.map(m => m.split('-')[1] + '/' + m.split('-')[0].slice(2)),
+                    datasets: subTypes.map((sub, i) => ({
+                        label: sub,
+                        data: analytics.sortedMonths.map(m => analytics.subCatByMonth.get(m)?.get(sub) || 0),
+                        backgroundColor: palette[i % palette.length],
+                        stack: 'S1'
+                    }))
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: true, ticks: { callback: v => axisMoney(v) } }, x: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } } }
+            });
+
+            // 3. Pie Chart (Distribution 12m)
+            new Chart(document.getElementById("chart-theme-pie").getContext("2d"), {
+                type: 'doughnut',
+                data: {
+                    labels: analytics.subCats.slice(0, 5).map(s => s.label),
+                    datasets: [{
+                        data: analytics.subCats.slice(0, 5).map(s => s.value),
+                        backgroundColor: palette
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            // 4. Nature Chart (Fixed vs Variable)
+            new Chart(document.getElementById("chart-theme-nature").getContext("2d"), {
+                type: 'pie',
+                data: {
+                    labels: ['Fixas', 'Variáveis'],
+                    datasets: [{
+                        data: [analytics.fixed12m, analytics.variable12m],
+                        backgroundColor: ['var(--blue-500)', 'var(--orange-500)']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+            });
+        }, 100);
+      };
         modal.hidden = false;
         trapFocus(modal);
 

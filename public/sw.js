@@ -1,6 +1,6 @@
 /* global self, clients, fetch, Request, Response, caches, Notification */
 // sw.js — PWA com base path dinâmico (localhost + GitHub Pages)
-const VERSION = "v93";
+const VERSION = "v95";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
@@ -42,6 +42,8 @@ const APP_SHELL = [
   withBase("/src/lib/auth.js"),
   withBase("/src/lib/repo.js"),
   withBase("/src/lib/helpers.js"),
+  withBase("/src/lib/theme.js"),
+  withBase("/src/lib/analytics.js"),
   withBase("/src/lib/categories-crud.js"),
   withBase("/src/lib/validators.js"),
 ];
