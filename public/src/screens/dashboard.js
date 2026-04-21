@@ -2875,63 +2875,6 @@ export async function init({ sb, outlet } = {}) {
             });
         }, 100);
       };
-        modal.hidden = false;
-        trapFocus(modal);
-
-        // Initialize Charts with Delay to ensure DOM is ready
-        setTimeout(() => {
-            if (!window.Chart) return;
-
-            // 1. Trend Chart
-            const last6 = [];
-            for (let i = 5; i >= 0; i--) {
-                const d = new Date(); d.setMonth(d.getMonth() - i);
-                const k = d.toISOString().slice(0, 7);
-                last6.push({ label: d.toLocaleDateString('pt-PT', { month: 'short' }), val: data.monthlyHistory.get(k) || 0 });
-            }
-            new window.Chart(document.getElementById('chart-trend'), {
-                type: 'line',
-                data: {
-                    labels: last6.map(m => m.label),
-                    datasets: [{
-                        data: last6.map(m => m.val),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true, tension: 0.4, borderWidth: 2, pointRadius: 2
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                           scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } } } }
-            });
-
-            // 2. Pie Chart
-            const subCats = Array.from(data.bySubCat.entries()).sort((a,b) => b[1] - a[1]).slice(0, 5);
-            new window.Chart(document.getElementById('chart-pie'), {
-                type: 'doughnut',
-                data: {
-                    labels: subCats.map(s => s[0]),
-                    datasets: [{
-                        data: subCats.map(s => s[1]),
-                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                        borderWidth: 0,
-                        hoverOffset: 10
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
-                    cutout: '70%',
-                    plugins: { 
-                        legend: { position: 'right', labels: { boxWidth: 8, font: { size: 10 } } } 
-                    } 
-                }
-            });
-
-            // Auto-scroll timeline
-            const pres = extraEl.querySelector('.timeline-h-item--present');
-            if (pres) pres.scrollIntoView({ behavior: 'smooth', inline: 'center' });
-        }, 300);
-      };
 
       // Render Life Dimensions
       const lifeBox = outlet.querySelector("#life-dimensions-list");
