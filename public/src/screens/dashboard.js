@@ -2810,41 +2810,6 @@ export async function init({ sb, outlet } = {}) {
                     ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Este mês está <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da tua média habitual.</li>` : ''}
                 </ul>
             </div>
-
-            <!-- 5. EVENTOS CRONOLÓGICOS (SCROLL HORIZONTAL) -->
-            <div class="theme-timeline-section" style="margin-top:10px; border-top: 1px solid var(--border); padding-top: 20px;">
-                <h6 style="margin:0 0 15px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Timeline de Eventos</h6>
-                
-                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 10px;">
-                    <div style="display: flex; gap: 12px; min-width: max-content;">
-                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item) => {
-                            const isFuture = analytics.future.includes(item);
-                            const isPast = analytics.past.includes(item);
-                            
-                            let color = 'var(--blue-500)';
-                            if (isFuture) color = 'var(--green-500)';
-                            if (isPast) color = 'var(--muted)';
-
-                            const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-                            
-                            return `
-                            <div style="flex: 0 0 140px; background: var(--surface); border: 1px solid var(--border); padding: 12px; border-radius: 12px; position: relative;">
-                                <div style="font-size: 10px; font-weight: 800; color: ${color}; text-transform: uppercase; margin-bottom: 4px;">
-                                    ${dateStr} ${isFuture ? '★' : ''}
-                                </div>
-                                <div style="font-weight: 700; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.label}">
-                                    ${item.label.split('>').pop().trim()}
-                                </div>
-                                <div style="font-weight: 800; font-size: 14px; margin-top: 4px; color: var(--text);">
-                                    ${format(item.amount)}
-                                </div>
-                            </div>
-                            `;
-                        }).join('')}
-                        ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="padding:20px;">Sem movimentos recentes.</div>' : ''}
-                    </div>
-                </div>
-            </div>
         </div>
         `;
 
