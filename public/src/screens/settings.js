@@ -1715,6 +1715,7 @@ export async function init({ sb, outlet } = {}) {
     lockCanvas($("#rpt-cat-pie"), 240);
     lockCanvas($("#rpt-fixed-donut"), 240);
     lockCanvas($("#rpt-series"), 260);
+    lockCanvas($("#rpt-regularity"), 250);
   }
 
   function openReport() {
@@ -2255,116 +2256,64 @@ export async function init({ sb, outlet } = {}) {
         monthlyRows,
       );
 
-      // ===== 5) Despesas por regularidade (BUBBLE CHART - ESCALA DE DIAS) =====
-      const dStart = new Date(from);
-      const dEnd = new Date(to);
-      const diffMs = dEnd - dStart;
-      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      
-      const regsFound = new Set();
-      expRows.forEach(r => {
-          const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
-          regsFound.add(lab);
+      // ===== 5) Despesas por regularidade (BARRAS - ORIGINAL MELHORADO) =====
+      const regAgg = new Map(); 
+      expRows.forEach((r) => {
+        const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem regularidade";
+        regAgg.set(lab, (regAgg.get(lab) || 0) + Math.abs(Number(r.amount || 0)));
       });
-      const regList = Array.from(regsFound).sort();
-      
-      // Agrupar por "Data Exata | Regularidade"
-      const bubbleMap = new Map(); // key: "YYYY-MM-DD|reg"
-      const totalsPerReg = new Map(); // for PDF
+      const regSorted = [...regAgg.entries()].sort((a, b) => b[1] - a[1]);
+      const regLabels = regSorted.map(([k]) => k);
+      const regValues = regSorted.map(([, v]) => v);
+      const regTotal = regValues.reduce((a, b) => a + b, 0);
 
-      expRows.forEach(r => {
-          const dStr = r.date;
-          const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
-          const k = `${dStr}|${lab}`;
-          const amt = Math.abs(Number(r.amount || 0));
-          
-          bubbleMap.set(k, (bubbleMap.get(k) || 0) + amt);
-          totalsPerReg.set(lab, (totalsPerReg.get(lab) || 0) + amt);
-      });
-
-      _regularityAggPDF = Array.from(totalsPerReg.entries())
-          .sort((a,b) => b[1] - a[1])
-          .map(([label, value]) => ({ label, value }));
-
-      const maxAmt = Math.max(...Array.from(bubbleMap.values()), 1);
-      const radiusScale = 22 / Math.sqrt(maxAmt);
-
-      const bubbleDatasets = regList.map((reg, i) => {
-          const points = [];
-          for (const [key, val] of bubbleMap.entries()) {
-              const [dStr, rLabel] = key.split('|');
-              if (rLabel !== reg) continue;
-              
-              const dObj = new Date(dStr);
-              const xVal = Math.floor((dObj - dStart) / (1000 * 60 * 60 * 24));
-              
-              points.push({
-                  x: xVal,
-                  y: i,
-                  r: Math.sqrt(val) * radiusScale + 2, // +2 for visibility
-                  val: val,
-                  date: dStr,
-                  reg: reg
-              });
-          }
-
-          return {
-              label: reg,
-              data: points,
-              backgroundColor: palette(regList.length)[i],
-              borderColor: 'rgba(255,255,255,0.4)',
-              borderWidth: 1
-          };
-      });
+      _regularityAggPDF = regSorted.map(([label, value]) => ({ label, value }));
 
       _rptReg = makeChart($("#rpt-regularity"), {
-          type: "bubble",
-          data: { datasets: bubbleDatasets },
-          options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                  legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
-                  tooltip: {
-                      callbacks: {
-                          label: (ctx) => {
-                              const d = ctx.raw;
-                              // Formatar data PT
-                              const dt = new Date(d.date).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' });
-                              return `${d.reg}: ${money(d.val)} em ${dt}`;
-                          }
-                      }
-                  }
-              },
-              scales: {
-                  x: {
-                      title: { display: true, text: diffDays > 31 ? 'Tempo (Meses)' : 'Dias do Mês', font: { size: 10 } },
-                      ticks: {
-                          stepSize: diffDays > 365 ? 30 : (diffDays > 60 ? 15 : 5),
-                          callback: (val) => {
-                              const d = new Date(dStart.getTime() + val * 86400000);
-                              if (isNaN(d)) return '';
-                              return diffDays > 60 
-                                ? d.toLocaleDateString('pt-PT', { month: 'short' })
-                                : d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-                          }
-                      },
-                      min: -1,
-                      max: diffDays + 1
-                  },
-                  y: {
-                      ticks: {
-                          callback: (val) => regList[val] || '',
-                          stepSize: 1
-                      },
-                      min: -0.5,
-                      max: regList.length - 0.5
-                  }
-              }
-          }
+        type: "bar",
+        data: {
+          labels: regLabels,
+          datasets: [
+            {
+              label: "Despesas por regularidade",
+              data: regValues,
+              backgroundColor: palette(regValues.length),
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: {
+            legend: { display: false },
+            datalabels: {
+                display: true,
+                anchor: 'end',
+                align: 'top',
+                font: { weight: 'bold', size: 10 },
+                formatter: (v) => v > 0 ? v.toFixed(1) + '€' : ''
+            }
+          },
+          scales: { 
+              y: { 
+                  beginAtZero: true,
+                  ticks: { callback: (v) => money(v) }
+              } 
+          },
+        },
       });
 
-      if ($("#rpt-reg-legend")) $("#rpt-reg-legend").innerHTML = '';
+      const regColors = _rptReg?.data?.datasets?.[0]?.backgroundColor || [];
+      const regLegend = regLabels.map((lab, i) => ({
+        label: lab,
+        value: regValues[i],
+        pct: regTotal ? regValues[i] / regTotal : 0,
+        color: regColors[i] || "#64748b",
+      }));
+      if ($("#rpt-reg-legend")) {
+        $("#rpt-reg-legend").innerHTML = legendHTML(regLegend);
+      }
 
       // ===== 6) Top 6 despesas (barras horizontais) =====
       const top6 = expCat.slice(0, 6);
