@@ -905,7 +905,7 @@ export async function init({ sb, outlet } = {}) {
         if (w >= 1100) return 6;
         if (w >= 800) return 4;
         if (w >= 600) return 3;
-        return 1.4; 
+        return 2.2; 
       }
 
       return 1; // Fallback for others
