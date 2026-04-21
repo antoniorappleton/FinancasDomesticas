@@ -2811,42 +2811,44 @@ export async function init({ sb, outlet } = {}) {
                 </ul>
             </div>
 
-            <!-- 5. LINHA TEMPORAL (EVENTOS E FUTURO) -->
+            <!-- 5. LINHA TEMPORAL HORIZONTAL (EVENTOS E FUTURO) -->
             <div class="theme-timeline-section" style="margin-top:10px;">
-                <h6 style="margin:0 0 15px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Próximos & Recentes</h6>
+                <h6 style="margin:0 0 5px; font-size:12px; font-weight:800; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px; border-left:4px solid var(--blue-500); padding-left:10px;">Eventos Cronológicos</h6>
                 
-                <div class="timeline">
-                    ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map(item => {
-                        const isFuture = analytics.future.includes(item);
-                        const isPast = analytics.past.includes(item);
-                        const isPresent = analytics.present.includes(item);
-                        
-                        let dotClass = 'timeline-dot--present';
-                        if (isFuture) dotClass = 'timeline-dot--future';
-                        if (isPast) dotClass = 'timeline-dot--past';
+                <div class="timeline-h-container" style="background:var(--bg); border-radius:16px; margin-top:10px;">
+                    <div class="timeline-h-scroll" style="padding: 40px 20px 60px; min-height:180px;">
+                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item, idx) => {
+                            const isFuture = analytics.future.includes(item);
+                            const isPast = analytics.past.includes(item);
+                            
+                            let typeClass = 'timeline-h-item--present';
+                            if (isFuture) typeClass = 'timeline-h-item--future';
+                            if (isPast) typeClass = 'timeline-h-item--past';
 
-                        const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-                        
-                        return `
-                        <div class="timeline-item">
-                            <div class="timeline-dot ${dotClass}">
-                                ${isFuture ? '<span class="material-symbols-outlined" style="font-size:14px;">event</span>' : ''}
-                            </div>
-                            <div class="timeline-content">
-                                <div class="timeline-date">${dateStr} ${isFuture ? '(Previsto)' : ''}</div>
-                                <div class="timeline-info">
-                                    <div class="timeline-label">${item.label.split('>').pop().trim()}</div>
-                                    <div class="timeline-amount">${format(item.amount)}</div>
+                            const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+                            
+                            return `
+                            <div class="timeline-h-item ${typeClass}" style="flex: 0 0 140px;">
+                                <div class="timeline-h-info">
+                                    <div class="timeline-h-date" style="color: ${isFuture ? 'var(--green-500)' : 'var(--muted)'}">
+                                        ${dateStr} ${isFuture ? '★' : ''}
+                                    </div>
+                                </div>
+                                <div class="timeline-h-dot"></div>
+                                <div class="timeline-h-details" style="width: 120px; left: 50%; transform: translateX(-50%); top: 85px;">
+                                    <div class="timeline-h-label">${item.label.split('>').pop().trim()}</div>
+                                    <div class="timeline-h-amount">${format(item.amount)}</div>
                                 </div>
                             </div>
-                        </div>
-                        `;
-                    }).join('')}
-                    ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="text-align:center; padding:20px;">Sem eventos registados para este tema.</div>' : ''}
+                            `;
+                        }).join('')}
+                        ${(!analytics.future.length && !analytics.present.length && !analytics.past.length) ? '<div class="muted" style="width:100%; text-align:center; padding:40px;">Sem eventos registados.</div>' : ''}
+                    </div>
                 </div>
             </div>
         </div>
         `;
+
 
 
         extraEl.innerHTML = html;
