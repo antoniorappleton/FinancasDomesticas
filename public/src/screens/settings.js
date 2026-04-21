@@ -2255,10 +2255,12 @@ export async function init({ sb, outlet } = {}) {
         monthlyRows,
       );
 
-      // ===== 5) Despesas por regularidade (BUBBLE CHART) =====
-      // Eixo X: Meses (mlabels)
-      // Eixo Y: Tipos de Regularidade
-      // Raio: Montante
+      // ===== 5) Despesas por regularidade (BUBBLE CHART - ESCALA DE DIAS) =====
+      const dStart = new Date(from);
+      const dEnd = new Date(to);
+      const diffMs = dEnd - dStart;
+      const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      
       const regsFound = new Set();
       expRows.forEach(r => {
           const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
@@ -2266,47 +2268,51 @@ export async function init({ sb, outlet } = {}) {
       });
       const regList = Array.from(regsFound).sort();
       
-      const bubbleMap = new Map(); // key: "month|reg"; val: amount
+      // Agrupar por "Data Exata | Regularidade"
+      const bubbleMap = new Map(); // key: "YYYY-MM-DD|reg"
       const totalsPerReg = new Map(); // for PDF
 
       expRows.forEach(r => {
-          const mKey = new Date(r.date).toISOString().slice(0, 7);
+          const dStr = r.date;
           const lab = REG_LABEL_BY_ID.get(r.regularity_id) || "Sem reg.";
+          const k = `${dStr}|${lab}`;
+          const amt = Math.abs(Number(r.amount || 0));
           
-          totalsPerReg.set(lab, (totalsPerReg.get(lab) || 0) + Math.abs(Number(r.amount || 0)));
-
-          if (!mlabels.includes(mKey)) return;
-          const k = `${mKey}|${lab}`;
-          bubbleMap.set(k, (bubbleMap.get(k) || 0) + Math.abs(Number(r.amount || 0)));
+          bubbleMap.set(k, (bubbleMap.get(k) || 0) + amt);
+          totalsPerReg.set(lab, (totalsPerReg.get(lab) || 0) + amt);
       });
 
       _regularityAggPDF = Array.from(totalsPerReg.entries())
           .sort((a,b) => b[1] - a[1])
           .map(([label, value]) => ({ label, value }));
 
-      // Calcular escala para o raio (max valor -> ~25px)
       const maxAmt = Math.max(...Array.from(bubbleMap.values()), 1);
-      const radiusScale = 25 / Math.sqrt(maxAmt);
+      const radiusScale = 22 / Math.sqrt(maxAmt);
 
       const bubbleDatasets = regList.map((reg, i) => {
-          const data = mlabels.map((m, mIdx) => {
-              const amt = bubbleMap.get(`${m}|${reg}`) || 0;
-              if (amt === 0) return null;
-              return {
-                  x: mIdx,
+          const points = [];
+          for (const [key, val] of bubbleMap.entries()) {
+              const [dStr, rLabel] = key.split('|');
+              if (rLabel !== reg) continue;
+              
+              const dObj = new Date(dStr);
+              const xVal = Math.floor((dObj - dStart) / (1000 * 60 * 60 * 24));
+              
+              points.push({
+                  x: xVal,
                   y: i,
-                  r: Math.sqrt(amt) * radiusScale,
-                  val: amt,
-                  month: m,
+                  r: Math.sqrt(val) * radiusScale + 2, // +2 for visibility
+                  val: val,
+                  date: dStr,
                   reg: reg
-              };
-          }).filter(Boolean);
+              });
+          }
 
           return {
               label: reg,
-              data: data,
+              data: points,
               backgroundColor: palette(regList.length)[i],
-              borderColor: 'rgba(255,255,255,0.2)',
+              borderColor: 'rgba(255,255,255,0.4)',
               borderWidth: 1
           };
       });
@@ -2323,16 +2329,28 @@ export async function init({ sb, outlet } = {}) {
                       callbacks: {
                           label: (ctx) => {
                               const d = ctx.raw;
-                              return `${d.reg} (${d.month}): ${money(d.val)}`;
+                              // Formatar data PT
+                              const dt = new Date(d.date).toLocaleDateString('pt-PT', { day:'2-digit', month:'short', year:'numeric' });
+                              return `${d.reg}: ${money(d.val)} em ${dt}`;
                           }
                       }
                   }
               },
               scales: {
                   x: {
+                      title: { display: true, text: diffDays > 31 ? 'Tempo (Meses)' : 'Dias do Mês', font: { size: 10 } },
                       ticks: {
-                          callback: (val) => mlabels[val] ? mlabels[val].split('-')[1] + '/' + mlabels[val].split('-')[0].slice(2) : ''
-                      }
+                          stepSize: diffDays > 365 ? 30 : (diffDays > 60 ? 15 : 5),
+                          callback: (val) => {
+                              const d = new Date(dStart.getTime() + val * 86400000);
+                              if (isNaN(d)) return '';
+                              return diffDays > 60 
+                                ? d.toLocaleDateString('pt-PT', { month: 'short' })
+                                : d.toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+                          }
+                      },
+                      min: -1,
+                      max: diffDays + 1
                   },
                   y: {
                       ticks: {
