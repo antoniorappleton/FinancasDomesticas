@@ -2799,108 +2799,40 @@ export async function init({ sb, outlet } = {}) {
                     </div>
                 </div>
             </div>
+        <div class="theme-timeline-vertical" style="padding:10px;">
+            <p style="color:var(--muted); font-size:13px; margin-bottom:20px;">Movimentos e previsões para este tema.</p>
+            
+            <div class="timeline">
+                ${[...themeData.future, ...themeData.present, ...themeData.past].slice(0, 30).map(item => {
+                    const isFuture = themeData.future.includes(item);
+                    const isPast = themeData.past.includes(item);
+                    
+                    let dotClass = 'timeline-dot--present';
+                    if (isFuture) dotClass = 'timeline-dot--future';
+                    if (isPast) dotClass = 'timeline-dot--past';
 
-            <!-- 4. INSIGHTS -->
-            <div class="theme-insights" style="background:var(--bg); padding:15px; border-radius:12px; font-size:13px;">
-                <h6 style="margin:0 0 12px; font-size:12px; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:8px;">Observações Smart</h6>
-                <ul style="margin:0; padding:0 0 0 20px; color:var(--text-secondary); display:grid; gap:8px;">
-                    <li>A maior subcategoria é <strong>${analytics.subCats[0]?.label || '-'}</strong> (${format(analytics.subCats[0]?.value)}).</li>
-                    <li>Este tema representa <strong>${analytics.share.toFixed(1)}%</strong> do teu custo de vida este mês.</li>
-                    <li>O custo médio é de <strong>${format(analytics.avg12m)}/mês</strong>.</li>
-                    ${analytics.deltaAvg > 20 ? `<li style="color:var(--red-500)">Este mês está <strong>${analytics.deltaAvg.toFixed(0)}% ACIMA</strong> da tua média habitual.</li>` : ''}
-                    ${analytics.deltaAvg < -20 ? `<li style="color:var(--green-500)">Este mês está <strong>${Math.abs(analytics.deltaAvg).toFixed(0)}% ABAIXO</strong> da tua média habitual.</li>` : ''}
-                </ul>
-            </div>
-            <!-- 5. LINHA TEMPORAL (SCROLL HORIZONTAL COMPACTO) -->
-            <div class="theme-timeline-section" style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 5px 0;">
-                    <div style="display: flex; gap: 10px; min-width: max-content; padding: 0 5px;">
-                        ${[...analytics.future, ...analytics.present, ...analytics.past].slice(0, 15).map((item) => {
-                            const isFuture = analytics.future.includes(item);
-                            const isPast = analytics.past.includes(item);
-                            let color = 'var(--blue-500)';
-                            if (isFuture) color = 'var(--green-500)';
-                            if (isPast) color = 'var(--muted)';
-                            const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
-                            return `
-                            <div style="flex: 0 0 110px; background: var(--surface); border: 1px solid var(--border); padding: 8px; border-radius: 10px; font-size: 11px;">
-                                <div style="font-size: 9px; font-weight: 800; color: ${color}; text-transform: uppercase;">${dateStr} ${isFuture ? '★' : ''}</div>
-                                <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0;">${item.label.split('>').pop().trim()}</div>
-                                <div style="font-weight: 800;">${format(item.amount)}</div>
+                    const dateStr = new Date(item.date).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' });
+                    
+                    return `
+                    <div class="timeline-item">
+                        <div class="timeline-dot ${dotClass}"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date" style="font-size:10px; font-weight:800; color:var(--muted);">${dateStr} ${isFuture ? '(Previsto)' : ''}</div>
+                            <div class="timeline-info" style="display:flex; justify-content:space-between; align-items:center;">
+                                <div class="timeline-label" style="font-weight:700;">${item.label.split('>').pop().trim()}</div>
+                                <div class="timeline-amount" style="font-weight:800;">${format(item.amount)}</div>
                             </div>
-                            `;
-                        }).join('')}
+                        </div>
                     </div>
-                </div>
+                    `;
+                }).join('')}
+                ${(!themeData.future.length && !themeData.present.length && !themeData.past.length) ? '<div class="muted" style="text-align:center; padding:40px;">Sem movimentos registados.</div>' : ''}
             </div>
         </div>
         `;
 
-
-
         extraEl.innerHTML = html;
         modal.hidden = false;
-
-        // --- RENDER CHARTS ---
-        setTimeout(() => {
-            // 1. Line Chart (Evolution)
-            new Chart(document.getElementById("chart-theme-evolution").getContext("2d"), {
-                type: 'line',
-                data: {
-                    labels: analytics.sortedMonths.map(m => m.split('-')[1] + '/' + m.split('-')[0].slice(2)),
-                    datasets: [{
-                        label: 'Total',
-                        data: analytics.sortedMonths.map(m => analytics.monthlyHistory.get(m)),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#3b82f6'
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: v => money(v) } } }, plugins: { legend: { display: false } } }
-            });
-
-            // 2. Stacked Bar Chart (Composition)
-            const subTypes = Array.from(analytics.bySubCat12m.keys());
-            const catColors = palette(subTypes.length);
-            new Chart(document.getElementById("chart-theme-stacked").getContext("2d"), {
-                type: 'bar',
-                data: {
-                    labels: analytics.sortedMonths.map(m => m.split('-')[1] + '/' + m.split('-')[0].slice(2)),
-                    datasets: subTypes.map((sub, i) => ({
-                        label: sub,
-                        data: analytics.sortedMonths.map(m => analytics.subCatByMonth.get(m)?.get(sub) || 0),
-                        backgroundColor: catColors[i],
-                        stack: 'S1'
-                    }))
-                },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: true, ticks: { callback: v => money(v) } }, x: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } } }
-            });
-
-            // 3. Pie Chart (Distribution 12m)
-            new Chart(document.getElementById("chart-theme-pie").getContext("2d"), {
-                type: 'doughnut',
-                data: {
-                    labels: analytics.subCats.slice(0, 5).map(s => s.label),
-                    datasets: [{
-                        data: analytics.subCats.slice(0, 5).map(s => s.value),
-                        backgroundColor: palette(5)
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-            });
-
-            // 4. Nature Chart (Fixed vs Variable)
-            new Chart(document.getElementById("chart-theme-nature").getContext("2d"), {
-                type: 'pie',
-                data: {
-                    labels: ['Fixas', 'Variáveis'],
-                    datasets: [{
-                        data: [analytics.fixed12m, analytics.variable12m],
-                        backgroundColor: ['#3b82f6', '#f97316']
-                    }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
