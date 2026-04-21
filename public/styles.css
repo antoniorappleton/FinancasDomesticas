@@ -691,7 +691,8 @@ textarea {
 .modal__card {
   width: min(92vw, 640px);
   max-height: 90vh;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: var(--card-bg);
   color: var(--text);
   border: 1px solid var(--border);
