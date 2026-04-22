@@ -1268,6 +1268,8 @@ export async function init({ sb, outlet } = {}) {
       const cols = [
         "date",
         "amount",
+        "description",
+        "notes",
         "type_id",
         "category_id",
         "regularity_id",
@@ -2425,8 +2427,8 @@ export async function init({ sb, outlet } = {}) {
               // 3. Perfect match with the SPECIFIC subcategory (leaf)
               if (leaf === hint) return true;
               
-              // 4. Manual keywords match only full segments to avoid partial word overlap
-              return segments.includes(hint);
+              // 4. Manual keywords match segments (allow partial match for better UX)
+              return segments.some(s => s.includes(hint)) || p.includes(hint);
           });
           
           if (matches) return d.key;
@@ -2649,7 +2651,13 @@ export async function init({ sb, outlet } = {}) {
         
         if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
           targetStore.thisMonth += amt;
-          targetStore.present.push({ date: r.date, amount: amt, label: path });
+          targetStore.present.push({ 
+            date: r.date, 
+            amount: amt, 
+            label: path,
+            description: r.description || "",
+            notes: r.notes || ""
+          });
         }
         
         // Always track history for the last 12 months for deep analysis
@@ -2797,7 +2805,32 @@ export async function init({ sb, outlet } = {}) {
                 </div>
             </div>
 
-            <!-- 3. SMART INSIGHTS (LEITURA FINAL) -->
+            <!-- 3. DETALHE DE MOVIMENTOS (NOVO) -->
+            <div class="theme-details" style="margin-top:20px;">
+                <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px;">Movimentos do Mês</h6>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    ${analytics.present.length ? analytics.present.map(tx => {
+                        const parts = tx.label.split('>');
+                        const cat = parts[0]?.trim() || "";
+                        const sub = parts[1]?.trim() || parts[0]?.trim() || "";
+                        return `
+                        <div class="card" style="padding:10px; background:var(--surface); border:1px solid var(--border); font-size:12px;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                <span style="font-weight:700; color:var(--text);">${sub}</span>
+                                <span style="font-weight:800; color:var(--red-500);">${format(tx.amount)}</span>
+                            </div>
+                            <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">
+                                <strong>Cat:</strong> ${cat} | <strong>Data:</strong> ${new Date(tx.date).toLocaleDateString()}
+                            </div>
+                            ${tx.description ? `<div style="margin-bottom:2px;"><strong>Desc:</strong> ${tx.description}</div>` : ''}
+                            ${tx.notes ? `<div style="font-style:italic; color:var(--muted); font-size:11px; border-left:2px solid var(--border); padding-left:6px; margin-top:4px;">${tx.notes}</div>` : ''}
+                        </div>
+                        `;
+                    }).join('') : '<div style="font-size:12px; color:var(--muted); text-align:center; padding:10px;">Sem movimentos este mês.</div>'}
+                </div>
+            </div>
+
+            <!-- 4. SMART INSIGHTS -->
             <div class="theme-insights" style="margin-top:20px; background:var(--bg); padding:15px; border-radius:16px; border:1px solid var(--border);">
                 <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px;">Smart Insights</h6>
                 <ul style="margin:0; padding-left:20px; font-size:13px; color:var(--text); line-height:1.6;">
