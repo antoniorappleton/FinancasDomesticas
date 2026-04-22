@@ -2404,11 +2404,13 @@ export async function init({ sb, outlet } = {}) {
 
       const DIMENSIONS = loadDimensions();
 
-      const getDimension = (path, description = "") => {
+      const getDimensions = (path, description = "") => {
         const p = (path || '').toLowerCase().trim();
         const desc = (description || '').toLowerCase().trim();
         const segments = p.split('>').map(s => s.trim().toLowerCase());
-        const leaf = segments[segments.length - 1]; // The most specific category (e.g. "Cinema")
+        const leaf = segments[segments.length - 1];
+        
+        const matchedKeys = [];
         
         for (const d of DIMENSIONS) {
           if (!d.hints || !d.hints.length) continue;
@@ -2417,19 +2419,16 @@ export async function init({ sb, outlet } = {}) {
               const hint = h.toLowerCase().trim();
               if (hint.length < 2) return false;
               
-              // 1. Priority: Perfect match with the FULL PATH
               if (p === hint) return true;
-
-              // 2. Exact match with the SPECIFIC subcategory (leaf)
               if (leaf === hint) return true;
-              
-              // 3. Fallback: Path, description or any segment contains the keyword
               return p.includes(hint) || desc.includes(hint) || segments.some(s => s.includes(hint));
           });
           
-          if (matches) return d.key;
+          if (matches) matchedKeys.push(d.key);
         }
-        return 'outros';
+        
+        if (matchedKeys.length === 0) matchedKeys.push('outros');
+        return matchedKeys;
       };
 
       // Modal Manager logic
@@ -2639,51 +2638,55 @@ export async function init({ sb, outlet } = {}) {
       rows.forEach(r => {
         const d = new Date(r.date);
         const path = catPathName(r);
-        const dk = getDimension(path, r.description);
+        const dKeys = getDimensions(path, r.description);
         const amt = Math.abs(Number(r.amount));
         const monthKey = d.toISOString().slice(0, 7);
         
-        const targetStore = dimData[dk] || dimData['outros'];
-        
-        if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
-          targetStore.thisMonth += amt;
-          targetStore.present.push({ 
-            date: r.date, 
-            amount: amt, 
-            label: path,
-            description: r.description || "",
-            notes: r.notes || ""
-          });
-        }
-        
-        // Always track history for the last 12 months for deep analysis
-        const diffMonths = (todayDate.getFullYear() - d.getFullYear()) * 12 + (todayDate.getMonth() - d.getMonth());
-        if (diffMonths >= 0 && diffMonths < 12) {
-            targetStore.monthlyHistory.set(monthKey, (targetStore.monthlyHistory.get(monthKey) || 0) + amt);
-            
-            // Subcat monthly composition
-            const subName = path.split('>').pop().trim();
-            if (!targetStore.subCatByMonth.has(monthKey)) targetStore.subCatByMonth.set(monthKey, new Map());
-            const mData = targetStore.subCatByMonth.get(monthKey);
-            mData.set(subName, (mData.get(subName) || 0) + amt);
+        dKeys.forEach(dk => {
+          const targetStore = dimData[dk] || dimData['outros'];
+          
+          if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+            targetStore.thisMonth += amt;
+            targetStore.present.push({ 
+              date: r.date, 
+              amount: amt, 
+              label: path,
+              description: r.description || "",
+              notes: r.notes || ""
+            });
+          }
+          
+          // Always track history for the last 12 months for deep analysis
+          const diffMonths = (todayDate.getFullYear() - d.getFullYear()) * 12 + (todayDate.getMonth() - d.getMonth());
+          if (diffMonths >= 0 && diffMonths < 12) {
+              targetStore.monthlyHistory.set(monthKey, (targetStore.monthlyHistory.get(monthKey) || 0) + amt);
+              
+              // Subcat monthly composition
+              const subName = path.split('>').pop().trim();
+              if (!targetStore.subCatByMonth.has(monthKey)) targetStore.subCatByMonth.set(monthKey, new Map());
+              const mData = targetStore.subCatByMonth.get(monthKey);
+              mData.set(subName, (mData.get(subName) || 0) + amt);
 
-            // Global subcat distribution
-            targetStore.bySubCat12m.set(subName, (targetStore.bySubCat12m.get(subName) || 0) + amt);
+              // Global subcat distribution
+              targetStore.bySubCat12m.set(subName, (targetStore.bySubCat12m.get(subName) || 0) + amt);
 
-            // Fixed vs Variable
-            if (r.expense_nature === 'fixed') targetStore.fixed12m += amt;
-            else targetStore.variable12m += amt;
-        }
+              // Fixed vs Variable
+              if (r.expense_nature === 'fixed') targetStore.fixed12m += amt;
+              else targetStore.variable12m += amt;
+          }
+        });
       });
 
       // Process upcoming for future
       upcoming.forEach(u => {
-        const dk = getDimension(u.name, ""); // u.name is the category or title
-        const targetStore = dimData[dk] || dimData['outros'];
-        if (!targetStore.next || u.next < targetStore.next.date) {
-            targetStore.next = { date: u.next, amount: u.amount, label: u.name };
-        }
-        targetStore.future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
+        const dKeys = getDimensions(u.name, ""); // u.name is the category or title
+        dKeys.forEach(dk => {
+          const targetStore = dimData[dk] || dimData['outros'];
+          if (!targetStore.next || u.next < targetStore.next.date) {
+              targetStore.next = { date: u.next, amount: u.amount, label: u.name };
+          }
+          targetStore.future.push({ date: u.next, amount: u.amount, label: u.name, daysLeft: u.daysLeft });
+        });
       });
 
       // Global Expenses per Month (for share calculation)
