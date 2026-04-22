@@ -2253,7 +2253,7 @@ export async function init({ sb, outlet } = {}) {
         const { data } = await sb
           .from("transactions")
           .select(
-            "date, amount, category_id, expense_nature, categories(name,parent_id), regularities(name_pt,code)",
+            "date, amount, description, notes, category_id, expense_nature, categories(name,parent_id), regularities(name_pt,code)",
           )
           .eq("type_id", expId)
           .gte("date", ymd(back))
