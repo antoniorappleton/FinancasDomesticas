@@ -2378,7 +2378,7 @@ export async function init({ sb, outlet } = {}) {
 
       // ===================== LIFE DIMENSIONS (DYNAMIC) =====================
       const DEFAULT_DIMENSIONS = [
-        { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'utilidades', 'água', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas'] },
+        { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'utilidades', 'água', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas', 'seguro da casa'] },
         { key: 'saude', name: 'Saúde', icon: 'medical_services', hints: ['saúde', 'farmácia', 'médico', 'consulta', 'exame', 'hospital', 'dentista', 'seguro saúde'] },
         { key: 'carro', name: 'Carro', icon: 'directions_car', hints: ['carro', 'transporte', 'combustível', 'oficina', 'pedágio', 'seguro auto', 'via verde', 'gasolina', 'gasóleo', 'iuc', 'reparação'] },
         { key: 'escolas', name: 'Escolas', icon: 'school', hints: ['escola', 'colégio', 'mensalidade escolar', 'educação', 'estudos', 'cursos', 'universidade', 'propinas', 'explicações'] },

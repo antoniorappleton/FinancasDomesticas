@@ -317,6 +317,7 @@ begin
       (null,p,'Renda','expense'),
       (null,p,'Utilidades (água, luz, gás)','expense'),
       (null,p,'TV + Internet','expense'),
+      (null,p,'Seguro da Casa','expense'),
       (null,p,'Empregada','expense')
     on conflict do nothing;
   end if;
