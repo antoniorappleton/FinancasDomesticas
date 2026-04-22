@@ -2417,18 +2417,13 @@ export async function init({ sb, outlet } = {}) {
               if (hint.length < 2) return false;
               
               // 1. Priority: Perfect match with the FULL PATH
-              // (Essential for specific selections from the picker)
               if (p === hint) return true;
 
-              // 2. Secondary: If the hint contains '>', it's a path intent, 
-              // so we don't allow partial matches for safety.
-              if (hint.includes('>')) return false;
-              
-              // 3. Perfect match with the SPECIFIC subcategory (leaf)
+              // 2. Exact match with the SPECIFIC subcategory (leaf)
               if (leaf === hint) return true;
               
-              // 4. Manual keywords match segments (allow partial match for better UX)
-              return segments.some(s => s.includes(hint)) || p.includes(hint);
+              // 3. Fallback: Path or any segment contains the keyword
+              return p.includes(hint) || segments.some(s => s.includes(hint));
           });
           
           if (matches) return d.key;
@@ -2810,9 +2805,11 @@ export async function init({ sb, outlet } = {}) {
                 <h6 style="margin:0 0 10px; font-size:11px; text-transform:uppercase; color:var(--muted); letter-spacing:0.5px;">Movimentos do Mês</h6>
                 <div style="display:flex; flex-direction:column; gap:8px;">
                     ${analytics.present.length ? analytics.present.map(tx => {
-                        const parts = tx.label.split('>');
+                        const path = String(tx.label || "(Sem categoria)");
+                        const parts = path.split('>');
                         const cat = parts[0]?.trim() || "";
-                        const sub = parts[1]?.trim() || parts[0]?.trim() || "";
+                        const sub = parts[parts.length - 1]?.trim() || "";
+                        const dateStr = tx.date ? new Date(tx.date).toLocaleDateString('pt-PT') : "---";
                         return `
                         <div class="card" style="padding:10px; background:var(--surface); border:1px solid var(--border); font-size:12px;">
                             <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
@@ -2820,7 +2817,7 @@ export async function init({ sb, outlet } = {}) {
                                 <span style="font-weight:800; color:var(--red-500);">${format(tx.amount)}</span>
                             </div>
                             <div style="font-size:10px; color:var(--muted); margin-bottom:4px;">
-                                <strong>Cat:</strong> ${cat} | <strong>Data:</strong> ${new Date(tx.date).toLocaleDateString()}
+                                <strong>Cat:</strong> ${cat} | <strong>Data:</strong> ${dateStr}
                             </div>
                             ${tx.description ? `<div style="margin-bottom:2px;"><strong>Desc:</strong> ${tx.description}</div>` : ''}
                             ${tx.notes ? `<div style="font-style:italic; color:var(--muted); font-size:11px; border-left:2px solid var(--border); padding-left:6px; margin-top:4px;">${tx.notes}</div>` : ''}
