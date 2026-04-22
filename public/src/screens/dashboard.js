@@ -2404,8 +2404,9 @@ export async function init({ sb, outlet } = {}) {
 
       const DIMENSIONS = loadDimensions();
 
-      const getDimension = (path) => {
+      const getDimension = (path, description = "") => {
         const p = (path || '').toLowerCase().trim();
+        const desc = (description || '').toLowerCase().trim();
         const segments = p.split('>').map(s => s.trim().toLowerCase());
         const leaf = segments[segments.length - 1]; // The most specific category (e.g. "Cinema")
         
@@ -2422,8 +2423,8 @@ export async function init({ sb, outlet } = {}) {
               // 2. Exact match with the SPECIFIC subcategory (leaf)
               if (leaf === hint) return true;
               
-              // 3. Fallback: Path or any segment contains the keyword
-              return p.includes(hint) || segments.some(s => s.includes(hint));
+              // 3. Fallback: Path, description or any segment contains the keyword
+              return p.includes(hint) || desc.includes(hint) || segments.some(s => s.includes(hint));
           });
           
           if (matches) return d.key;
@@ -2638,7 +2639,7 @@ export async function init({ sb, outlet } = {}) {
       rows.forEach(r => {
         const d = new Date(r.date);
         const path = catPathName(r);
-        const dk = getDimension(path);
+        const dk = getDimension(path, r.description);
         const amt = Math.abs(Number(r.amount));
         const monthKey = d.toISOString().slice(0, 7);
         
@@ -2677,7 +2678,7 @@ export async function init({ sb, outlet } = {}) {
 
       // Process upcoming for future
       upcoming.forEach(u => {
-        const dk = getDimension(u.name);
+        const dk = getDimension(u.name, ""); // u.name is the category or title
         const targetStore = dimData[dk] || dimData['outros'];
         if (!targetStore.next || u.next < targetStore.next.date) {
             targetStore.next = { date: u.next, amount: u.amount, label: u.name };
@@ -2944,8 +2945,10 @@ export async function init({ sb, outlet } = {}) {
         lifeBox.innerHTML = DIMENSIONS
           .filter(d => !d.hidden) // Skip hidden ones
           .map(d => {
-            const data = dimData[d.key];
-            const nextText = data.next ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` : 'Sem previsão';
+            const data = dimData[d.key] || { thisMonth: 0, next: null };
+            const nextText = (data.next && data.next.date instanceof Date) 
+                ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` 
+                : 'Sem previsão';
             return `
               <div class="carousel-item">
                 <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
