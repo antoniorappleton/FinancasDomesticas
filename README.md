@@ -14,6 +14,7 @@
 
 ### 🧠 Inteligência & Automação
 *   **Relatórios Mensais Automáticos**: Receba um relatório completo em **PDF no seu email** no último dia de cada mês, com o resumo de receitas, despesas e poupanças.
+*   **Análise de Relatórios com IA (Gemini)**: Gere comentários inteligentes e recomendações acionáveis para qualquer relatório gerado (mensal, anual ou períodos), integrados diretamente no PDF.
 *   **Coach Financeiro**: Um sistema exclusivo que avalia a sua saúde financeira (0-100) com base em 6 indicadores vitais: *Esforço Fixo, Esforço Total, Taxa de Poupança, Liquidez, Saldos Negativos e Regularidade*.
 *   **Notificações Push Inteligentes**:
     *   **Diárias**: Resumo de gastos do dia às 21:00.

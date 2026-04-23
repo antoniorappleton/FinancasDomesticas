@@ -28,6 +28,7 @@ const CONTENT = {
     what: [
       "Registar movimentos diários e fixos",
       "Analisar as finanças no Dashboard",
+      "Análise Inteligente (IA) dos relatórios financeiros",
       "Organizar categorias e orçamentos",
     ],
     how: [
@@ -123,17 +124,20 @@ const CONTENT = {
     title: "Definições",
     what: [
       "Criar Relatórios PDF (Anual/Mensal)",
+      "<strong>Análise IA (Gemini)</strong>: Obtenha insights automáticos nos seus relatórios.",
       "Gerir Orçamentos",
       "Importar Extratos Bancários (PDF)",
     ],
     how: [
       "Relatórios: escolha o período e exporte",
+      "<strong>IA</strong>: Configure a sua chave do Gemini nas definições e clique em 'Gerar Análise IA' no modal de relatório.",
       "Orçamentos: defina limites para cada categoria",
       "Importar: faça upload do PDF, valide os movimentos e confirme",
     ],
     tips: [
+      "A análise IA requer uma <strong>Gemini API Key</strong> configurada (pode obtê-la gratuitamente no Google AI Studio).",
       "A importação de PDF funciona melhor com extratos mensais em formato texto (não digitalizados).",
-      "No Android, o ficheiro deve estar guardado localmente em 'Transferências' â€” não funciona diretamente a partir do Gmail ou Google Drive.",
+      "No Android, o ficheiro deve estar guardado localmente em 'Transferências' — não funciona diretamente a partir do Gmail ou Google Drive.",
     ],
   },
   health: {

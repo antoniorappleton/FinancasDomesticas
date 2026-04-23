@@ -1796,7 +1796,7 @@ export async function init({ sb, outlet } = {}) {
     toggleReportInputsInside();
     syncOutsideFromInsideAndBuild();
   });
-  [
+[
     "#rpt-month-inside",
     "#rpt-from-inside",
     "#rpt-to-inside",
@@ -1804,6 +1804,56 @@ export async function init({ sb, outlet } = {}) {
   ].forEach((sel) => {
     $(sel)?.addEventListener("change", syncOutsideFromInsideAndBuild);
   });
+
+  // AI Logic
+  const AI_KEY_STORAGE = "wb:gemini-api-key";
+  // Carregar chave se existir
+  const savedKey = localStorage.getItem(AI_KEY_STORAGE);
+  if (savedKey && $("#set-ai-key")) {
+    $("#set-ai-key").value = savedKey;
+  }
+
+  // Tentar carregar da cloud (Supabase) para redundância
+  (async () => {
+    try {
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
+      const cloudKey = user?.user_metadata?.gemini_api_key;
+      if (cloudKey && !savedKey && $("#set-ai-key")) {
+        $("#set-ai-key").value = cloudKey;
+        localStorage.setItem(AI_KEY_STORAGE, cloudKey);
+      }
+    } catch (e) {}
+  })();
+
+  $("#btn-save-ai-key")?.addEventListener("click", async () => {
+    const key = $("#set-ai-key").value.trim();
+    if (key) {
+      localStorage.setItem(AI_KEY_STORAGE, key);
+      // Salvar na cloud também
+      try {
+        await sb.auth.updateUser({ data: { gemini_api_key: key } });
+      } catch (e) {}
+      Toast.success("Chave de API guardada com sucesso!");
+    } else {
+      localStorage.removeItem(AI_KEY_STORAGE);
+      try {
+        await sb.auth.updateUser({ data: { gemini_api_key: null } });
+      } catch (e) {}
+      Toast.info("Chave de API removida.");
+    }
+  });
+
+  $("#btn-generate-ai")?.addEventListener("click", generateAIAnalysis);
+
+  let _aiAnalysisText = ""; // Armazena a última análise para o PDF
+  let _catLegendPDF = [];
+  let _fixLegendPDF = [];
+  let _monthlyPDF = [];
+  let _incomeCatPDF = [];
+  let _expenseCatPDF = [];
+  let _regularityAggPDF = [];
 
   function syncInsideFromOutsideAndBuild() {
     $("#rpt-type-inside").value = $("#rpt-type").value;
@@ -1832,12 +1882,12 @@ export async function init({ sb, outlet } = {}) {
     _rptSavRate = null,
     _rptReg = null;
 
-  let _catLegendPDF = [],
-    _fixLegendPDF = [],
-    _monthlyPDF = [],
-    _incomeCatPDF = [],
-    _expenseCatPDF = [],
-    _regularityAggPDF = [];
+  _catLegendPDF = [];
+  _fixLegendPDF = [];
+  _monthlyPDF = [];
+  _incomeCatPDF = [];
+  _expenseCatPDF = [];
+  _regularityAggPDF = [];
 
   function destroyCharts() {
     try {
@@ -1878,11 +1928,17 @@ export async function init({ sb, outlet } = {}) {
     return (Number(n || 0) * 100).toFixed(1) + "%";
   }
 
-  async function buildReport() {
+  async function buildReport(preserveAI = false) {
     if (buildReport._busy) return;
     buildReport._busy = true;
     try {
       destroyCharts();
+      if (!preserveAI) {
+        _aiAnalysisText = ""; // Limpa análise anterior
+        if ($("#rpt-ai-content")) {
+          $("#rpt-ai-content").innerHTML = `<p class="muted" style="font-size: 13px;">Gere uma análise detalhada e recomendações personalizadas com base nos seus dados financeiros.</p>`;
+        }
+      }
       fixCanvasHeights();
       $("#rpt-cat-legend") && ($("#rpt-cat-legend").innerHTML = "");
       $("#rpt-fv-legend") && ($("#rpt-fv-legend").innerHTML = "");
@@ -2483,10 +2539,137 @@ export async function init({ sb, outlet } = {}) {
     }, 0);
   }
 
+  async function generateAIAnalysis() {
+    const key = localStorage.getItem(AI_KEY_STORAGE);
+    if (!key) {
+      return Toast.error(
+        "Configure a sua Gemini API Key nas definições primeiro.",
+      );
+    }
+
+    const contentEl = $("#rpt-ai-content");
+    if (!contentEl) return;
+
+    contentEl.innerHTML = `
+      <div class="rpt-ai-loader">
+        <span class="material-symbols-outlined rotating" style="animation: spin 2s linear infinite;">sync</span>
+        A processar dados com IA...
+      </div>
+      <style>@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
+    `;
+
+    try {
+      // Preparar dados para o prompt
+      const period = $("#rpt-title")?.textContent.split("—")[1]?.trim() || "";
+      const income = $("#rpt-kpi-income")?.textContent || "0";
+      const expense = $("#rpt-kpi-expense")?.textContent || "0";
+      const savings = $("#rpt-kpi-savings")?.textContent || "0";
+      const balance = $("#rpt-kpi-balance")?.textContent || "0";
+
+      const categories = _catLegendPDF
+        .map((c) => `- ${c.label}: ${money(c.value)} (${fmtPct(c.pct)})`)
+        .join("\n");
+      const nature = _fixLegendPDF
+        .map((c) => `- ${c.label}: ${money(c.value)} (${fmtPct(c.pct)})`)
+        .join("\n");
+      const monthlySummary = _monthlyPDF
+        .map(
+          (m) =>
+            `- ${m.m}: Inc: ${money(m.inc)}, Exp: ${money(m.exp)}, Sav: ${money(
+              m.sav,
+            )}, Net: ${money(m.net)}`,
+        )
+        .join("\n");
+
+      const prompt = `
+És um assistente financeiro pessoal de elite da WiseBudget. Analisa os dados financeiros do utilizador para o período de ${period} e fornece um comentário profissional, estruturado e acionável em Português de Portugal.
+
+DADOS DO PERÍODO:
+- Receitas: ${income}
+- Despesas: ${expense}
+- Poupança: ${savings}
+- Saldo Final: ${balance}
+
+DISTRIBUIÇÃO POR CATEGORIA (Top Despesas):
+${categories}
+
+NATUREZA DAS DESPESAS:
+${nature}
+
+EVOLUÇÃO MENSAL:
+${monthlySummary}
+
+ESTRUTURA DA RESPOSTA:
+1. **Resumo Executivo**: Uma frase sobre a saúde financeira geral.
+2. **Análise de Gastos**: Comenta as categorias dominantes e se a proporção de gastos fixos vs variáveis está equilibrada.
+3. **Alertas e Oportunidades**: Identifica tendências perigosas ou áreas onde se pode poupar.
+4. **Recomendação Estratégica**: Um conselho prático para o próximo período.
+
+Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos importantes. Não uses introduções genéricas.
+`.trim();
+
+      const callGemini = async (modelName) => {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+            }),
+          },
+        );
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error?.message || response.statusText);
+        }
+        return response.json();
+      };
+
+      let result;
+      try {
+        result = await callGemini("gemini-2.5-flash");
+      } catch (err) {
+        const msg = (err.message || "").toLowerCase();
+        const isOverload = msg.includes("high demand") || 
+                           msg.includes("overloaded") ||
+                           msg.includes("service unavailable") ||
+                           msg.includes("503");
+
+        if (isOverload) {
+          console.warn(`Modelo primário sobrecarregado (${msg}), a tentar Lite...`);
+          try {
+            result = await callGemini("gemini-2.5-flash-lite");
+          } catch (err2) {
+            console.warn("Lite também sobrecarregado, a tentar Pro...");
+            result = await callGemini("gemini-2.5-pro");
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) throw new Error("Resposta vazia da IA.");
+
+      // Formatar Markdown básico para HTML (negritos e listas)
+      _aiAnalysisText = text;
+      contentEl.innerHTML = text
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\* /g, "• ")
+        .replace(/\n/g, "<br>");
+    } catch (e) {
+      console.error("AI Error:", e);
+      contentEl.innerHTML = `<p style="color:var(--red-600); font-size:13px;">❌ Erro na análise: ${e.message}</p>`;
+      Toast.error("Falha ao gerar análise IA.");
+    }
+  }
+
   // =================== Exportação PDF ===================
   $("#rpt-export")?.addEventListener("click", async () => {
     try {
-      if (!buildReport._busy) await buildReport();
+      if (!buildReport._busy) await buildReport(true); // true para preservar a análise IA já gerada
     } catch {}
     const jsPDF = await getJsPDF();
     if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
@@ -2498,6 +2681,7 @@ export async function init({ sb, outlet } = {}) {
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
       brandColor: "#065f46",
+      aiAnalysis: _aiAnalysisText,
       headerGap: 12, // <- um pouco menor (vamos compensar no 'y')
       logoSize: { w: 54, h: 54 }, // <- tamanho do logo no PDF
       titleOffsetY: 12, // <- afinação vertical do título
@@ -2870,6 +3054,52 @@ export async function init({ sb, outlet } = {}) {
       (_regularityAggPDF || []).map((r) => [r.label, money(r.value)]),
       [W * 0.55, W * 0.25].map((w) => w * (1 - (2 * M) / W)),
     );
+
+    // === PÁGINA 3: Análise IA (se existir) ===
+    if (REPORT_CFG.aiAnalysis) {
+      footer();
+      doc.addPage();
+      y = M;
+      header("Análise Inteligente (IA)", new Date().toLocaleDateString("pt-PT"));
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(REPORT_CFG.brandColor);
+      doc.text("Insights & Recomendações Estratégicas", M, y);
+      y += 24;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.setTextColor(50);
+
+      // Divide o texto em linhas para caber na página
+      const splitText = doc.splitTextToSize(REPORT_CFG.aiAnalysis, W - 2 * M);
+      splitText.forEach((line) => {
+        if (y > CONTENT_BOTTOM) {
+          footer();
+          doc.addPage();
+          y = M;
+          header(
+            "Análise Inteligente (IA) — cont.",
+            new Date().toLocaleDateString("pt-PT"),
+          );
+        }
+        // Bold basic detection (naive but works for Gemini's **text**)
+        if (line.includes("**")) {
+          const parts = line.split("**");
+          let curX = M;
+          parts.forEach((p, idx) => {
+            if (idx % 2 === 1) doc.setFont("helvetica", "bold");
+            else doc.setFont("helvetica", "normal");
+            doc.text(p, curX, y);
+            curX += doc.getTextWidth(p);
+          });
+        } else {
+          doc.text(line, M, y);
+        }
+        y += 16;
+      });
+    }
 
     // numeração & rodapé
     const pageCount = doc.internal.getNumberOfPages();

@@ -169,6 +169,23 @@
       <!-- Insights / Alertas -->
       <ul id="rpt-insights" class="rpt-insights"></ul>
 
+      <!-- AI Analysis Section -->
+      <div id="rpt-ai-section" class="rpt-card" style="margin-top: 16px; border: 1px solid var(--primary-light); background: #f0f9ff;">
+        <h3 class="rpt-card__title" style="display:flex; align-items:center; gap:8px;">
+          <span class="material-symbols-outlined" style="font-size:20px; color:var(--primary);">psychology</span>
+          Análise Inteligente (IA)
+        </h3>
+        <div id="rpt-ai-content" class="rpt-ai-content">
+          <p class="muted" style="font-size: 13px;">Gere uma análise detalhada e recomendações personalizadas com base nos seus dados financeiros.</p>
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+          <button id="btn-generate-ai" class="btn" style="background: var(--primary); color: white; border: none; display: flex; align-items: center; gap: 6px;">
+            <span class="material-symbols-outlined" style="font-size:18px;">magic_button</span>
+            Gerar Análise IA
+          </button>
+        </div>
+      </div>
+
       <div class="rpt-actions">
         <button id="rpt-export" class="btn">Exportar PDF</button>
       </div>
@@ -500,6 +517,32 @@
     border-radius: 10px;
     background: #111827;
     color: #e5e7eb;
+  }
+
+  .rpt-ai-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #334155;
+    padding: 10px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    min-height: 60px;
+    white-space: pre-wrap;
+  }
+
+  .rpt-ai-content strong {
+    color: var(--primary);
+  }
+
+  .rpt-ai-loader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--primary);
+    font-weight: 600;
+    padding: 20px;
+    justify-content: center;
   }
 
   /* Responsivo */
@@ -1138,5 +1181,21 @@
     </div>
   </div>
 </section>
+
+<!-- ===== IA CONFIG (FINAL) ===== -->
+<section class="card">
+  <h2 class="section-title">Inteligência Artificial (Gemini)</h2>
+  <p class="row-note">Configure a sua chave de API para permitir análises automáticas dos seus relatórios.</p>
+  <div class="form-grid" style="margin-top:12px">
+    <label>
+      Gemini API Key
+      <input id="set-ai-key" type="password" placeholder="Cole a sua chave aqui..." style="width:100%" />
+    </label>
+  </div>
+  <div style="margin-top:12px; display:flex; justify-content:flex-end">
+    <button id="btn-save-ai-key" class="btn btn--primary">Guardar Chave</button>
+  </div>
+</section>
+
 
 <script type="module" src="/src/main.js?v=v7"></script>
