@@ -1753,21 +1753,43 @@ export async function init({ sb, outlet } = {}) {
   });
 
   // alterna inputs (fora)
-  function toggleReportInputs() {
-    const t = $("#rpt-type")?.value || "monthly";
-    $("#rpt-month-wrap")?.classList.toggle("hidden", t !== "monthly");
-    $("#rpt-range-wrap")?.classList.toggle("hidden", t !== "range");
-    $("#rpt-range2-wrap")?.classList.toggle("hidden", t !== "range");
-    $("#rpt-year-wrap")?.classList.toggle("hidden", t !== "yearly");
-  }
+   function toggleReportInputs() {
+     const t = $("#rpt-type")?.value || "monthly";
+     $("#rpt-month-wrap")?.classList.toggle("hidden", t !== "monthly");
+     $("#rpt-range-wrap")?.classList.toggle("hidden", t !== "range");
+     $("#rpt-range2-wrap")?.classList.toggle("hidden", t !== "range");
+     $("#rpt-year-wrap")?.classList.toggle("hidden", t !== "yearly");
+
+     if (t === "range") {
+       if (!$("#rpt-from").value) {
+         const d = new Date();
+         d.setDate(1);
+         $("#rpt-from").value = ymd(d);
+       }
+       if (!$("#rpt-to").value) {
+         $("#rpt-to").value = ymd(new Date());
+       }
+     }
+   }
   // alterna inputs (dentro do modal)
-  function toggleReportInputsInside() {
-    const t = $("#rpt-type-inside")?.value || "monthly";
-    $("#rpt-month-inside-wrap")?.classList.toggle("hidden", t !== "monthly");
-    $("#rpt-from-inside-wrap")?.classList.toggle("hidden", t !== "range");
-    $("#rpt-to-inside-wrap")?.classList.toggle("hidden", t !== "range");
-    $("#rpt-year-inside-wrap")?.classList.toggle("hidden", t !== "yearly");
-  }
+   function toggleReportInputsInside() {
+     const t = $("#rpt-type-inside")?.value || "monthly";
+     $("#rpt-month-inside-wrap")?.classList.toggle("hidden", t !== "monthly");
+     $("#rpt-from-inside-wrap")?.classList.toggle("hidden", t !== "range");
+     $("#rpt-to-inside-wrap")?.classList.toggle("hidden", t !== "range");
+     $("#rpt-year-inside-wrap")?.classList.toggle("hidden", t !== "yearly");
+
+     if (t === "range") {
+       if (!$("#rpt-from-inside").value) {
+         const d = new Date();
+         d.setDate(1);
+         $("#rpt-from-inside").value = ymd(d);
+       }
+       if (!$("#rpt-to-inside").value) {
+         $("#rpt-to-inside").value = ymd(new Date());
+       }
+     }
+   }
   $("#rpt-type")?.addEventListener("change", toggleReportInputs);
   toggleReportInputs();
 
@@ -1803,7 +1825,9 @@ export async function init({ sb, outlet } = {}) {
     "#rpt-year-inside",
   ].forEach((sel) => {
     $(sel)?.addEventListener("change", syncOutsideFromInsideAndBuild);
+    $(sel)?.addEventListener("input", syncOutsideFromInsideAndBuild);
   });
+  $("#rpt-refresh-inside")?.addEventListener("click", syncOutsideFromInsideAndBuild);
 
   // AI Logic
   const AI_KEY_STORAGE = "wb:gemini-api-key";
@@ -1932,6 +1956,11 @@ export async function init({ sb, outlet } = {}) {
     if (buildReport._busy) return;
     buildReport._busy = true;
     try {
+      const refreshBtn = $("#rpt-refresh-inside");
+      const spinIcon = refreshBtn?.querySelector(".material-symbols-outlined");
+      if (refreshBtn) refreshBtn.style.opacity = "0.5";
+      if (spinIcon) spinIcon.classList.add("rpt-spinning");
+
       destroyCharts();
       if (!preserveAI) {
         _aiAnalysisText = ""; // Limpa análise anterior
@@ -1954,12 +1983,14 @@ export async function init({ sb, outlet } = {}) {
         to = ymd(new Date(y, mm, 1));
         label = m;
       } else if (selType === "range") {
-        const a = $("#rpt-from")?.value || new Date().toISOString().slice(0, 7);
+        const a = $("#rpt-from")?.value || ymd(new Date());
         const b = $("#rpt-to")?.value || a;
-        const [ya, ma] = a.split("-").map(Number);
-        const [yb, mb] = b.split("-").map(Number);
-        from = ymd(new Date(ya, ma - 1, 1));
-        to = ymd(new Date(yb, mb, 1));
+        from = a;
+        // Para incluir o dia de fim no .lt(to), somamos 1 dia
+        const [yb, mb, db] = b.split("-").map(Number);
+        const d = new Date(yb, mb - 1, db);
+        d.setDate(d.getDate() + 1);
+        to = ymd(d);
         label = `${a} → ${b}`;
       } else {
         const y = Number($("#rpt-year")?.value || new Date().getFullYear());
@@ -2522,6 +2553,12 @@ export async function init({ sb, outlet } = {}) {
           .map((x) => `<li>${x}</li>`)
           .join(""));
     } finally {
+      const refreshBtn = $("#rpt-refresh-inside");
+      const spinIcon = refreshBtn?.querySelector(".material-symbols-outlined");
+      if (refreshBtn) refreshBtn.style.opacity = "1";
+      if (spinIcon) {
+        setTimeout(() => spinIcon.classList.remove("rpt-spinning"), 600);
+      }
       buildReport._busy = false;
     }
 

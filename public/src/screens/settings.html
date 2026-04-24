@@ -8,7 +8,7 @@
       Tipo
       <select id="rpt-type">
         <option value="monthly" selected>Mensal</option>
-        <option value="range">Intervalo de meses</option>
+        <option value="range">Período</option>
         <option value="yearly">Anual</option>
       </select>
     </label>
@@ -19,13 +19,13 @@
     </label>
 
     <label id="rpt-range-wrap" class="hidden">
-      De (YYYY-MM)
-      <input id="rpt-from" type="month" />
+      De
+      <input id="rpt-from" type="date" />
     </label>
 
     <label id="rpt-range2-wrap" class="hidden">
-      Até (YYYY-MM)
-      <input id="rpt-to" type="month" />
+      Até
+      <input id="rpt-to" type="date" />
     </label>
 
     <label id="rpt-year-wrap" class="hidden">
@@ -45,7 +45,7 @@
     <!-- Header com logo + título + fechar (sticky) -->
     <div class="rep-header">
       <div class="rep-title">
-        <img id="app-logo-img" class="rep-logo" src="./wisebudget_bk_wt.png" alt="Logo" />
+        <img id="app-logo-img" class="rep-logo" src="wisebudget_bk_wt.png" alt="Logo" />
         <div class="rep-title-text">
           <h2 id="rpt-title">Relatório Financeiro</h2>
           <span id="rpt-subtitle" class="rep-subtitle">by wisebudget</span>
@@ -64,7 +64,7 @@
             Tipo
             <select id="rpt-type-inside">
               <option value="monthly" selected>Mensal</option>
-              <option value="range">Intervalo de meses</option>
+              <option value="range">Período</option>
               <option value="yearly">Anual</option>
             </select>
           </label>
@@ -74,16 +74,21 @@
           </label>
           <label id="rpt-from-inside-wrap" class="hidden">
             De
-            <input id="rpt-from-inside" type="month" />
+            <input id="rpt-from-inside" type="date" />
           </label>
           <label id="rpt-to-inside-wrap" class="hidden">
             Até
-            <input id="rpt-to-inside" type="month" />
+            <input id="rpt-to-inside" type="date" />
           </label>
           <label id="rpt-year-inside-wrap" class="hidden">
             Ano
             <input id="rpt-year-inside" type="number" min="2000" max="2100" step="1" />
           </label>
+          <div style="display:flex; align-items:end; padding-bottom:2px">
+            <button id="rpt-refresh-inside" class="btn" title="Atualizar Relatório" style="padding:6px; display:flex; align-items:center; justify-content:center; background:var(--primary); color:white; border:none; border-radius:8px;">
+               <span class="material-symbols-outlined" style="font-size:20px;">refresh</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -728,6 +733,14 @@
       gap: 16px;
     }
   }
+
+  @keyframes rpt-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .rpt-spinning {
+    animation: rpt-spin 0.6s ease-in-out;
+  }
 </style>
 
 <!-- ===== CATEGORIAS (2º) ===== -->
@@ -1197,5 +1210,4 @@
   </div>
 </section>
 
-
-<script type="module" src="/src/main.js?v=v7"></script>
+
