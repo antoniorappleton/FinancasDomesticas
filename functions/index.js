@@ -226,9 +226,16 @@ exports.sendMonthlyReportEmail = onSchedule(
     try {
       const sbAdmin = createClient(SUPABASE_URL, sbServiceKey.value());
       
-      // 1. Obter TODOS os utilizadores registados
-      const { data: allProfiles } = await sbAdmin.from("profiles").select("id, email");
-      if (!allProfiles?.length) return logger.info("No profiles found to send reports.");
+      // 1. Obter TODOS os utilizadores registados via Admin API (mais fiável que a tabela profiles)
+      logger.info("Fetching users from Supabase Auth...");
+      const { data, error: usersError } = await sbAdmin.auth.admin.listUsers();
+      const allUsers = data?.users || [];
+      
+      if (usersError || !allUsers?.length) {
+        logger.error("User fetch error or no users:", usersError);
+        return;
+      }
+      logger.info(`Found ${allUsers.length} users. Starting email loop...`);
 
       const { data: tt } = await sbAdmin.from("transaction_types").select("id, code");
       const typeMap = {};
@@ -241,18 +248,32 @@ exports.sendMonthlyReportEmail = onSchedule(
       const monthLabel = now.toLocaleString("pt-PT", { month: "long", year: "numeric" });
 
       const transporter = nodemailer.createTransport({
-        service: "gmail", auth: { user: "antonioappleton@gmail.com", pass: gmailPass.value() }
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+          user: "antonioappleton@gmail.com",
+          pass: gmailPass.value()
+        }
       });
 
-      for (const profile of allProfiles) {
+      for (const user of allUsers) {
         try {
-          const uid = profile.id;
-          const targetEmail = profile.email || "antonioappleton@gmail.com";
+          const uid = user.id;
+          const targetEmail = user.email || "antonioappleton@gmail.com";
 
-          // 2. Fetch Real Data (pode vir vazio)
-          const { data: txs } = await sbAdmin.from("transactions")
-            .select("amount, description, date, type_id, categories(name)")
-            .eq("user_id", uid).gte("date", from).lte("date", to);
+          // 2. Fetch Real Data (Transações e Saldos)
+          const [txsRes, balancesRes] = await Promise.all([
+            sbAdmin.from("transactions")
+              .select("amount, description, date, type_id, categories(name)")
+              .eq("user_id", uid).gte("date", from).lte("date", to),
+            sbAdmin.from("v_account_balances")
+              .select("account_name, balance, currency")
+              .eq("user_id", uid)
+          ]);
+
+          const txs = txsRes.data;
+          const balances = balancesRes.data || [];
 
           // 3. Agregação (com fallback para zeros)
           let inc = 0, exp = 0, sav = 0;
@@ -307,6 +328,22 @@ exports.sendMonthlyReportEmail = onSchedule(
             });
           }
 
+          // 4b. Estado das Contas (Report de Contas)
+          if (balances.length > 0) {
+            y += 15;
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text("Estado das Contas", 20, y);
+            y += 10; doc.setFontSize(10);
+            balances.forEach(b => {
+                if (y > 275) { doc.addPage(); y = 20; }
+                doc.setTextColor(80, 80, 80); doc.text(b.account_name, 25, y);
+                const bal = Number(b.balance);
+                doc.setTextColor(bal >= 0 ? 22 : 239, bal >= 0 ? 163 : 68, bal >= 0 ? 74 : 68);
+                doc.text(`${bal.toFixed(2)} ${b.currency}`, 150, y, { align: "right" });
+                y += 8;
+            });
+          }
+
           const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
           // 5. Email HTML "Pro"
@@ -326,10 +363,31 @@ exports.sendMonthlyReportEmail = onSchedule(
                       <tr><td style="color: #6b7280; padding: 8px 0;">Despesas</td><td style="text-align: right; color: #ef4444; font-weight: bold;">- ${exp.toFixed(2)} €</td></tr>
                       <tr><td style="color: #6b7280; padding: 8px 0;">Poupanças</td><td style="text-align: right; color: #2563eb; font-weight: bold;">- ${sav.toFixed(2)} €</td></tr>
                       <tr><td colspan="2"><hr style="border:0; border-top: 1px solid #e5e7eb; margin: 10px 0;"></td></tr>
-                      <tr><td style="font-weight: bold; padding: 8px 0;">Saldo Final</td><td style="text-align: right; font-weight: bold; font-size: 20px;">${net.toFixed(2)} €</td></tr>
+                      <tr><td style="font-weight: bold; padding: 8px 0;">Saldo Mensal</td><td style="text-align: right; font-weight: bold; font-size: 20px;">${net.toFixed(2)} €</td></tr>
                     </table>
                   </div>
-                  <p>Em anexo podes encontrar o relatório detalhado em formato PDF.</p>
+
+                  ${balances.length ? `
+                  <h3 style="color: #374151; font-size: 18px; margin-top: 25px;">Saldos Atuais</h3>
+                  <div style="border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; margin-top: 10px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                      <tr style="background-color: #f9fafb;">
+                        <th style="text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb;">Conta</th>
+                        <th style="text-align: right; padding: 10px; border-bottom: 1px solid #e5e7eb;">Saldo</th>
+                      </tr>
+                      ${balances.map(b => `
+                        <tr>
+                          <td style="padding: 10px; border-bottom: 1px solid #f3f4f6; color: #4b5563;">${b.account_name}</td>
+                          <td style="padding: 10px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: bold; color: ${b.balance >= 0 ? '#16a34a' : '#ef4444'};">
+                            ${Number(b.balance).toFixed(2)} €
+                          </td>
+                        </tr>
+                      `).join('')}
+                    </table>
+                  </div>
+                  ` : ''}
+
+                  <p style="margin-top: 25px;">Em anexo podes encontrar o relatório detalhado em formato PDF.</p>
                   <a href="https://wisebudget-financaspessoais.web.app" style="display: block; background-color: #065f46; color: white; text-align: center; padding: 15px; border-radius: 6px; text-decoration: none; font-weight: bold; margin-top: 25px;">Abrir WiseBudget</a>
                 </div>
               </div>
@@ -350,19 +408,26 @@ exports.sendMonthlyReportEmail = onSchedule(
   }
 );
 
-
 /**
  * HTTP Function for testing the monthly report MANUALLY with PRO design
  */
-exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] }, async (req, res) => {
-  cors(req, res, async () => {
-    logger.info("Manual trigger for PROFESSIONAL Monthly Report Test...");
-    const now = new Date();
-    
+exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] }, (req, res) => {
+  return cors(req, res, async () => {
     try {
+      logger.info("Manual trigger for Monthly Report Test...");
+      const now = new Date();
+      const testEmail = "antonioappleton@gmail.com";
+      const monthStr = (now.getMonth() + 1).toString();
+    
       const sbAdmin = createClient(SUPABASE_URL, sbServiceKey.value());
       const transporter = nodemailer.createTransport({
-        service: "gmail", auth: { user: "antonioappleton@gmail.com", pass: gmailPass.value() }
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+          user: "antonioappleton@gmail.com",
+          pass: gmailPass.value()
+        }
       });
 
       const year = now.getFullYear();
@@ -380,12 +445,26 @@ exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] 
       try {
         const { data: tt } = await sbAdmin.from("transaction_types").select("id, code");
         const typeMap = {}; tt.forEach(t => typeMap[t.code] = t.id);
-        const { data: usersData } = await sbAdmin.from("transactions").select("user_id").limit(1);
-        if (usersData?.length) {
-            const uid = usersData[0].user_id;
-            const { data: txs } = await sbAdmin.from("transactions")
+        
+        logger.info("Test: Fetching users...");
+        const { data, error: usersError } = await sbAdmin.auth.admin.listUsers();
+        const allUsers = data?.users || [];
+
+        if (usersError) logger.error("Test: Users fetch error:", usersError);
+        
+        if (allUsers?.length) {
+            const uid = allUsers[0].id;
+            const [txsRes, balancesRes] = await Promise.all([
+              sbAdmin.from("transactions")
                 .select("amount, type_id, categories(name)")
-                .eq("user_id", uid).gte("date", from).lte("date", to);
+                .eq("user_id", uid).gte("date", from).lte("date", to),
+              sbAdmin.from("v_account_balances")
+                .select("account_name, balance, currency")
+                .eq("user_id", uid)
+            ]);
+            
+            const txs = txsRes.data;
+            const balances = balancesRes.data || [];
             
             if (txs?.length) {
                 inc = exp = sav = 0; byCat = {};
@@ -400,8 +479,18 @@ exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] 
                    else if (t.type_id === typeMap.SAVINGS) sav += amt;
                 });
             }
+            // Use real balances if found
+            if (balances.length) {
+                testBalances = balances; 
+            }
         }
-      } catch (e) { logger.warn("RLS block no teste, a usar dados demo para o design."); }
+      } catch (e) { logger.warn("Admin fetch fail in test, using demo data.", e); }
+
+      logger.info("Test: Generating PDF...");
+      let testBalances = [
+        { account_name: "Conta Principal", balance: 1250.40, currency: "EUR" },
+        { account_name: "Poupança", balance: 5400.00, currency: "EUR" }
+      ];
 
       const net = inc - exp - sav;
 
@@ -434,6 +523,17 @@ exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] 
           doc.setTextColor(0,0,0); doc.text(`${val.toFixed(2)} EUR`, 150, y, { align: "right" });
           y += 8;
       });
+
+      // Saldos de Teste
+      y += 10;
+      doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text("Saldos Atuais", 20, y);
+      y += 10; doc.setFontSize(10);
+      testBalances.forEach(b => {
+          doc.setTextColor(80, 80, 80); doc.text(b.account_name, 25, y);
+          doc.setTextColor(0,0,0); doc.text(`${b.balance.toFixed(2)} ${b.currency}`, 150, y, { align: "right" });
+          y += 8;
+      });
+
       const pdfBuffer = Buffer.from(doc.output("arraybuffer"));
 
       // ---- EMAIL HTML PRO ----
@@ -454,24 +554,65 @@ exports.testMonthlyReportEmail = onRequest({ secrets: [sbServiceKey, gmailPass] 
                   <tr><td style="font-weight: bold; padding: 8px 0; border-top: 1px solid #eee;">Saldo</td><td style="text-align: right; font-weight: bold; font-size: 20px; border-top: 1px solid #eee;">${net.toFixed(2)} €</td></tr>
                 </table>
               </div>
-              <p>Confirma no anexo PDF a estrutura das tabelas e o cabeçalho estilizado.</p>
+
+              <h3 style="color: #374151; font-size: 18px; margin-top: 25px;">Saldos Atuais (Exemplo)</h3>
+              <div style="border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; margin-top: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                  <tr style="background-color: #f9fafb;">
+                    <th style="text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb;">Conta</th>
+                    <th style="text-align: right; padding: 10px; border-bottom: 1px solid #e5e7eb;">Saldo</th>
+                  </tr>
+                  ${testBalances.map(b => `
+                    <tr>
+                      <td style="padding: 10px; border-bottom: 1px solid #f3f4f6; color: #4b5563;">${b.account_name}</td>
+                      <td style="padding: 10px; border-bottom: 1px solid #f3f4f6; text-align: right; font-weight: bold; color: ${b.balance >= 0 ? '#16a34a' : '#ef4444'};">
+                        ${b.balance.toFixed(2)} €
+                      </td>
+                    </tr>
+                  `).join('')}
+                </table>
+              </div>
+
+              <p style="margin-top: 25px;">Confirma no anexo PDF a estrutura das tabelas e o cabeçalho estilizado.</p>
               <a href="https://wisebudget-financaspessoais.web.app" style="display: block; background-color: #065f46; color: white; text-align: center; padding: 15px; border-radius: 6px; text-decoration: none; font-weight: bold;">Ver na App</a>
             </div>
           </div>
         </div>
       `;
 
-      await transporter.sendMail({
-        from: "WiseBudget <antonioappleton@gmail.com>", to: "antonioappleton@gmail.com",
-        subject: `WiseBudget: Teste de Relatório Premium - ${monthLabel}`,
-        html: htmlBody,
-        attachments: [{ filename: `Relatorio_Teste_PRO.pdf`, content: pdfBuffer }]
-      });
+      const mailOptions = {
+          from: "WiseBudget <antonioappleton@gmail.com>",
+          to: testEmail,
+          subject: `WiseBudget: Teste de Relatório Premium - ${monthLabel}`,
+          html: htmlBody,
+          attachments: [{ filename: `Relatorio_Teste_${monthStr}.pdf`, content: pdfBuffer }]
+      };
 
-      res.send("Email de teste PREMIUM enviado com sucesso para antonioappleton@gmail.com!");
+      logger.info(`Test: Sending email to ${testEmail}...`);
+      await transporter.sendMail(mailOptions);
+      logger.info("Test: Email sent successfully.");
+      res.send("Email de teste enviado com sucesso para: " + testEmail);
     } catch (err) {
-      logger.error(err);
+      logger.error("Test function logic error:", err);
       res.status(500).send("Erro no teste PRO: " + err.message);
     }
   });
+});
+
+exports.testSimpleEmail = onRequest({ secrets: [gmailPass] }, async (req, res) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: 'antonioappleton@gmail.com', pass: gmailPass.value() }
+        });
+        await transporter.sendMail({
+            from: 'WiseBudget Test <antonioappleton@gmail.com>',
+            to: 'antonioappleton@gmail.com',
+            subject: 'Simple SMTP Test',
+            text: 'Se est�s a ler isto, o SMTP funciona!'
+        });
+        res.send('Email enviado com sucesso!');
+    } catch (err) {
+        res.status(500).send('Erro no SMTP Simples: ' + err.message);
+    }
 });

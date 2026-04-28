@@ -14,6 +14,7 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
+  email text,
   created_at timestamptz default now()
 );
 
@@ -21,9 +22,15 @@ create table if not exists public.profiles (
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, display_name)
-  values (new.id, coalesce(new.raw_user_meta_data->>'name','Utilizador'))
-  on conflict (id) do update set display_name = excluded.display_name;
+  insert into public.profiles (id, display_name, email)
+  values (
+    new.id, 
+    coalesce(new.raw_user_meta_data->>'name','Utilizador'),
+    new.email
+  )
+  on conflict (id) do update set 
+    display_name = excluded.display_name,
+    email = excluded.email;
   return new;
 end;
 $$ language plpgsql security definer;
