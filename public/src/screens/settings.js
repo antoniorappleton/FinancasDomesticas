@@ -1576,27 +1576,41 @@ export async function init({ sb, outlet } = {}) {
       const sub = await reg.pushManager.getSubscription();
 
       if (isGranted && sub) {
-        statusEl.textContent = "Ativado";
-        statusEl.style.color = "var(--green-600)";
-        toggleBtn.textContent = "Desativar";
-        prefsArea.style.opacity = "1";
-        prefsArea.style.pointerEvents = "auto";
+        if (statusEl) {
+          statusEl.textContent = "Ativado";
+          statusEl.style.color = "var(--green-600)";
+        }
+        if (toggleBtn) toggleBtn.textContent = "Desativar";
+        if (prefsArea) {
+          prefsArea.style.opacity = "1";
+          prefsArea.style.pointerEvents = "auto";
+        }
 
         // Carregar preferências salvas
         const prefs = await NotificationManager.getPreferences();
         if (prefs) {
-          $("#ntf-urgent").checked = prefs.urgent !== false;
-          $("#ntf-smart").checked = prefs.smart !== false;
-          $("#ntf-digest").checked = prefs.digest !== false;
-          $("#ntf-quiet-start").value = prefs.quiet_start || "22:00";
-          $("#ntf-quiet-end").value = prefs.quiet_end || "08:00";
+          const checkUrgent = $("#ntf-urgent");
+          if (checkUrgent) checkUrgent.checked = prefs.urgent !== false;
+          const checkSmart = $("#ntf-smart");
+          if (checkSmart) checkSmart.checked = prefs.smart !== false;
+          const checkDigest = $("#ntf-digest");
+          if (checkDigest) checkDigest.checked = prefs.digest !== false;
+          
+          const qStart = $("#ntf-quiet-start");
+          if (qStart) qStart.value = prefs.quiet_start || "22:00";
+          const qEnd = $("#ntf-quiet-end");
+          if (qEnd) qEnd.value = prefs.quiet_end || "08:00";
         }
       } else {
-        statusEl.textContent = "Desativado";
-        statusEl.style.color = "var(--muted)";
-        toggleBtn.textContent = "Ativar";
-        prefsArea.style.opacity = "0.6";
-        prefsArea.style.pointerEvents = "none";
+        if (statusEl) {
+          statusEl.textContent = "Desativado";
+          statusEl.style.color = "var(--muted)";
+        }
+        if (toggleBtn) toggleBtn.textContent = "Ativar";
+        if (prefsArea) {
+          prefsArea.style.opacity = "0.6";
+          prefsArea.style.pointerEvents = "none";
+        }
       }
     }
 
@@ -1663,11 +1677,11 @@ export async function init({ sb, outlet } = {}) {
     // Delegar salvaguarda de preferências
     const savePrefs = async () => {
       const patch = {
-        urgent: $("#ntf-urgent").checked,
-        smart: $("#ntf-smart").checked,
-        digest: $("#ntf-digest").checked,
-        quiet_start: $("#ntf-quiet-start").value,
-        quiet_end: $("#ntf-quiet-end").value,
+        urgent: $("#ntf-urgent")?.checked ?? true,
+        smart: $("#ntf-smart")?.checked ?? true,
+        digest: $("#ntf-digest")?.checked ?? true,
+        quiet_start: $("#ntf-quiet-start")?.value ?? "22:00",
+        quiet_end: $("#ntf-quiet-end")?.value ?? "08:00",
       };
       await NotificationManager.setPreferences(patch);
     };
@@ -3671,36 +3685,140 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     };
   }
 
-  // Live Preview & Input Logic
+  const toggleAdvBtn = $("#thm-toggle-advanced");
+  const advContent = $("#thm-advanced-content");
+  const advChevron = $("#thm-adv-chevron");
+
+  toggleAdvBtn?.addEventListener("click", () => {
+    const isHidden = advContent.classList.toggle("hidden");
+    if (advChevron) advChevron.textContent = isHidden ? "expand_more" : "expand_less";
+  });
+
+  function syncPreview(s) {
+    const previewCard = $("#thm-preview-card");
+    const previewHeader = $("#thm-preview-header");
+    const previewMenu = $("#thm-preview-menu");
+    const previewFab = $("#thm-preview-fab");
+    const previewItems = outlet.querySelectorAll(".thm-preview-card-mock");
+    const previewText1 = $("#thm-preview-text-1");
+    const previewText2 = $("#thm-preview-text-2");
+
+    if (previewCard) {
+      previewCard.style.backgroundColor = s.bg_color;
+      previewCard.style.backgroundImage = s.bg_image_url ? `url(${s.bg_image_url})` : "none";
+      previewCard.style.setProperty("--ov-bg", s.overlay_color);
+    }
+
+    if (previewMenu) previewMenu.style.backgroundColor = s.header_bg_rgba;
+    if (previewFab) previewFab.style.backgroundColor = s.fab_bg;
+    
+    previewItems.forEach(item => {
+      item.style.backgroundColor = s.card_bg_rgba;
+      item.style.backdropFilter = `blur(${s.card_blur_px}px)`;
+      item.style.borderColor = s.card_border_rgba;
+    });
+
+    if (previewText1) previewText1.style.color = s.text_main;
+    if (previewText2) previewText2.style.color = s.text_secondary;
+    
+    const activeBar = previewMenu?.querySelector(".bar.active");
+    if (activeBar) activeBar.style.backgroundColor = s.fab_bg;
+  }
+
+  const PRESETS = {
+    dark: {
+      bg_color: "#ffffff",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "rgba(255,255,255,1)",
+      card_blur_px: 0,
+      header_bg_rgba: "#0f172a",
+      fab_bg: "#2563eb",
+      text_main: "#0f172a",
+      text_secondary: "#64748b"
+    },
+    glass: {
+      bg_color: "#ffffff",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "rgba(248,250,252,0.8)",
+      card_blur_px: 12,
+      header_bg_rgba: "#f1f5f9",
+      fab_bg: "#ec4899",
+      text_main: "#1e293b",
+      text_secondary: "#64748b"
+    },
+    light: {
+      bg_color: "#ffffff",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "rgba(255,255,255,1)",
+      card_blur_px: 0,
+      header_bg_rgba: "#ffffff",
+      fab_bg: "#10b981",
+      text_main: "#0f172a",
+      text_secondary: "#64748b"
+    },
+    modern: {
+      bg_color: "#ffffff",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "rgba(255,255,255,1)",
+      card_blur_px: 0,
+      header_bg_rgba: "#1e1b4b",
+      fab_bg: "#6366f1",
+      text_main: "#0f172a",
+      text_secondary: "#4338ca"
+    }
+  };
+
+  function selectProfile(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    
+    // Marcar botão ativo
+    outlet.querySelectorAll(".btn-profile").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.preset === name);
+    });
+
+    // Update inputs (silently)
+    if (inputs.bgColor) inputs.bgColor.value = "#ffffff";
+    if (inputs.bgUrl) inputs.bgUrl.value = "";
+    if (inputs.overlayCol) inputs.overlayCol.value = "#ffffff";
+    if (inputs.overlayOp) inputs.overlayOp.value = 0;
+    if (inputs.cardBlur) inputs.cardBlur.value = p.card_blur_px;
+    if (inputs.cardOp) inputs.cardOp.value = 1;
+    if (inputs.fabBg) inputs.fabBg.value = p.fab_bg;
+    if (inputs.headerBg) inputs.headerBg.value = p.header_bg_rgba;
+    if (inputs.textMain) inputs.textMain.value = p.text_main;
+    if (inputs.textSec) inputs.textSec.value = p.text_secondary;
+
+    // Show Preview only
+    const s = { ...DEFAULT_THEME, ...p };
+    syncPreview(s);
+  }
+
+  outlet.querySelectorAll(".btn-profile").forEach(btn => {
+    btn.addEventListener("click", () => selectProfile(btn.dataset.preset));
+  });
+
+  // Live Preview & Input Logic (Avançados)
   Object.values(inputs).forEach((el) => {
-    el?.addEventListener("input", (e) => {
-      // Sync Opacity Slider for Cards
-      if (e.target === inputs.cardBgColor || e.target === inputs.cardOp) {
-        const hex = inputs.cardBgColor?.value || "#ffffff";
-        const op = inputs.cardOp?.value || "0.92";
-        if (inputs.cardBgText)
-          inputs.cardBgText.value = hexAlphaToRgba(hex, op);
-        const span = document.getElementById("thm-opacity-val");
-        if (span) span.textContent = op;
-      }
-
-      // Updates labels
-      if (e.target === inputs.overlayOp && $("#thm-overlay-op-val"))
-        $("#thm-overlay-op-val").textContent = e.target.value;
-
-      if (e.target === inputs.bgBlur && $("#thm-overlay-blur-val"))
-        $("#thm-overlay-blur-val").textContent = e.target.value + "px";
-
-      if (e.target === inputs.cardBlur && $("#thm-blur-val"))
-        $("#thm-blur-val").textContent = e.target.value + "px";
-
-      // Apply Live
+    el?.addEventListener("input", () => {
       const s = getSettingsFromInputs();
-      // Ensure card_bg_rgba is set if we didn't touch the sliders yet
-      if (!s.card_bg_rgba && inputs.cardBgText)
-        s.card_bg_rgba = inputs.cardBgText.value;
-
-      applyTheme(s);
+      syncPreview(s);
+      
+      // Update opacity spans if visible
+      const opSpan = $("#thm-opacity-val");
+      if (opSpan) opSpan.textContent = inputs.cardOp?.value;
+      const ovSpan = $("#thm-overlay-op-val");
+      if (ovSpan) ovSpan.textContent = inputs.overlayOp?.value;
+      const blurSpan = $("#thm-blur-val");
+      if (blurSpan) blurSpan.textContent = inputs.cardBlur?.value + "px";
     });
   });
 
@@ -3708,21 +3826,28 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     themeOverlay?.classList.remove("hidden");
     themeOverlay?.removeAttribute("aria-hidden");
     loadThemeToInputs();
+    syncPreview(getSettingsFromInputs());
   });
 
-  function closeThemeModal() {
+  function closeThemeModal(shouldApply = false) {
+    if (shouldApply) {
+      const s = getSettingsFromInputs();
+      if (!s.card_bg_rgba && inputs.cardBgText)
+        s.card_bg_rgba = inputs.cardBgText.value;
+      
+      applyTheme(s);
+      saveGlobalTheme(sb, s).catch(console.error);
+    } else {
+      // If cancel, revert local preview by reloading original theme
+      const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "null");
+      applyTheme(visuals || DEFAULT_THEME);
+    }
     themeOverlay?.classList.add("hidden");
     themeOverlay?.setAttribute("aria-hidden", "true");
-    const s = getSettingsFromInputs();
-    if (!s.card_bg_rgba && inputs.cardBgText)
-      s.card_bg_rgba = inputs.cardBgText.value;
-
-    // Save to DB
-    saveGlobalTheme(sb, s).catch(console.error);
   }
 
-  btnThemeClose?.addEventListener("click", closeThemeModal);
-  btnThemeSave?.addEventListener("click", closeThemeModal);
+  btnThemeClose?.addEventListener("click", () => closeThemeModal(false));
+  btnThemeSave?.addEventListener("click", () => closeThemeModal(true));
 
   btnThemeReset?.addEventListener("click", () => {
     if (!confirm("Restaurar as cores padrão?")) return;

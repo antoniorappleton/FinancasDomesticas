@@ -281,6 +281,14 @@
         <input type="date" id="pf-start" value="" />
       </label>
       <label
+        >Aporte mensal (€)
+        <input type="number" id="pf-monthly" placeholder="ex: 100" />
+      </label>
+      <label
+        >Tempo (anos)
+        <input type="number" id="pf-years" placeholder="ex: 10" />
+      </label>
+      <label
         >Taxa anual (%) <input id="pf-apr" type="number" step="0.01" min="0"
       /></label>
       <label
@@ -293,8 +301,23 @@
       <label
         >Cor (opcional) <input id="pf-color" type="color" value="#0ea5e9"
       /></label>
+      
+      <div style="grid-column: 1/-1; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 8px;">
+        <div style="font-size: 0.8em; font-weight: 700; color: #64748b; margin-bottom: 4px; text-transform: uppercase;">Projeção de Crescimento</div>
+        <div id="pf-projection" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div>
+            <div class="row-note">Total Final</div>
+            <div id="pf-proj-total" style="font-weight: 800; font-size: 1.1em; color: #0f172a;">€ 0,00</div>
+          </div>
+          <div>
+            <div class="row-note">Lucro Acumulado</div>
+            <div id="pf-proj-profit" style="font-weight: 800; font-size: 1.1em; color: #10b981;">€ 0,00</div>
+          </div>
+        </div>
+      </div>
+
       <label style="grid-column: 1/-1"
-        >Notas <textarea id="pf-notes"></textarea>
+        >Notas <textarea id="pf-notes" style="height: 60px"></textarea>
       </label>
       <input id="pf-id" type="hidden" />
     </div>

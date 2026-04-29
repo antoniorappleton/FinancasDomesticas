@@ -905,6 +905,7 @@
         <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
         <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
       </div>
+      <div id="imp-info" class="row-note" style="margin-top:8px; font-weight:600"></div>
     </div>
 
     <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
@@ -937,8 +938,46 @@
 
   <section class="card" id="sec-notifications">
     <h2 class="section-title">Notificações Inteligentes</h2>
-    <div class="card soft" style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
-      <button id="btn-ntf-toggle" class="btn btn--primary">Ativar</button>
+    <div class="card soft" style="margin-top:12px; padding:20px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--border); border-radius:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div>
+          <div class="row-note">Estado Atual</div>
+          <strong id="ntf-status" style="font-size:1.1rem; color:var(--muted)">Desativado</strong>
+        </div>
+        <div style="display:flex; gap:8px">
+           <button id="btn-ntf-test" class="btn" style="display:none; font-size:13px">Testar</button>
+           <button id="btn-ntf-toggle" class="btn btn--primary">Ativar</button>
+        </div>
+      </div>
+
+      <div id="ntf-preferences" style="opacity:0.6; pointer-events:none; transition:opacity 0.3s ease">
+        <h3 class="section-title" style="font-size:16px; margin-bottom:12px">Preferências</h3>
+        <div class="grid grid-responsive-2" style="gap:16px">
+          <label class="row-check" style="flex-direction:row; align-items:center; gap:10px; cursor:pointer">
+            <input type="checkbox" id="ntf-urgent" checked /> 
+            <span>Alertas Urgentes (Saldo baixo)</span>
+          </label>
+          <label class="row-check" style="flex-direction:row; align-items:center; gap:10px; cursor:pointer">
+            <input type="checkbox" id="ntf-smart" checked /> 
+            <span>Dicas Inteligentes (IA)</span>
+          </label>
+          <label class="row-check" style="flex-direction:row; align-items:center; gap:10px; cursor:pointer">
+            <input type="checkbox" id="ntf-digest" checked /> 
+            <span>Resumo Diário/Semanal</span>
+          </label>
+        </div>
+
+        <div class="grid grid-responsive-2" style="margin-top:16px; gap:16px">
+          <label>
+            Silêncio (Início)
+            <input type="time" id="ntf-quiet-start" value="22:00" />
+          </label>
+          <label>
+            Silêncio (Fim)
+            <input type="time" id="ntf-quiet-end" value="08:00" />
+          </label>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -965,4 +1004,655 @@
       <div id="sess-user-email"></div>
       <button id="btn-logout" class="btn">Terminar sessão</button>
     </div>
+  </section>
+</div>
+
+<!-- ===== MODAL PERSONALIZAÇÃO (TEMA SIMPLIFICADO / PERFIS) ===== -->
+<div id="theme-overlay" class="hidden rep-overlay thm-modal-overlay" aria-hidden="true" tabindex="-1">
+  <div class="thm-modal">
+    <div class="thm-header">
+      <div class="thm-header__title">
+        <span class="material-symbols-outlined">style</span>
+        <div>
+          <h2 style="margin:0">Estilo Visual</h2>
+          <p style="font-size:12px; color:var(--muted); margin:0">Escolha um perfil para personalizar a sua experiência</p>
+        </div>
+      </div>
+      <button id="theme-close" class="thm-close-btn" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="thm-container">
+      <!-- Coluna Esquerda: Perfis -->
+      <div class="thm-sidebar">
+        <div class="thm-section">
+          <h3 class="thm-section-title"><span class="material-symbols-outlined">auto_awesome</span> Perfis de Design</h3>
+          <div class="thm-profile-gallery">
+            <button class="btn-profile active" data-preset="dark">
+              <div class="profile-preview dark"></div>
+              <div class="profile-info">
+                <strong>Executivo</strong>
+                <span>Fundo Branco & Topo Escuro</span>
+              </div>
+            </button>
+            <button class="btn-profile" data-preset="glass">
+              <div class="profile-preview glass"></div>
+              <div class="profile-info">
+                <strong>Cristal</strong>
+                <span>Fundo Branco & Estilo Vidro</span>
+              </div>
+            </button>
+            <button class="btn-profile" data-preset="light">
+              <div class="profile-preview light"></div>
+              <div class="profile-info">
+                <strong>Minimalista</strong>
+                <span>Totalmente Branco & Limpo</span>
+              </div>
+            </button>
+            <button class="btn-profile" data-preset="modern">
+              <div class="profile-preview modern"></div>
+              <div class="profile-info">
+                <strong>Oceano</strong>
+                <span>Fundo Branco & Detalhes Indigo</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Botão para mostrar avançados -->
+        <button id="thm-toggle-advanced" class="btn btn-text" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px">
+          <span class="material-symbols-outlined">tune</span>
+          Ajustes Avançados
+          <span class="material-symbols-outlined" id="thm-adv-chevron">expand_more</span>
+        </button>
+
+        <div id="thm-advanced-content" class="hidden">
+          <div class="thm-section">
+            <h3 class="thm-section-title"><span class="material-symbols-outlined">image</span> Fundo Personalizado</h3>
+            <div class="thm-control-group">
+              <div class="thm-upload-box">
+                <label for="thm-bg-file" class="thm-upload-label">
+                  <span class="material-symbols-outlined">upload_file</span>
+                  Substituir Imagem
+                </label>
+                <input type="file" id="thm-bg-file" accept="image/*" class="hidden" />
+                <button id="thm-bg-clear" class="thm-icon-btn" title="Remover"><span class="material-symbols-outlined">delete</span></button>
+              </div>
+              <input type="hidden" id="thm-bg-url" />
+              <div id="thm-bg-status" class="thm-status-label"></div>
+            </div>
+          </div>
+
+          <div class="thm-section">
+            <h3 class="thm-section-title"><span class="material-symbols-outlined">palette</span> Ajustes Finos</h3>
+            <div class="grid grid-responsive-2">
+              <label class="thm-label">Cor Fundo <input type="color" id="thm-bg" /></label>
+              <label class="thm-label">Película <input type="color" id="thm-overlay-col" /></label>
+              <label class="thm-label">Cartões <input type="color" id="thm-card" /></label>
+              <label class="thm-label">Destaque <input type="color" id="thm-fab" /></label>
+            </div>
+            
+            <div style="margin-top:16px">
+              <label class="thm-label">Opacidade Película (<span id="thm-overlay-op-val"></span>) <input type="range" id="thm-overlay-op" min="0" max="1" step="0.01" class="thm-range" /></label>
+              <label class="thm-label">Transparência Cartão (<span id="thm-opacity-val"></span>) <input type="range" id="thm-opacity" min="0" max="1" step="0.01" class="thm-range" /></label>
+              <label class="thm-label">Glass Blur (<span id="thm-blur-val"></span>) <input type="range" id="thm-blur" min="0" max="32" step="1" class="thm-range" /></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Coluna Direita: Preview -->
+      <div class="thm-preview-area">
+        <div class="thm-preview-sticky">
+          <div id="thm-preview-card" class="thm-preview-window">
+             <!-- Mock UI remains same but larger/cleaner -->
+            <div id="thm-preview-header" class="thm-preview-header">
+              <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+            </div>
+            <div class="thm-preview-content">
+              <div id="thm-preview-menu" class="thm-preview-menu">
+                <div class="bar"></div><div class="bar"></div><div class="bar active"></div>
+              </div>
+              <div class="thm-preview-body">
+                <div id="thm-preview-item-1" class="thm-preview-card-mock">
+                   <div class="mock-line"></div>
+                   <div class="mock-val">€ 1.250,00</div>
+                </div>
+                <div id="thm-preview-item-2" class="thm-preview-card-mock">
+                   <div class="mock-line short"></div>
+                   <div class="mock-btn" id="thm-preview-fab">Botão</div>
+                </div>
+                <div class="thm-preview-text-mock">
+                   <p id="thm-preview-text-1">Texto Principal</p>
+                   <p id="thm-preview-text-2">Legenda ou descrição</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="thm-preview-note">Visualização do perfil selecionado</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="thm-footer">
+      <button id="thm-reset" class="btn btn-outline" style="border:none">Restaurar Original</button>
+      <div style="display:flex; gap:12px">
+        <button id="thm-cancel-dummy" class="btn" onclick="document.getElementById('theme-close').click()">Cancelar</button>
+        <button id="thm-save" class="btn btn--primary" style="padding: 10px 24px; font-weight:700">Aplicar Globalmente</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* REFINED PROFESSIONAL THEME MODAL STYLES */
+.thm-modal-overlay {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(10px);
+  padding: 16px;
+}
+
+.thm-modal {
+  background: #ffffff;
+  width: min(980px, 98vw);
+  max-height: 92vh;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+}
+
+.thm-header {
+  padding: 24px 32px;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.thm-header__title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.thm-header__title .material-symbols-outlined {
+  font-size: 32px;
+  color: #6366f1;
+  background: #eef2ff;
+  padding: 8px;
+  border-radius: 12px;
+}
+
+.thm-header__title h2 { font-size: 1.4rem; color: #1e293b; }
+
+.thm-profile-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.btn-profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 2px solid #f1f5f9;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+
+.btn-profile:hover {
+  border-color: #e2e8f0;
+  background: #f8fafc;
+  transform: translateX(4px);
+}
+
+.btn-profile.active {
+  border-color: #6366f1;
+  background: #f5f3ff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+}
+
+.profile-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-preview::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 14px;
+}
+
+.profile-preview::after {
+  content: "";
+  position: absolute;
+  bottom: 8px; right: 8px;
+  width: 14px; height: 14px;
+  border-radius: 4px;
+}
+
+.profile-preview.dark::before { background: #0f172a; }
+.profile-preview.dark::after { background: #2563eb; }
+
+.profile-preview.glass::before { background: #f1f5f9; }
+.profile-preview.glass::after { background: #ec4899; }
+
+.profile-preview.light::before { background: #ffffff; border-bottom: 1px solid #f1f5f9; }
+.profile-preview.light::after { background: #10b981; }
+
+.profile-preview.modern::before { background: #1e1b4b; }
+.profile-preview.modern::after { background: #6366f1; }
+
+.profile-info strong { display: block; font-size: 15px; color: #1e293b; }
+.profile-info span { font-size: 12px; color: #64748b; }
+
+.btn-text {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.btn-text:hover { background: #f5f3ff; }
+
+/* Rest of professional styles remain/refined */
+.thm-sidebar { padding: 24px 32px; overflow-y: auto; }
+.thm-preview-area { background: #f8fafc; border-left: 1px solid #f1f5f9; padding: 40px; }
+.thm-preview-window { 
+  width: 320px; 
+  aspect-ratio: 9/16; 
+  border-radius: 32px; 
+  border: 8px solid #1e293b; 
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thm-footer { padding: 20px 32px; border-top: 1px solid #f1f5f9; background: #fff; }
+</style>
+
+<style>
+/* PROFESSIONAL THEME MODAL STYLES */
+.thm-modal-overlay {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(8px);
+  padding: 20px;
+}
+
+.thm-modal {
+  background: #ffffff;
+  width: min(1000px, 95vw);
+  max-height: 90vh;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: thm-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes thm-slide-up {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.thm-header {
+  padding: 20px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.thm-header__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.thm-header__title h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.thm-header__title .material-symbols-outlined {
+  color: var(--primary);
+  font-size: 28px;
+}
+
+.thm-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.thm-close-btn:hover {
+  background: #e2e8f0;
+  transform: rotate(90deg);
+}
+
+.thm-container {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+@media (max-width: 850px) {
+  .thm-container { grid-template-columns: 1fr; }
+  .thm-preview-area { display: none; }
+}
+
+.thm-sidebar {
+  padding: 24px 28px;
+  overflow-y: auto;
+  border-right: 1px solid #f1f5f9;
+}
+
+.thm-section {
+  margin-bottom: 32px;
+}
+
+.thm-section-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.thm-section-title .material-symbols-outlined {
+  font-size: 18px;
+}
+
+.thm-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.btn-preset {
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-preset:hover {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.thm-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+input[type="color"] {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  width: 100%;
+  height: 38px;
+  cursor: pointer;
+  background: none;
+  padding: 0;
+}
+
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch {
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.thm-range {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  outline: none;
+  margin: 10px 0;
+}
+
+.thm-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary);
+  cursor: pointer;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.thm-upload-box {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.thm-upload-label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.thm-upload-label:hover {
+  border-color: var(--primary);
+  background: #f1f5f9;
+  color: var(--primary);
+}
+
+.thm-icon-btn {
+  background: #fee2e2;
+  color: #ef4444;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* PREVIEW AREA */
+.thm-preview-area {
+  background: #f1f5f9;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.thm-preview-sticky {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  max-width: 360px;
+}
+
+.thm-preview-window {
+  width: 100%;
+  aspect-ratio: 10 / 14;
+  border-radius: 20px;
+  background-color: #0b1220;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Película no preview */
+.thm-preview-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1;
+}
+
+.thm-preview-header {
+  height: 24px;
+  padding: 8px 12px;
+  display: flex;
+  gap: 4px;
+  position: relative;
+  z-index: 5;
+}
+
+.thm-preview-header .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+}
+
+.thm-preview-content {
+  position: relative;
+  z-index: 5;
+  padding: 12px;
+  height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+}
+
+.thm-preview-menu {
+  height: 32px;
+  background: rgba(15,23,42,0.85);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+}
+
+.thm-preview-menu .bar {
+  height: 4px;
+  flex: 1;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+
+.thm-preview-menu .bar.active {
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.thm-preview-card-mock {
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.mock-line {
+  height: 6px;
+  width: 60%;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  margin-bottom: 8px;
+}
+
+.mock-line.short { width: 30%; }
+
+.mock-val {
+  font-weight: 800;
+  font-size: 16px;
+  color: #fff;
+}
+
+.mock-btn {
+  background: #0ea5e9;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px;
+  border-radius: 6px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.thm-preview-text-mock { margin-top: auto; padding: 0 4px 8px; }
+.thm-preview-text-mock p { margin: 2px 0; font-size: 10px; font-weight: 600; color: #fff; }
+.thm-preview-text-mock p:last-child { opacity: 0.6; font-size: 8px; }
+
+.thm-preview-note {
+  margin-top: 16px;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
+  font-weight: 500;
+}
+
+.thm-footer {
+  padding: 20px 28px;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+
+.btn-outline {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+}
+
+.btn-outline:hover {
+  background: #f1f5f9;
+}
+</style>
 
