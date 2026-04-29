@@ -4,6 +4,9 @@ import { loadTheme } from "../lib/theme.js";
 export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
   if (sb) await loadTheme(sb);
+  
+  // Wait for DOM to catch up
+  await new Promise(r => setTimeout(r, 150));
 
   const $ = (sel) =>
     (outlet && outlet.querySelector(sel)) || document.querySelector(sel);

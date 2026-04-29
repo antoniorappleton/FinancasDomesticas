@@ -22,8 +22,17 @@ export async function init({ sb, outlet } = {}) {
   if (sb) await loadTheme(sb);
   outlet = outlet || document.getElementById("outlet");
 
-  // Wait for DOM to be fully rendered (increased delay for complex HTML)
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // Wait for critical DOM elements to be ready
+  const waitForElements = async (selectors, maxTries = 20) => {
+    for (let i = 0; i < maxTries; i++) {
+      const allExist = selectors.every(s => outlet?.querySelector(s) || document.querySelector(s));
+      if (allExist) return true;
+      await new Promise(r => setTimeout(r, 100));
+    }
+    return false;
+  };
+
+  await waitForElements(["#health-chart", "#indicators-grid", "#health-score"]);
 
   try {
     // 1. Fetch last 12 months data
