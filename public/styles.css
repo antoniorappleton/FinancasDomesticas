@@ -308,6 +308,16 @@ a {
   transform: rotate(180deg);
 }
 
+.soft-blue {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .soft-blue {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
 .section-title {
   font-family: var(--font-head);
   font-weight: 700;

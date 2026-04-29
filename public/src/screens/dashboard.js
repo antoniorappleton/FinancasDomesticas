@@ -28,6 +28,43 @@ import {
 } from "../lib/analytics.js";
 import { loadTheme } from "../lib/theme.js";
 
+async function renderSmartAdvisor(outlet) {
+  const sec = outlet.querySelector("#smart-advisor-sec");
+  const content = outlet.querySelector("#smart-advisor-content");
+  if (!sec || !content) return;
+
+  try {
+    const profile = await repo.getFinancialProfile();
+    if (!profile) return;
+
+    const { averages, strategy } = profile;
+    
+    // Só mostramos se houver liquidez média positiva e alguma estratégia definida
+    if (averages.net <= 0 || (strategy.emergency === 0 && strategy.investment === 0 && strategy.savings === 0)) {
+      sec.style.display = "none";
+      return;
+    }
+
+    const allocations = profile.calculateAllocation();
+    
+    let html = `Com base na sua média líquida de <strong>${money(averages.net)}</strong> (últimos ${averages.period} meses) e na sua estratégia definida:<br><br>`;
+    
+    const parts = [];
+    if (strategy.emergency > 0) parts.push(`• <strong>${money(allocations.emergency)}</strong> para o seu Fundo de Emergência (${strategy.emergency}%)`);
+    if (strategy.investment > 0) parts.push(`• <strong>${money(allocations.investment)}</strong> para Investimentos (${strategy.investment}%)`);
+    if (strategy.savings > 0) parts.push(`• <strong>${money(allocations.savings)}</strong> para Poupanças (${strategy.savings}%)`);
+
+    html += parts.join("<br>");
+    html += `<br><br><span style="font-size: 0.85em; opacity: 0.8;">Este conselho é atualizado automaticamente com base no seu histórico real.</span>`;
+
+    content.innerHTML = html;
+    sec.style.display = "block";
+  } catch (err) {
+    console.warn("Smart Advisor error:", err);
+    sec.style.display = "none";
+  }
+}
+
 // ===================== Mini-cards + Modal (Chart.js) =====================
 function setupDashboardModal(ds, rawData) {
   const modal = document.getElementById("dash-modal");
@@ -3728,6 +3765,9 @@ export async function init({ sb, outlet } = {}) {
 
   // Trigger Mini Report
   setTimeout(() => MiniReport.checkAndShow(), 1500);
+
+  // ====== Smart Advisor ======
+  renderSmartAdvisor(outlet);
 
   return cleanup;
 }

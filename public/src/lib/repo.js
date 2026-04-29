@@ -589,12 +589,81 @@ async function getTree() {
     .filter((c) => !c.parent_id)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return parents.map((p) => ({
-    ...p,
-    children: data
-      .filter((c) => c.parent_id === p.id)
-      .sort((a, b) => a.name.localeCompare(b.name)),
-  }));
+    return parents.map((p) => ({
+      ...p,
+      children: data
+        .filter((c) => c.parent_id === p.id)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    }));
+}
+
+/**
+ * Centralized Financial Intelligence
+ * Fetches averages, settings and liquidity profiles
+ */
+async function getFinancialProfile() {
+  const sb = window.sb;
+  const uid = (await sb.auth.getUser()).data?.user?.id;
+  if (!uid) return null;
+
+  // 1. Parallel fetch of settings and history
+  const now = new Date();
+  const lastMonths = [];
+  for (let i = 0; i < 4; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    lastMonths.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  }
+
+  const [settingsRes, summaryRes] = await Promise.all([
+    sb.from("user_settings").select("*").eq("user_id", uid).maybeSingle(),
+    sb.from("v_monthly_summary").select("month, income, expense, net").in("month", lastMonths)
+  ]);
+
+  const settings = settingsRes.data || {};
+  const history = summaryRes.data || [];
+
+  // 2. Calculations
+  let avgIncome = 0;
+  let avgExpense = 0;
+  let avgLiquidity = 0; // Liquidez disponível (Receitas + Despesas) antes de poupanças
+
+  if (history.length > 0) {
+    const totalIncome = history.reduce((acc, curr) => acc + (curr.income || 0), 0);
+    const totalExpense = history.reduce((acc, curr) => acc + (curr.expense || 0), 0);
+    
+    avgIncome = totalIncome / history.length;
+    avgExpense = totalExpense / history.length;
+    // A liquidez disponível é o que sobra das receitas após despesas
+    avgLiquidity = (totalIncome + totalExpense) / history.length;
+  }
+
+  // 3. Allocation Strategy
+  const strategy = {
+    emergency: settings.emergency_fund_pct || 0,
+    investment: settings.investment_fund_pct || 0,
+    savings: settings.savings_fund_pct || 0
+  };
+
+  return {
+    averages: {
+      income: avgIncome,
+      expense: avgExpense,
+      net: avgLiquidity, // Usamos liquidity como o "net" para fins de alocação
+      period: history.length
+    },
+    strategy,
+    rawSettings: settings,
+    // Helper to calculate amounts based on strategy
+    calculateAllocation: (baseAmount) => {
+      const amount = baseAmount !== undefined ? baseAmount : Math.max(0, avgLiquidity);
+      return {
+        emergency: amount * (strategy.emergency / 100),
+        investment: amount * (strategy.investment / 100),
+        savings: amount * (strategy.savings / 100),
+        total: amount * ((strategy.emergency + strategy.investment + strategy.savings) / 100)
+      };
+    }
+  };
 }
 
 export const repo = {
@@ -606,6 +675,7 @@ export const repo = {
   idByCode,
   accountCurrency,
   getTree,
+  getFinancialProfile,
 };
 
 // Globals for legacy compatibility

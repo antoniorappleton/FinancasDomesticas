@@ -3765,49 +3765,20 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
 
     let averageIncome = 0;
 
-    // 1. Fetch last 4 months average income
+    // 1. Fetch Centralized Financial Profile
     try {
-      const now = new Date();
-      const lastMonths = [];
-      for (let i = 0; i < 4; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        lastMonths.push(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`);
-      }
+      const profile = await repo.getFinancialProfile();
+      if (profile) {
+        averageIncome = profile.averages.net;
+        avgIncomeEl.textContent = money(averageIncome);
 
-      const { data: summary } = await sb
-        .from("v_monthly_summary")
-        .select("month, income, expense, net")
-        .in("month", lastMonths);
-
-      if (summary && summary.length > 0) {
-        const totalIncome = summary.reduce((acc, curr) => acc + (curr.income || 0), 0);
-        const totalExpense = summary.reduce((acc, curr) => acc + (curr.expense || 0), 0);
-        averageIncome = (totalIncome + totalExpense) / summary.length;
-      } else {
-        // Fallback to current month if no history (should be covered by i=0 but as safety)
-        const currMonth = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
-        const { data: currSummary } = await sb
-          .from("v_monthly_summary")
-          .select("income, expense")
-          .eq("month", currMonth)
-          .maybeSingle();
-        averageIncome = (currSummary?.income || 0) + (currSummary?.expense || 0);
-      }
-      avgIncomeEl.textContent = money(averageIncome);
-    } catch (err) {
-      console.error("Error fetching average income:", err);
-    }
-
-    // 2. Load saved settings
-    try {
-      const { data: settings } = await sb.from("user_settings").select("*").maybeSingle();
-      if (settings) {
-        pctInputs.emergency.value = settings.emergency_fund_pct || 0;
-        pctInputs.investment.value = settings.investment_fund_pct || 0;
-        pctInputs.savings.value = settings.savings_fund_pct || 0;
+        // Load saved strategy
+        pctInputs.emergency.value = profile.strategy.emergency;
+        pctInputs.investment.value = profile.strategy.investment;
+        pctInputs.savings.value = profile.strategy.savings;
       }
     } catch (err) {
-      console.warn("User settings error:", err);
+      console.error("Error fetching financial profile:", err);
     }
 
     function updateUI() {
