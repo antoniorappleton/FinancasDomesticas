@@ -109,6 +109,26 @@ export async function init({ sb, outlet } = {}) {
     }
   }
 
+  // =============== Tabs Navigation Logic =====================
+  const tabBtns = outlet.querySelectorAll(".tab-btn");
+  const tabContents = outlet.querySelectorAll(".tab-content");
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.tab;
+      
+      tabBtns.forEach(b => b.classList.toggle("active", b === btn));
+      tabContents.forEach(c => {
+        c.classList.toggle("active", c.id === `tab-${target}`);
+      });
+      
+      // Se for a tab financeiro, reinicializar ou atualizar lógica se necessário
+      if (target === "financeiro") {
+         initIncomeAllocation();
+      }
+    });
+  });
+
   // ===== helpers de legenda/cores (para charts e PDF) =====
   function palette(n) {
     const base = [
@@ -3715,4 +3735,179 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   // Init load global theme (ensure visual consistency on navigate)
   const visuals = JSON.parse(localStorage.getItem("wb:visuals") || "null");
   if (visuals) applyTheme(visuals);
+  // =============== Alocação de Rendimentos Logic =============
+  let allocationChart = null;
+  async function initIncomeAllocation() {
+    const avgIncomeEl = $("#alc-avg-income");
+    const totalAllocatedEl = $("#alc-total-allocated");
+    const warningEl = $("#alc-warning");
+    const saveBtn = $("#alc-save");
+
+    const pctInputs = {
+      emergency: $("#alc-emergency-pct"),
+      investment: $("#alc-investment-pct"),
+      savings: $("#alc-savings-pct")
+    };
+
+    const valDisplays = {
+      emergency: $("#alc-emergency-val"),
+      investment: $("#alc-investment-val"),
+      savings: $("#alc-savings-val")
+    };
+
+    const euroDisplays = {
+      emergency: $("#alc-emergency-euro"),
+      investment: $("#alc-investment-euro"),
+      savings: $("#alc-savings-euro")
+    };
+
+    if (!avgIncomeEl) return; // Not in this screen/tab yet?
+
+    let averageIncome = 0;
+
+    // 1. Fetch last 4 months average income
+    try {
+      const now = new Date();
+      const lastMonths = [];
+      for (let i = 0; i < 4; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        lastMonths.push(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`);
+      }
+
+      const { data: summary } = await sb
+        .from("v_monthly_summary")
+        .select("month, income, expense, net")
+        .in("month", lastMonths);
+
+      if (summary && summary.length > 0) {
+        const totalIncome = summary.reduce((acc, curr) => acc + (curr.income || 0), 0);
+        const totalExpense = summary.reduce((acc, curr) => acc + (curr.expense || 0), 0);
+        averageIncome = (totalIncome + totalExpense) / summary.length;
+      } else {
+        // Fallback to current month if no history (should be covered by i=0 but as safety)
+        const currMonth = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
+        const { data: currSummary } = await sb
+          .from("v_monthly_summary")
+          .select("income, expense")
+          .eq("month", currMonth)
+          .maybeSingle();
+        averageIncome = (currSummary?.income || 0) + (currSummary?.expense || 0);
+      }
+      avgIncomeEl.textContent = money(averageIncome);
+    } catch (err) {
+      console.error("Error fetching average income:", err);
+    }
+
+    // 2. Load saved settings
+    try {
+      const { data: settings } = await sb.from("user_settings").select("*").maybeSingle();
+      if (settings) {
+        pctInputs.emergency.value = settings.emergency_fund_pct || 0;
+        pctInputs.investment.value = settings.investment_fund_pct || 0;
+        pctInputs.savings.value = settings.savings_fund_pct || 0;
+      }
+    } catch (err) {
+      console.warn("User settings error:", err);
+    }
+
+    function updateUI() {
+      const emergency = parseInt(pctInputs.emergency.value);
+      const investment = parseInt(pctInputs.investment.value);
+      const savings = parseInt(pctInputs.savings.value);
+      const total = emergency + investment + savings;
+
+      valDisplays.emergency.textContent = `${emergency}%`;
+      valDisplays.investment.textContent = `${investment}%`;
+      valDisplays.savings.textContent = `${savings}%`;
+
+      euroDisplays.emergency.textContent = money(averageIncome * (emergency / 100));
+      euroDisplays.investment.textContent = money(averageIncome * (investment / 100));
+      euroDisplays.savings.textContent = money(averageIncome * (savings / 100));
+
+      totalAllocatedEl.textContent = `${total}%`;
+      totalAllocatedEl.style.color = total > 100 ? "var(--expense)" : "var(--blue-500)";
+      warningEl.style.display = total > 100 ? "block" : "none";
+
+      updateChart(emergency, investment, savings);
+    }
+
+    async function updateChart(e, i, s) {
+      await ensureChartStack();
+      const ctx = $("#alc-pie-chart");
+      if (!ctx || !window.Chart) return;
+
+      const data = [e, i, s];
+      const remaining = Math.max(0, 100 - (e + i + s));
+      if (remaining > 0) data.push(remaining);
+
+      if (allocationChart) {
+        allocationChart.data.datasets[0].data = data;
+        allocationChart.update();
+      } else {
+        allocationChart = new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: ["Emergência", "Investimento", "Poupança", "Livre"],
+            datasets: [{
+              data: data,
+              backgroundColor: ["#10b981", "#2563eb", "#3b82f6", "#e2e8f0"],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            cutout: "75%",
+            plugins: {
+              legend: { display: false },
+              datalabels: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (context) => `${context.label}: ${context.raw}%`
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // Remover listeners antigos para evitar duplicação se init for chamado múltiplas vezes
+    Object.values(pctInputs).forEach(input => {
+      input.removeEventListener("input", updateUI);
+      input.addEventListener("input", updateUI);
+    });
+
+    saveBtn.onclick = async () => {
+      try {
+        const emergency = parseInt(pctInputs.emergency.value);
+        const investment = parseInt(pctInputs.investment.value);
+        const savings = parseInt(pctInputs.savings.value);
+
+        saveBtn.disabled = true;
+        saveBtn.textContent = "A guardar...";
+
+        const uid = await getUserId();
+        const { error } = await sb.from("user_settings").upsert({
+          user_id: uid,
+          emergency_fund_pct: emergency,
+          investment_fund_pct: investment,
+          savings_fund_pct: savings,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+
+        if (error) throw error;
+        Toast.success("Alocação guardada com sucesso!");
+      } catch (err) {
+        console.error("Error saving allocation:", err);
+        Toast.error("Erro ao guardar alocação.");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Guardar Alocação";
+      }
+    };
+
+    updateUI();
+  }
+
+  // Initial call
+  initIncomeAllocation();
 } // end init

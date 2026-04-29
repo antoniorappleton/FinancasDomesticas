@@ -933,10 +933,80 @@ export async function init({ sb, outlet } = {}) {
 
   $("#ed-cancel")?.addEventListener("click", closeEdit);
 
-  // ========= arrancar =========
+  // ========= Alocação Recomendada =========
+  async function loadAllocationSuggestions() {
+    const card = $("#obj-allocation-card");
+    const list = $("#obj-allocation-list");
+    const avgIncomeEl = $("#obj-avg-income");
+    if (!card || !list) return;
+
+    try {
+      const { data: settings } = await sb.from("user_settings").select("*").maybeSingle();
+      if (!settings || (!settings.emergency_fund_pct && !settings.investment_fund_pct && !settings.savings_fund_pct)) {
+        card.style.display = "none";
+        return;
+      }
+
+      const now = new Date();
+      const lastMonths = [];
+      for (let i = 0; i < 4; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        lastMonths.push(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-01`);
+      }
+
+      const { data: summary } = await sb
+        .from("v_monthly_summary")
+        .select("month, income, expense, net")
+        .in("month", lastMonths);
+
+      let averageIncome = 0;
+      if (summary && summary.length > 0) {
+        const totalIncome = summary.reduce((acc, curr) => acc + (curr.income || 0), 0);
+        const totalExpense = summary.reduce((acc, curr) => acc + (curr.expense || 0), 0);
+        averageIncome = (totalIncome + totalExpense) / summary.length;
+      } else {
+        const currMonth = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
+        const { data: currSummary } = await sb
+          .from("v_monthly_summary")
+          .select("income, expense")
+          .eq("month", currMonth)
+          .maybeSingle();
+        averageIncome = (currSummary?.income || 0) + (currSummary?.expense || 0);
+      }
+
+      if (averageIncome <= 0) {
+        card.style.display = "none";
+        return;
+      }
+
+      avgIncomeEl.textContent = money(averageIncome);
+      card.style.display = "block";
+
+      const funds = [
+        { name: "Fundo de Emergência", pct: settings.emergency_fund_pct, color: "#10b981" },
+        { name: "Fundo de Investimento", pct: settings.investment_fund_pct, color: "#2563eb" },
+        { name: "Fundo de Poupança", pct: settings.savings_fund_pct, color: "#3b82f6" }
+      ].filter(f => f.pct > 0);
+
+      list.innerHTML = funds.map(f => `
+        <div class="card soft" style="border-left: 4px solid ${f.color}; padding: 12px; margin: 0">
+          <div style="font-size: 0.85em; color: var(--muted); font-weight: 600">${f.name}</div>
+          <div style="font-size: 1.1em; font-weight: 700; margin: 4px 0">${money(averageIncome * (f.pct / 100))}</div>
+          <div style="font-size: 0.8em; color: ${f.color}; font-weight: 700">${f.pct}% do rendimento</div>
+        </div>
+      `).join("");
+
+    } catch (err) {
+      console.error("Error loading allocation suggestions:", err);
+      card.style.display = "none";
+    }
+  }
+
+  // ========= INIT PRINCIPAL =========
   await loadCategories([$("#obj-category"), $("#ed-category")]);
   refreshCreateForm();
   await Promise.all([refreshList(), loadSuggestions()]);
+  loadAllocationSuggestions();
   // Botão para gerar outras sugestões (re-render só da cache)
   document.querySelector("#obj-sugg-refresh")?.addEventListener("click", () => {
     manualSeedBump++; // muda a “semente” local
@@ -951,7 +1021,7 @@ export async function init({ sb, outlet } = {}) {
       if (nowSlot !== lastSlot) {
         lastSlot = nowSlot;
         manualSeedBump = 0; // reset ao botão
-        await loadSuggestions(); // refaz a cache a partir da BD (leve e 3×/dia)
+        await loadSuggestions(); // refaz a cache a partir da BD (leve e 3x/dia)
       }
     }, 60 * 1000); // verifica a cada minuto
   })();

@@ -146,7 +146,7 @@ const CONTENT = {
     what: [
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-home'/></svg> Esforço Fixo</strong> (Meta < 40%): Percentagem do rendimento gasta em despesas fixas (renda, seguros).",
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-down'/></svg> Esforço Total</strong> (Meta < 85%): Percentagem total do rendimento gasta (fixas + variáveis).",
-      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-piggy'/></svg> Taxa de Poupança</strong> (Meta â‰¥ 10%): Percentagem do rendimento que consegues poupar.",
+      "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-piggy'/></svg> Taxa de Poupança</strong> (Meta &ge; 10%): Percentagem do rendimento que consegues poupar.",
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cash'/></svg> Liquidez</strong>: Dinheiro disponível acumulado e tendência dos últimos meses.",
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-target'/></svg> Saldos Negativos</strong> (Meta: 0): Número de meses consecutivos com saldo negativo.",
       "<strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-chart-line'/></svg> Regularidade</strong>: Identifica se as despesas são estáveis ou irregulares.",

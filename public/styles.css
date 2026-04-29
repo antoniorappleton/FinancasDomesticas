@@ -602,6 +602,65 @@ textarea:focus {
 }
 
 /* =========================
+   Tab Navigation
+   ========================= */
+.tabs-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--ui-card-bg);
+  border: 1px solid var(--ui-card-border);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex: 1 0 auto;
+  text-align: center;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--ui-fab-bg);
+}
+
+.tab-btn.active {
+  background: var(--ui-fab-bg);
+  color: #fff;
+  border-color: var(--ui-fab-bg);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* =========================
    Charts (único consolidado)
    ========================= */
 .chart {
@@ -4437,6 +4496,8 @@ label,
   position: absolute;
   top: 95px;
   text-align: center;
+}
+
 /* Timeline Refinements for Fixed Modal */
 .theme-timeline-section {
   background: var(--bg);
@@ -4548,4 +4609,3 @@ label,
   background: var(--blue-100);
   color: var(--blue-500);
 }
-

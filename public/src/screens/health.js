@@ -428,7 +428,7 @@ function renderIndicators(metrics, status) {
       value: `${metrics.savingsRate}%`,
       status: status.savingsRateStatus,
       barWidth: Math.min(metrics.savingsRate, 100),
-      statusText: getStatusText(status.savingsRateStatus, "≥ 10%"),
+      statusText: getStatusText(status.savingsRateStatus, ">= 10%"),
     },
     {
       icon: "show_chart",

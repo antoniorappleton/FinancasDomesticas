@@ -197,7 +197,7 @@ export function getHealthStatus(metrics) {
     alerts.push({
       type: "lowSavings",
       severity: "medium",
-      message: `Taxa de poupança baixa (${metrics.savingsRate}%). Recomenda-se ≥10%.`,
+      message: `Taxa de poupança baixa (${metrics.savingsRate}%). Recomenda-se >=10%.`,
     });
   }
 

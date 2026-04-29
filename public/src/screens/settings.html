@@ -1,5 +1,14 @@
-<!-- ===== MODAL RELATÓRIO ===== -->
-<section class="card">
+<!-- TAB NAVIGATION -->
+<div class="tabs-nav">
+  <button class="tab-btn active" data-tab="financeiro">Financeiro</button>
+  <button class="tab-btn" data-tab="dados">Dados</button>
+  <button class="tab-btn" data-tab="config">Configuração</button>
+  <button class="tab-btn" data-tab="conta">Conta</button>
+</div>
+
+<div id="tab-financeiro" class="tab-content active">
+  <!-- ===== MODAL RELATÓRIO ===== -->
+  <section class="card">
   <h2 class="section-title">Relatórios</h2>
 
   <!-- Filtro com classe responsiva -->
@@ -741,473 +750,219 @@
   .rpt-spinning {
     animation: rpt-spin 0.6s ease-in-out;
   }
-</style>
+  </style>
 
-<!-- ===== CATEGORIAS (2º) ===== -->
-<section class="card">
-  <h2 class="section-title">Categorias</h2>
-  <p class="row-note">Crie, edite e organize as categorias de despesa e receita.</p>
-  <div style="margin-top:12px">
-    <button onclick="location.hash='#/categories'" class="btn btn--primary">Gerir Categorias</button>
-  </div>
-</section>
+  <!-- ===== ALOCAÇÃO DE RENDIMENTOS (NOVO) ===== -->
+  <section class="card">
+    <h2 class="section-title">Alocação de Rendimentos</h2>
+    <p class="row-note">Defina a distribuição mensal baseada na média das receitas dos últimos 4 meses.</p>
 
-<!-- ===== MODAL/SECÇÃO IMPORTAÇÃO (3º) ===== -->
-<section class="card">
-  <h2 class="section-title">Importação de Extrato (BETA)</h2>
-  <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
+    <div class="card soft" style="margin-top:16px; padding:20px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--border); border-radius:16px;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:20px; margin-bottom:20px;">
+        <div style="text-align:center; padding:12px; background:var(--ui-card-bg); border-radius:12px; border:1px solid var(--border);">
+          <div class="row-note" style="margin-bottom:4px">Média Líquida (4m)</div>
+          <strong id="alc-avg-income" style="font-size:1.2rem; color:var(--income)">€ 0,00</strong>
+        </div>
+        <div style="text-align:center; padding:12px; background:var(--ui-card-bg); border-radius:12px; border:1px solid var(--border);">
+          <div class="row-note" style="margin-bottom:4px">Total Alocado</div>
+          <strong id="alc-total-allocated" style="font-size:1.2rem; color:var(--primary)">0%</strong>
+        </div>
+      </div>
 
-  <!-- Android Tip -->
-  <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:#fffbeb; border-left:3px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#78350f;">
-    📱 <strong>Dispositivo Móvel Detetado:</strong> Para garantir o upload, o ficheiro deve estar <strong>armazenado localmente</strong> no telefone (Downloads). PDFs no Gmail, Google Drive ou iCloud podem falhar — descarga-o primeiro e importa a partir de "Transferências".
-  </div>
+      <div class="grid grid-responsive-2" style="gap:24px">
+        <div style="display:grid; gap:16px">
+          <label style="margin:0">
+            <div style="display:flex; justify-content:space-between">
+              <span>Fundo de Emergência (%)</span>
+              <span id="alc-emergency-val" style="font-weight:700">0%</span>
+            </div>
+            <input type="range" id="alc-emergency-pct" min="0" max="100" step="1" value="0" style="width:100%" />
+            <div id="alc-emergency-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--income)">€ 0,00</div>
+          </label>
 
-  <!-- WRAPPER ADICIONADO PARA OS INPUTS -->
-  <div class="card soft"
-    style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; box-shadow:none; overflow:hidden; max-width:100%;">
-    <style>
-      /* Local fix for this card's children to ensure containment */
-      .card.soft * {
-        box-sizing: border-box;
-        max-width: 100%;
-      }
-    </style>
-    <div class="form-grid form-grid-responsive">
-      <label>
-        Ficheiro (PDF ou CSV)
-        <input id="imp-file" type="file"
-          accept=".pdf,.csv,.xlsx"
-          style="background:#fff; width:100%" />
+          <label style="margin:0">
+            <div style="display:flex; justify-content:space-between">
+              <span>Fundo de Investimento (%)</span>
+              <span id="alc-investment-val" style="font-weight:700">0%</span>
+            </div>
+            <input type="range" id="alc-investment-pct" min="0" max="100" step="1" value="0" style="width:100%" />
+            <div id="alc-investment-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--savings)">€ 0,00</div>
+          </label>
+
+          <label style="margin:0">
+            <div style="display:flex; justify-content:space-between">
+              <span>Fundo de Poupança (%)</span>
+              <span id="alc-savings-val" style="font-weight:700">0%</span>
+            </div>
+            <input type="range" id="alc-savings-pct" min="0" max="100" step="1" value="0" style="width:100%" />
+            <div id="alc-savings-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--blue-500)">€ 0,00</div>
+          </label>
+        </div>
+
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--ui-card-bg); border-radius:12px; padding:20px; border:1px solid var(--border);">
+          <div id="alc-chart-container" style="width:180px; height:180px; position:relative;">
+             <canvas id="alc-pie-chart"></canvas>
+          </div>
+          <div id="alc-warning" class="row-note" style="margin-top:12px; color:var(--expense); font-weight:700; text-align:center; display:none;">
+            ⚠️ O total excede 100%!
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:20px">
+        <button id="alc-save" class="btn btn--primary">Guardar Alocação</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ORÇAMENTO DE ESTADO (4º) ===== -->
+  <section class="card">
+    <h2 class="section-title">Orçamento de Estado</h2>
+    <p>Gera um orçamento anual com base nas despesas fixas do ano anterior.</p>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:12px; flex-wrap:wrap">
+      <label style="flex:1;max-width:150px">
+        Ano Alvo
+        <input id="bud-target-year" type="number" min="2020" max="2100" step="1" />
       </label>
-      <!-- Mês é opcional para PDF pois tem datas, mas útil para override -->
-      <label>
-        Conta Destino
-        <select id="imp-account" style="background:#fff; width:100%">
-          <!-- preenchido via JS -->
-        </select>
-      </label>
+      <button id="btn-budget-open" class="btn btn--primary" style="margin-top:14px">Gerar Orçamento</button>
     </div>
+  </section>
 
-    <div class="actions" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
-      <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
-      <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
-      <button id="imp-export-template" class="btn"
-        style="background:#fff; flex:1; min-width:0; color:var(--primary); border-color:var(--primary)">Modelo Premium
-        (Excel)</button>
-    </div>
-  </div>
-
-  <p id="imp-info" class="row-note" style="margin-top:8px"></p>
-
-  <div id="imp-review-area" class="card soft"
-    style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
-      <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
-      <div style="font-size:12px; color:var(--muted)">Assinale as transações a importar</div>
-    </div>
-
-    <div style="max-height:400px; overflow-y:auto; padding-right:4px">
-      <div id="imp-list" style="display:grid; gap:8px"></div>
-    </div>
-
-    <div style="margin-top:12px; padding-top:12px; border-top:1px solid #ddd; text-align:right">
-      <button id="imp-confirm" class="btn btn--primary" disabled>Confirmar Importação</button>
-    </div>
-  </div>
-</section>
-
-<!-- ===== ORÇAMENTO DE ESTADO (4º) ===== -->
-<section class="card">
-  <h2 class="section-title">Orçamento de Estado</h2>
-  <p>Gera um orçamento anual com base nas despesas fixas do ano anterior.</p>
-  <div style="display:flex;gap:10px;align-items:center;margin-top:12px; flex-wrap:wrap">
-    <label style="flex:1;max-width:150px">
-      Ano Alvo
-      <input id="bud-target-year" type="number" min="2020" max="2100" step="1" />
-    </label>
-    <button id="btn-budget-open" class="btn btn--primary" style="margin-top:14px">Gerar Orçamento</button>
-  </div>
-</section>
-
-<!-- ===== MODAL ORÇAMENTO ===== -->
-<div id="budget-overlay" class="hidden rep-overlay" aria-hidden="true" tabindex="-1">
-  <div class="rep-modal" style="width:min(800px,92vw)">
-    <div class="rep-header" style="display:flex;justify-content:space-between;align-items:center">
-      <h2 id="bud-title">Orçamento de Estado</h2>
-      <button id="bud-close" class="rpt-close" aria-label="Fechar">×</button>
-    </div>
-
-    <div class="rep-body" style="padding-top:10px">
-      <div id="bud-summary"
-        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;text-align:center">
-        <!-- Summary populated by JS -->
+  <!-- ===== MODAL ORÇAMENTO ===== -->
+  <div id="budget-overlay" class="hidden rep-overlay" aria-hidden="true" tabindex="-1">
+    <div class="rep-modal" style="width:min(800px,92vw)">
+      <div class="rep-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h2 id="bud-title">Orçamento de Estado</h2>
+        <button id="bud-close" class="rpt-close" aria-label="Fechar">×</button>
       </div>
 
-      <div class="rpt-table-wrap">
-        <table id="bud-table" style="width:100%;border-collapse:collapse">
-          <thead>
-            <tr style="border-bottom:2px solid #ddd;text-align:left">
-              <th style="padding:8px">Categoria</th>
-              <th style="padding:8px;text-align:right">Base (Ano Ant.)</th>
-              <th style="padding:8px;text-align:right">Proposto</th>
-              <th style="padding:8px;text-align:center">Fixar</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-
-      <div class="alert warn hidden" id="bud-warn" style="margin-top:10px;font-size:13px"></div>
-
-      <div class="actions" style="margin-top:20px;justify-content:flex-end;display:flex;gap:10px">
-        <button id="bud-cancel" class="btn">Cancelar</button>
-        <button id="bud-save" class="btn btn--primary">Guardar Orçamento</button>
-      </div>
-      <p class="row-note" style="text-align:right;margin-top:5px">
-        Guardar cria metas mensais ("budget_cap") para estas categorias.
-      </p>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Mini-cards ocultos (5º) ===== -->
-<section class="card">
-  <h2 class="section-title">Mini-cards ocultos</h2>
-  <p class="row-note">Aqui aparecem os mini-cards que foram ocultados do Dashboard. É possível voltá-los a ativar.</p>
-  <div id="mini-shelf" class="mini-shelf" style="display:flex; gap:8px; flex-wrap:wrap"></div>
-</section>
-
-<!-- ===== APARÊNCIA (6º) ===== -->
-<section class="card">
-  <h2 class="section-title">Aparência</h2>
-  <p>Personalize as cores e o tema da aplicação.</p>
-  <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
-</section>
-
-<!-- ===== MODAL TEMA ===== -->
-<div id="theme-overlay" class="hidden rep-overlay" aria-hidden="true" tabindex="-1">
-  <div class="rep-modal" style="width:min(500px,92vw)">
-    <div class="rep-header" style="justify-content:space-between">
-      <h2 style="font-size:1.2rem;font-weight:700">Personalizar Tema</h2>
-      <button id="theme-close" class="rpt-close" aria-label="Fechar">×</button>
-    </div>
-    <div class="rep-body" style="padding-top:10px; display:grid; gap:20px">
-
-      <p class="row-note">As alterações são guardadas automaticamente no seu dispositivo.</p>
-
-      <!-- Grupo: Fundo Global (Novo) -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Fundo Global
-        </h3>
-        <label style="display:grid; font-size:13px; gap:4px; margin-bottom:10px">
-          <span>Imagem de Fundo (URL ou Upload)</span>
-          <div style="display:flex; gap:8px; align-items:center">
-            <input type="text" id="thm-bg-url" placeholder="https://..."
-              style="flex:1; border:1px solid #ddd; border-radius:6px; padding:6px; font-size:12px" />
-            <label class="btn" style="padding:4px 8px; font-size:12px; cursor:pointer" title="Upload Ficheiro">
-              📂
-              <input type="file" id="thm-bg-file" accept="image/jpeg, image/png, image/webp" style="display:none" />
-            </label>
-            <button id="thm-bg-clear" class="btn" style="padding:4px 8px; font-size:12px"
-              title="Remover imagem">×</button>
-          </div>
-          <small id="thm-bg-status" class="row-note" style="color:var(--muted)">Carregar ficheiro ou colar URL</small>
-        </label>
-
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Cor Película (Overlay)</span>
-            <input type="color" id="thm-overlay-col" value="#000000"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <div style="display:flex; justify-content:space-between">
-              <span>Opacidade</span>
-              <span id="thm-overlay-op-val" style="color:var(--muted)">0.35</span>
-            </div>
-            <input type="range" id="thm-overlay-op" min="0" max="1" step="0.05" value="0.35" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-            <div style="display:flex; justify-content:space-between">
-              <span>Blur (Fundo)</span>
-              <span id="thm-overlay-blur-val" style="color:var(--muted)">0px</span>
-            </div>
-            <input type="range" id="thm-overlay-blur" min="0" max="20" step="1" value="0" />
-          </label>
+      <div class="rep-body" style="padding-top:10px">
+        <div id="bud-summary"
+          style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:20px;text-align:center">
+          <!-- Summary populated by JS -->
         </div>
-      </div>
 
-      <!-- Grupo: Interface Base -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Interface
-          Base</h3>
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Fundo (Background)</span>
-            <input type="color" id="thm-bg" value="#f0f2f5"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Surface / Cards</span>
-            <input type="color" id="thm-card" value="#ffffff"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <label style="display:grid; font-size:13px; gap:4px">
-              <span>Bordas / Borders</span>
-              <input type="color" id="thm-border" value="#e2e8f0"
-                style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-            </label>
-            <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-              <div style="display:flex; justify-content:space-between">
-                <span>Opacidade Cartões</span>
-                <span id="thm-opacity-val" style="color:var(--muted)">0.75</span>
-              </div>
-              <input type="range" id="thm-opacity" min="0.0" max="1" step="0.05" value="0.75" />
-            </label>
+        <div class="rpt-table-wrap">
+          <table id="bud-table" style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:2px solid #ddd;text-align:left">
+                <th style="padding:8px">Categoria</th>
+                <th style="padding:8px;text-align:right">Base (Ano Ant.)</th>
+                <th style="padding:8px;text-align:right">Proposto</th>
+                <th style="padding:8px;text-align:center">Fixar</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
-      </div>
 
-      <!-- Grupo: Tipografia -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Tipografia
-        </h3>
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Texto Principal</span>
-            <input type="color" id="thm-text" value="#1e293b"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Texto Secundário</span>
-            <input type="color" id="thm-muted" value="#64748b"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
+        <div class="alert warn hidden" id="bud-warn" style="margin-top:10px;font-size:13px"></div>
+
+        <div class="actions" style="margin-top:20px;justify-content:flex-end;display:flex;gap:10px">
+          <button id="bud-cancel" class="btn">Cancelar</button>
+          <button id="bud-save" class="btn btn--primary">Guardar Orçamento</button>
         </div>
-      </div>
-
-      <!-- Grupo: Marca e Navegação -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Marca e
-          Navegação</h3>
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Cabeçalho (Header)</span>
-            <input type="color" id="thm-header" value="#0f172a"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Botão Menu (FAB)</span>
-            <input type="color" id="thm-fab" value="#0f766e"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-        </div>
-      </div>
-
-      <!-- Grupo: Status Financeiro -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Cores de
-          Status</h3>
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Receita (Income)</span>
-            <input type="color" id="thm-income" value="#16a34a"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Despesa (Expense)</span>
-            <input type="color" id="thm-expense" value="#ef4444"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Poupança (Savings)</span>
-            <input type="color" id="thm-savings" value="#2563eb"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Saldo (Balance)</span>
-            <input type="color" id="thm-balance" value="#065f46"
-              style="width:100%; height:32px; border:1px solid #ddd; padding:0; border-radius:6px; cursor:pointer;" />
-          </label>
-        </div>
-      </div>
-
-      <!-- Grupo: Avançado -->
-      <div>
-        <h3 class="row-note" style="margin-bottom:8px; border-bottom:1px solid #e5e7eb; padding-bottom:4px">Detalhes /
-          Avançado</h3>
-        <div class="grid grid-responsive-2" style="gap:12px">
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Intensidade Sombra</span>
-            <select id="thm-shadow" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1">
-              <option value="none">Nenhuma</option>
-              <option value="soft" selected>Suave (Padrão)</option>
-              <option value="medium">Média</option>
-              <option value="strong">Forte</option>
-            </select>
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px">
-            <span>Botões Gradiente</span>
-            <select id="thm-btn-style" style="padding:6px; border-radius:6px; border:1px solid #cbd5e1">
-              <option value="flat">Não (Cor Sólida)</option>
-              <option value="gradient">Sim (Gradiente)</option>
-            </select>
-          </label>
-
-          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-            <div style="display:flex; justify-content:space-between">
-              <span>Blur (Glassmorphism)</span>
-              <span id="thm-blur-val" style="color:var(--muted)">12px</span>
-            </div>
-            <input type="range" id="thm-blur" min="0" max="30" step="2" value="12" />
-          </label>
-          <label style="display:grid; font-size:13px; gap:4px; grid-column:span 2">
-            <span>Cor Fundo Cartões (RGBA)</span>
-            <!-- Substitui/Complementa o thm-card picker -->
-            <input type="text" id="thm-card-bg-text" placeholder="rgba(255, 255, 255, 0.92)"
-              style="width:100%; border:1px solid #ddd; border-radius:6px; padding:6px" />
-            <small class="row-note">Ex: rgba(255, 255, 255, 0.9)</small>
-          </label>
-        </div>
-      </div>
-
-      <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-        <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-          <span style="font-weight:600">Modo Escuro (BETA)</span>
-          <input type="checkbox" id="thm-dark" style="width:20px;height:20px" />
-        </label>
-      </div>
-
-      <div class="actions" style="margin-top:0; justify-content:flex-end">
-        <button id="thm-reset" class="btn" style="color:#ef4444">Restaurar Padrão</button>
-        <button id="thm-save" class="btn btn--primary">Concluído</button>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<!-- ===== Alterar palavra-passe (7º) ===== -->
-<section id="sec-password" class="card">
-  <h3 class="section-title">Alterar palavra-passe</h3>
-  <div class="grid grid-responsive-4" style="gap:10px">
-    <label>Nova palavra-passe
-      <input id="set-new-pass" type="password" autocomplete="new-password" />
-    </label>
-    <label>Confirmar nova palavra-passe
-      <input id="set-new-pass-2" type="password" autocomplete="new-password" />
-    </label>
-  </div>
-  <div style="display:flex;gap:10px;margin-top:12px">
-    <button id="btn-change-pass" class="btn btn--primary">Atualizar</button>
-  </div>
-  <div id="set-msg" class="row-note" style="margin-top:8px"></div>
-</section>
-
-<!-- ===== Sessão (8º) ===== -->
-<section class="card" id="card-session" style="margin-top:12px">
-  <h2 class="section-title">Sessão</h2>
-  <div class="grid grid-responsive-session" style="gap:10px;align-items:end">
-    <div>
-      <div class="row-note">Autenticado como:</div>
-      <div id="sess-user-email" style="font-weight:700">—</div>
-    </div>
-    <div style="text-align:right">
-      <button id="btn-logout" class="btn">Terminar sessão</button>
-    </div>
-  </div>
-</section>
-
-<!-- ===== GESTÃO DE DADOS (Delete) (9º) ===== -->
-<section class="card" style="border-color:var(--red-100)">
-  <h2 class="section-title">Gestão de Dados</h2>
-  <p class="row-note">Eliminar dados avulso. Cuidado: esta ação é irreversível.</p>
-
-  <div class="grid grid-responsive-delete" style="gap:10px; align-items:end; margin-top:12px">
-    <label>
-      Eliminar movimentos de:
-      <input id="del-month" type="month" />
-    </label>
-    <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
-  </div>
-</section>
-
-<!-- ===== secção notificações (NOVO) ===== -->
-<section class="card" id="sec-notifications" style="display:none">
-  <h2 class="section-title">Notificações Inteligentes</h2>
-  <p class="row-note">Mantenha-se a par das suas finanças com alertas de saldo, despesas fixas e insights mensais.</p>
-
-  <div class="card soft"
-    style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
-    <div
-      style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px">
-      <span style="font-weight:600">Estado: <span id="ntf-status" style="color:var(--muted)">Desativado</span></span>
-      <div style="display:flex; gap:8px">
-        <button id="btn-ntf-test" class="btn"
-          style="background:#fff; font-size:12px; padding:6px 10px; display:none">Testar</button>
-        <button id="btn-ntf-toggle" class="btn btn--primary" style="font-size:12px; padding:6px 12px">Ativar</button>
-      </div>
-    </div>
-
-    <div id="ntf-preferences" style="opacity:0.6; pointer-events:none">
-      <div style="display:grid; gap:12px">
-        <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-          <div style="display:grid">
-            <span style="font-weight:600">Alertas Urgentes</span>
-            <small class="row-note">Saldo baixo, despesas fixas e falhas.</small>
-          </div>
-          <input type="checkbox" id="ntf-urgent" checked />
-        </label>
-
-        <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-          <div style="display:grid">
-            <span style="font-weight:600">Insights Inteligentes</span>
-            <small class="row-note">Gastos acima da média e metas em risco.</small>
-          </div>
-          <input type="checkbox" id="ntf-smart" checked />
-        </label>
-
-        <label style="display:flex; justify-content:space-between; align-items:center; cursor:pointer">
-          <div style="display:grid">
-            <span style="font-weight:600">Resumos (Digest)</span>
-            <small class="row-note">Resumo semanal e fecho de mês.</small>
-          </div>
-          <input type="checkbox" id="ntf-digest" checked />
-        </label>
-      </div>
-
-      <div style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:12px">
-        <label style="display:grid; gap:4px">
-          <span style="font-weight:600; font-size:13px">Período de Silêncio (Não Incomodar)</span>
-          <div style="display:flex; gap:8px; align-items:center">
-            <input type="time" id="ntf-quiet-start" value="22:00"
-              style="padding:4px; border-radius:6px; border:1px solid #cbd5e1" />
-            <span>até</span>
-            <input type="time" id="ntf-quiet-end" value="08:00"
-              style="padding:4px; border-radius:6px; border:1px solid #cbd5e1" />
-          </div>
-        </label>
-        <p class="row-note" style="margin-top:10px; color:var(--primary); font-size:11px">
-          💡 <b>Android:</b> Para garantir o funcionamento, use o Chrome ou instale a App ("Adicionar ao ecrã inicial").
+        <p class="row-note" style="text-align:right;margin-top:5px">
+          Guardar cria metas mensais ("budget_cap") para estas categorias.
         </p>
       </div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- ===== IA CONFIG (FINAL) ===== -->
-<section class="card">
-  <h2 class="section-title">Inteligência Artificial (Gemini)</h2>
-  <p class="row-note">Configure a sua chave de API para permitir análises automáticas dos seus relatórios.</p>
-  <div class="form-grid" style="margin-top:12px">
-    <label>
-      Gemini API Key
-      <input id="set-ai-key" type="password" placeholder="Cole a sua chave aqui..." style="width:100%" />
-    </label>
-  </div>
-  <div style="margin-top:12px; display:flex; justify-content:flex-end">
-    <button id="btn-save-ai-key" class="btn btn--primary">Guardar Chave</button>
-  </div>
-</section>
+<div id="tab-dados" class="tab-content">
+  <!-- ===== CATEGORIAS (2º) ===== -->
+  <section class="card">
+    <h2 class="section-title">Categorias</h2>
+    <p class="row-note">Crie, edite e organize as categorias de despesa e receita.</p>
+    <div style="margin-top:12px">
+      <button onclick="location.hash='#/categories'" class="btn btn--primary">Gerir Categorias</button>
+    </div>
+  </section>
 
+  <!-- ===== IMPORTAÇÃO (3º) ===== -->
+  <section class="card">
+    <h2 class="section-title">Importação de Extrato (BETA)</h2>
+    <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
+
+    <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:#fffbeb; border-left:3px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#78350f;">
+      📱 <b>Dispositivo Móvel Detetado:</b> O ficheiro deve estar armazenado localmente.
+    </div>
+
+    <div class="card soft" style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+      <style>.card.soft * { box-sizing: border-box; max-width: 100%; }</style>
+      <div class="form-grid form-grid-responsive">
+        <label>
+          Ficheiro (PDF ou CSV)
+          <input id="imp-file" type="file" accept=".pdf,.csv,.xlsx" style="background:#fff; width:100%" />
+        </label>
+        <label>
+          Conta Destino
+          <select id="imp-account" style="background:#fff; width:100%"></select>
+        </label>
+      </div>
+      <div class="actions" style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
+        <button id="imp-process" class="btn btn--primary" style="flex:1; min-width:0">Processar Ficheiro</button>
+        <button id="imp-clear" class="btn" style="background:#fff; flex:1; min-width:0">Limpar</button>
+      </div>
+    </div>
+
+    <div id="imp-review-area" class="card soft" style="margin-top:12px; display:none; background:#f8fafc; border:1px solid #e2e8f0">
+      <h3 class="section-title" style="margin:0; font-size:16px">Revisão</h3>
+      <div style="max-height:400px; overflow-y:auto"><div id="imp-list"></div></div>
+      <div style="margin-top:12px; text-align:right"><button id="imp-confirm" class="btn btn--primary" disabled>Confirmar</button></div>
+    </div>
+  </section>
+
+  <!-- ===== GESTÃO DE DADOS (9º) ===== -->
+  <section class="card" style="border-color:var(--red-100)">
+    <h2 class="section-title">Gestão de Dados</h2>
+    <div class="grid grid-responsive-delete" style="gap:10px; align-items:end; margin-top:12px">
+      <label>Eliminar movimentos de: <input id="del-month" type="month" /></label>
+      <button id="btn-del-month" class="btn" style="background:var(--red-500); color:#fff; border:none">Eliminar</button>
+    </div>
+  </section>
+</div>
+
+<div id="tab-config" class="tab-content">
+  <section class="card">
+    <h2 class="section-title">Mini-cards ocultos</h2>
+    <div id="mini-shelf" class="mini-shelf" style="display:flex; gap:8px; flex-wrap:wrap"></div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Aparência</h2>
+    <button id="btn-theme-open" class="btn btn--primary">Personalizar Tema</button>
+  </section>
+
+  <section class="card" id="sec-notifications">
+    <h2 class="section-title">Notificações Inteligentes</h2>
+    <div class="card soft" style="margin-top:12px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+      <button id="btn-ntf-toggle" class="btn btn--primary">Ativar</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Inteligência Artificial (Gemini)</h2>
+    <label>Gemini API Key <input id="set-ai-key" type="password" style="width:100%" /></label>
+    <button id="btn-save-ai-key" class="btn btn--primary" style="margin-top:12px">Guardar Chave</button>
+  </section>
+</div>
+
+<div id="tab-conta" class="tab-content">
+  <section id="sec-password" class="card">
+    <h3 class="section-title">Alterar palavra-passe</h3>
+    <div class="grid grid-responsive-4" style="gap:10px">
+      <label>Nova <input id="set-new-pass" type="password" /></label>
+      <label>Confirmar <input id="set-new-pass-2" type="password" /></label>
+    </div>
+    <button id="btn-change-pass" class="btn btn--primary" style="margin-top:12px">Atualizar</button>
+  </section>
+
+  <section class="card" id="card-session" style="margin-top:12px">
+    <h2 class="section-title">Sessão</h2>
+    <div class="grid grid-responsive-session">
+      <div id="sess-user-email"></div>
+      <button id="btn-logout" class="btn">Terminar sessão</button>
+    </div>
 
