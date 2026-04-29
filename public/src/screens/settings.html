@@ -1029,32 +1029,32 @@
         <div class="thm-section">
           <h3 class="thm-section-title"><span class="material-symbols-outlined">auto_awesome</span> Perfis de Design</h3>
           <div class="thm-profile-gallery">
-            <button class="btn-profile active" data-preset="dark">
-              <div class="profile-preview dark"></div>
+            <button class="btn-profile" data-preset="familia">
+              <div class="profile-preview familia"></div>
               <div class="profile-info">
-                <strong>Executivo</strong>
-                <span>Fundo Branco & Topo Escuro</span>
+                <strong>Família Segura</strong>
+                <span>Confiável, acolhedor e organizado</span>
               </div>
             </button>
-            <button class="btn-profile" data-preset="glass">
-              <div class="profile-preview glass"></div>
+            <button class="btn-profile" data-preset="investidor">
+              <div class="profile-preview investidor"></div>
               <div class="profile-info">
-                <strong>Cristal</strong>
-                <span>Fundo Branco & Estilo Vidro</span>
+                <strong>Investidor Estratégico</strong>
+                <span>Preciso, técnico e orientado a dados</span>
               </div>
             </button>
-            <button class="btn-profile" data-preset="light">
-              <div class="profile-preview light"></div>
+            <button class="btn-profile" data-preset="jovem">
+              <div class="profile-preview jovem"></div>
               <div class="profile-info">
-                <strong>Minimalista</strong>
-                <span>Totalmente Branco & Limpo</span>
+                <strong>Jovem Dinâmico</strong>
+                <span>Moderna, energética e motivadora</span>
               </div>
             </button>
-            <button class="btn-profile" data-preset="modern">
-              <div class="profile-preview modern"></div>
+            <button class="btn-profile active" data-preset="executivo">
+              <div class="profile-preview executivo"></div>
               <div class="profile-info">
-                <strong>Oceano</strong>
-                <span>Fundo Branco & Detalhes Indigo</span>
+                <strong>Executivo Premium</strong>
+                <span>Elegante, sóbria e confiante</span>
               </div>
             </button>
           </div>
@@ -1091,12 +1091,16 @@
               <label class="thm-label">Película <input type="color" id="thm-overlay-col" /></label>
               <label class="thm-label">Cartões <input type="color" id="thm-card" /></label>
               <label class="thm-label">Destaque <input type="color" id="thm-fab" /></label>
+              <label class="thm-label">Topo (Header) <input type="color" id="thm-header" /></label>
+              <label class="thm-label">Texto Principal <input type="color" id="thm-text" /></label>
+              <label class="thm-label">Texto Secundário <input type="color" id="thm-muted" /></label>
             </div>
             
             <div style="margin-top:16px">
               <label class="thm-label">Opacidade Película (<span id="thm-overlay-op-val"></span>) <input type="range" id="thm-overlay-op" min="0" max="1" step="0.01" class="thm-range" /></label>
               <label class="thm-label">Transparência Cartão (<span id="thm-opacity-val"></span>) <input type="range" id="thm-opacity" min="0" max="1" step="0.01" class="thm-range" /></label>
               <label class="thm-label">Glass Blur (<span id="thm-blur-val"></span>) <input type="range" id="thm-blur" min="0" max="32" step="1" class="thm-range" /></label>
+              <label class="thm-label">Fundo Blur (<span id="thm-overlay-blur-val"></span>) <input type="range" id="thm-overlay-blur" min="0" max="32" step="1" class="thm-range" /></label>
             </div>
           </div>
         </div>
@@ -1188,8 +1192,25 @@
 
 .thm-profile-gallery {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
+}
+
+@media (max-width: 600px) {
+  .thm-profile-gallery {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .btn-profile {
+    flex-direction: column;
+    text-align: center;
+    padding: 10px;
+    gap: 8px;
+  }
+  .profile-preview {
+    width: 48px;
+    height: 48px;
+  }
 }
 
 .btn-profile {
@@ -1243,17 +1264,17 @@
   border-radius: 4px;
 }
 
-.profile-preview.dark::before { background: #0f172a; }
-.profile-preview.dark::after { background: #2563eb; }
+.profile-preview.familia::before { background: #e0f2fe; }
+.profile-preview.familia::after { background: #22c55e; }
 
-.profile-preview.glass::before { background: #f1f5f9; }
-.profile-preview.glass::after { background: #ec4899; }
+.profile-preview.investidor::before { background: #1e293b; }
+.profile-preview.investidor::after { background: #0891b2; }
 
-.profile-preview.light::before { background: #ffffff; border-bottom: 1px solid #f1f5f9; }
-.profile-preview.light::after { background: #10b981; }
+.profile-preview.jovem::before { background: #6366f1; }
+.profile-preview.jovem::after { background: #f43f5e; }
 
-.profile-preview.modern::before { background: #1e1b4b; }
-.profile-preview.modern::after { background: #6366f1; }
+.profile-preview.executivo::before { background: #0f172a; }
+.profile-preview.executivo::after { background: #1e293b; }
 
 .profile-info strong { display: block; font-size: 15px; color: #1e293b; }
 .profile-info span { font-size: 12px; color: #64748b; }
@@ -1273,7 +1294,30 @@
 
 /* Rest of professional styles remain/refined */
 .thm-sidebar { padding: 24px 32px; overflow-y: auto; }
-.thm-preview-area { background: #f8fafc; border-left: 1px solid #f1f5f9; padding: 40px; }
+.thm-preview-area { 
+  background: #f8fafc; 
+  border-left: 1px solid #f1f5f9; 
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 850px) {
+  .thm-preview-area {
+    padding: 20px;
+    border-left: none;
+    border-bottom: 1px solid #f1f5f9;
+    order: -1; /* Show at top */
+  }
+  .thm-preview-window {
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    aspect-ratio: 9/16;
+    border-width: 6px;
+  }
+}
 .thm-preview-window { 
   width: 320px; 
   aspect-ratio: 9/16; 
@@ -1282,7 +1326,30 @@
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.thm-footer { padding: 20px 32px; border-top: 1px solid #f1f5f9; background: #fff; }
+.thm-footer { 
+  padding: 20px 32px; 
+  border-top: 1px solid #f1f5f9; 
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 600px) {
+  .thm-footer {
+    padding: 16px;
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .thm-footer > div {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .thm-footer button {
+    width: 100%;
+  }
+}
 </style>
 
 <style>
@@ -1361,8 +1428,13 @@
 }
 
 @media (max-width: 850px) {
-  .thm-container { grid-template-columns: 1fr; }
-  .thm-preview-area { display: none; }
+  .thm-container { 
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  .thm-preview-area { display: flex; }
+  .thm-sidebar { border-right: none; }
 }
 
 .thm-sidebar {

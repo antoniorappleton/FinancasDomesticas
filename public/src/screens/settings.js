@@ -2,7 +2,7 @@
 
 import { repo } from "../lib/repo.js";
 import { exportImportTemplate } from "./export-template.js";
-import { saveTheme as saveGlobalTheme, loadTheme } from "../lib/theme.js";
+import { saveTheme as saveGlobalTheme, loadTheme, DEFAULT_THEME, applyTheme } from "../lib/theme.js";
 import { NotificationManager } from "../lib/notifications.js";
 import { Toast } from "../lib/ui.js";
 
@@ -3519,7 +3519,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     textSec: $("#thm-muted"),
   };
 
-  const { DEFAULT_THEME, applyTheme } = await import("../lib/theme.js");
+  // DEFAULT_THEME and applyTheme are now imported at the top level
 
   // ... (hexAlphaToRgba helper remains)
 
@@ -3685,13 +3685,13 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     };
   }
 
-  const toggleAdvBtn = $("#thm-toggle-advanced");
-  const advContent = $("#thm-advanced-content");
-  const advChevron = $("#thm-adv-chevron");
-
-  toggleAdvBtn?.addEventListener("click", () => {
-    const isHidden = advContent.classList.toggle("hidden");
-    if (advChevron) advChevron.textContent = isHidden ? "expand_more" : "expand_less";
+  $("#thm-toggle-advanced")?.addEventListener("click", () => {
+    const content = $("#thm-advanced-content");
+    const chevron = $("#thm-adv-chevron");
+    if (content) {
+      const isHidden = content.classList.toggle("hidden");
+      if (chevron) chevron.textContent = isHidden ? "expand_more" : "expand_less";
+    }
   });
 
   function syncPreview(s) {
@@ -3726,53 +3726,53 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   }
 
   const PRESETS = {
-    dark: {
-      bg_color: "#ffffff",
+    familia: {
+      bg_color: "#fffdfa",
       bg_blur_px: 0,
       bg_image_url: "",
       overlay_color: "rgba(255,255,255,0)",
-      card_bg_rgba: "rgba(255,255,255,1)",
-      card_blur_px: 0,
-      header_bg_rgba: "#0f172a",
-      fab_bg: "#2563eb",
-      text_main: "#0f172a",
-      text_secondary: "#64748b"
-    },
-    glass: {
-      bg_color: "#ffffff",
-      bg_blur_px: 0,
-      bg_image_url: "",
-      overlay_color: "rgba(255,255,255,0)",
-      card_bg_rgba: "rgba(248,250,252,0.8)",
-      card_blur_px: 12,
-      header_bg_rgba: "#f1f5f9",
-      fab_bg: "#ec4899",
+      card_bg_rgba: "rgba(255,255,255,0.9)",
+      card_blur_px: 4,
+      header_bg_rgba: "rgba(14, 165, 233, 0.9)",
+      fab_bg: "#22c55e",
       text_main: "#1e293b",
       text_secondary: "#64748b"
     },
-    light: {
+    investidor: {
       bg_color: "#ffffff",
       bg_blur_px: 0,
       bg_image_url: "",
       overlay_color: "rgba(255,255,255,0)",
-      card_bg_rgba: "rgba(255,255,255,1)",
+      card_bg_rgba: "rgba(248, 250, 252, 1)",
       card_blur_px: 0,
-      header_bg_rgba: "#ffffff",
-      fab_bg: "#10b981",
+      header_bg_rgba: "#1e293b",
+      fab_bg: "#0891b2",
+      text_main: "#0f172a",
+      text_secondary: "#475569"
+    },
+    jovem: {
+      bg_color: "#f8fafc",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "rgba(255,255,255,0.8)",
+      card_blur_px: 10,
+      header_bg_rgba: "#6366f1",
+      fab_bg: "#f43f5e",
+      text_main: "#1e1b4b",
+      text_secondary: "#6366f1"
+    },
+    executivo: {
+      bg_color: "#ffffff",
+      bg_blur_px: 0,
+      bg_image_url: "",
+      overlay_color: "rgba(255,255,255,0)",
+      card_bg_rgba: "#ffffff",
+      card_blur_px: 0,
+      header_bg_rgba: "#0f172a",
+      fab_bg: "#1e293b",
       text_main: "#0f172a",
       text_secondary: "#64748b"
-    },
-    modern: {
-      bg_color: "#ffffff",
-      bg_blur_px: 0,
-      bg_image_url: "",
-      overlay_color: "rgba(255,255,255,0)",
-      card_bg_rgba: "rgba(255,255,255,1)",
-      card_blur_px: 0,
-      header_bg_rgba: "#1e1b4b",
-      fab_bg: "#6366f1",
-      text_main: "#0f172a",
-      text_secondary: "#4338ca"
     }
   };
 
@@ -3781,7 +3781,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     if (!p) return;
     
     // Marcar botão ativo
-    outlet.querySelectorAll(".btn-profile").forEach(btn => {
+    document.querySelectorAll(".btn-profile").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.preset === name);
     });
 
@@ -3822,11 +3822,18 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     });
   });
 
-  btnThemeOpen?.addEventListener("click", () => {
-    themeOverlay?.classList.remove("hidden");
-    themeOverlay?.removeAttribute("aria-hidden");
-    loadThemeToInputs();
-    syncPreview(getSettingsFromInputs());
+  $("#btn-theme-open")?.addEventListener("click", () => {
+    const overlay = $("#theme-overlay");
+    if (overlay) {
+      overlay.classList.remove("hidden");
+      overlay.removeAttribute("aria-hidden");
+      try {
+        loadThemeToInputs();
+        syncPreview(getSettingsFromInputs());
+      } catch (e) {
+        console.warn("Theme modal init warning:", e);
+      }
+    }
   });
 
   function closeThemeModal(shouldApply = false) {
@@ -3846,10 +3853,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     themeOverlay?.setAttribute("aria-hidden", "true");
   }
 
-  btnThemeClose?.addEventListener("click", () => closeThemeModal(false));
-  btnThemeSave?.addEventListener("click", () => closeThemeModal(true));
+  $("#theme-close")?.addEventListener("click", () => closeThemeModal(false));
+  $("#thm-save")?.addEventListener("click", () => closeThemeModal(true));
 
-  btnThemeReset?.addEventListener("click", () => {
+  $("#thm-reset")?.addEventListener("click", () => {
     if (!confirm("Restaurar as cores padrão?")) return;
     applyTheme(DEFAULT_THEME);
     localStorage.removeItem("wb:visuals");

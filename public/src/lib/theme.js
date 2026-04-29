@@ -1,19 +1,19 @@
 export const DEFAULT_THEME = {
   bg_image_url: "",
-  bg_color: "#0b1220",
+  bg_color: "#ffffff",
   bg_blur_px: 0,
-  overlay_color: "rgba(0,0,0,0.35)",
+  overlay_color: "rgba(255,255,255,0)",
 
-  card_bg_rgba: "rgba(255,255,255,0.15)", // Premium Glass (Dark mode feel by default)
-  card_border_rgba: "rgba(255,255,255,0.12)",
-  card_blur_px: 12,
+  card_bg_rgba: "rgba(255,255,255,1)", 
+  card_border_rgba: "rgba(0,0,0,0.1)",
+  card_blur_px: 0,
 
-  header_bg_rgba: "rgba(15,23,42,0.85)",
-  menu_bg_rgba: "rgba(15,23,42,0.90)",
-  fab_bg: "#0ea5e9",
+  header_bg_rgba: "#0f172a",
+  menu_bg_rgba: "rgba(15,23,42,0.95)",
+  fab_bg: "#2563eb",
 
-  text_main: "#f8fafc",
-  text_secondary: "#94a3b8",
+  text_main: "#0f172a",
+  text_secondary: "#64748b",
 };
 
 /**
