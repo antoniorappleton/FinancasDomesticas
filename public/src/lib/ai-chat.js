@@ -390,7 +390,7 @@ ${query}
     };
 
     let result;
-    const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
+    const models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
     
     for (const model of models) {
       try {
