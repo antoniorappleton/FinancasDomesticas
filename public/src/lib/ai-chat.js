@@ -17,6 +17,9 @@ class AIInstance {
     this.formEl = null;
     this.closeBtn = null;
     this.overlay = null;
+    this.voiceBtn = null;
+    this.recognition = null;
+    this.isVoiceMode = false;
   }
 
   init() {
@@ -27,8 +30,11 @@ class AIInstance {
     this.formEl = document.getElementById("wisechat-form");
     this.closeBtn = document.getElementById("wisechat-close");
     this.overlay = document.getElementById("wisechat-overlay");
+    this.voiceBtn = document.getElementById("wisechat-voice");
 
     if (!this.fab) return;
+    
+    this.initVoice();
 
     // Events
     this.fab.addEventListener("click", () => this.toggle());
@@ -84,6 +90,60 @@ class AIInstance {
     this.isOpen = false;
     this.panel.classList.remove("active");
     document.body.classList.remove("wisechat-open");
+    if (this.recognition) this.recognition.stop();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+
+  initVoice() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      this.voiceBtn.style.display = "none";
+      return;
+    }
+
+    this.recognition = new SpeechRecognition();
+    this.recognition.lang = "pt-PT";
+    this.recognition.interimResults = false;
+
+    this.recognition.onstart = () => {
+      this.voiceBtn.classList.add("recording");
+      this.inputEl.placeholder = "A ouvir...";
+    };
+
+    this.recognition.onend = () => {
+      this.voiceBtn.classList.remove("recording");
+      this.inputEl.placeholder = "Pergunte-me algo...";
+    };
+
+    this.recognition.onresult = (event) => {
+      const text = event.results[0][0].transcript;
+      this.inputEl.value = text;
+      this.isVoiceMode = true;
+      this.handleSend();
+    };
+
+    this.recognition.onerror = (event) => {
+      console.error("Speech Recognition Error", event.error);
+      this.voiceBtn.classList.remove("recording");
+    };
+
+    this.voiceBtn.addEventListener("click", () => {
+      try {
+        this.recognition.start();
+      } catch (e) {
+        this.recognition.stop();
+      }
+    });
+  }
+
+  speak(text) {
+    if (!window.speechSynthesis) return;
+    // Remove markdown for speaking
+    const cleanText = text.replace(/\*\*/g, "").replace(/\n/g, " ");
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = "pt-PT";
+    utterance.rate = 1.1;
+    window.speechSynthesis.speak(utterance);
   }
 
   addMessage(text, role = "bot") {
@@ -144,6 +204,11 @@ class AIInstance {
       const response = await this.callGemini(text, context, apiKey);
       this.showTyping(false);
       this.addMessage(response);
+      
+      if (this.isVoiceMode) {
+        this.speak(response);
+        this.isVoiceMode = false; // Reset
+      }
     } catch (e) {
       console.error("WiseChat Error:", e);
       this.showTyping(false);
