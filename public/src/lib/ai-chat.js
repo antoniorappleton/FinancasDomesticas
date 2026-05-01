@@ -166,28 +166,78 @@ class AIInstance {
       const now = new Date();
       const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
       
-      const [summary, cats, balances] = await Promise.all([
+      const [summary, cats, balances, catSummary] = await Promise.all([
         repo.dashboard.monthlySummary(6),
         repo.refs.allCategories(),
-        repo.dashboard.accountBalances()
+        repo.dashboard.accountBalances(),
+        this.getRecentCategorySummary()
       ]);
 
-      // Recent transactions (current month)
-      const recentTxs = await repo.transactions.list({ month: currentMonth, pageSize: 20 });
+      // Recent transactions (last 30)
+      const { data: recentTxs } = await window.sb
+        .from("transactions")
+        .select(`
+          date, amount, description, 
+          transaction_types(name_pt),
+          categories(name)
+        `)
+        .order("date", { ascending: false })
+        .limit(30);
       
       const ctx = {
         date: now.toLocaleString('pt-PT'),
         currentMonth: currentMonth,
         summaries: summary.map(s => `${s.month}: Rec=${s.income}€, Desp=${s.expense}€, Saldo=${s.net}€`),
-        categories: cats.map(c => c.name).join(", "),
+        categoryTotals: catSummary.map(c => `${c.month} - ${c.category}: ${c.total}€`),
         balances: balances.map(b => `${b.account_name}: ${b.balance}€`),
-        recentTransactions: recentTxs.map(t => `${t.date}: ${t.description} (${t.transaction_types?.name_pt}) = ${t.amount}€`)
+        recentTransactions: (recentTxs || []).map(t => `${t.date}: ${t.description} (${t.categories?.name || 'Sem cat'}) = ${t.amount}€`)
       };
 
       return JSON.stringify(ctx);
     } catch (e) {
       console.warn("Could not fetch full context:", e);
-      return "Contexto financeiro não disponível.";
+      return "Contexto financeiro parcial disponível.";
+    }
+  }
+
+  async getRecentCategorySummary() {
+    try {
+      const now = new Date();
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 10);
+      
+      const { data: tExpData } = await window.sb
+        .from("transaction_types")
+        .select("id")
+        .eq("code", "EXPENSE")
+        .single();
+      
+      if (!tExpData) return [];
+
+      const { data, error } = await window.sb
+        .from("transactions")
+        .select(`
+          amount,
+          date,
+          categories(name)
+        `)
+        .eq("type_id", tExpData.id)
+        .gte("date", threeMonthsAgo);
+
+      if (error || !data) return [];
+
+      // Group by month and category
+      const groups = {};
+      data.forEach(t => {
+        const month = t.date.slice(0, 7);
+        const cat = t.categories?.name || "Outros";
+        const key = `${month}_${cat}`;
+        if (!groups[key]) groups[key] = { month, category: cat, total: 0 };
+        groups[key].total += Number(t.amount);
+      });
+
+      return Object.values(groups).sort((a, b) => b.month.localeCompare(a.month));
+    } catch (e) {
+      return [];
     }
   }
 
@@ -207,7 +257,8 @@ INSTRUÇÕES:
 2. Sê direto. Não dês introduções longas.
 3. Se não tiveres dados suficientes para responder a algo muito específico (ex: um dia exato que não esteja no resumo), diz que não tens acesso a esse detalhe histórico completo no momento, mas dá a informação que tiveres.
 4. Usa negrito (**valor**) para destacar números importantes.
-5. Se o utilizador perguntar "Quanto gastei em [categoria]?", procura por transações ou resumos dessa categoria.
+5. Se o utilizador perguntar "Quanto gastei em [categoria]?", procura nos dados de 'categoryTotals' pelo mês e categoria correspondentes.
+6. Tens acesso aos totais mensais, totais por categoria (últimos 3 meses) e às últimas 30 transações.
 
 PERGUNTA DO UTILIZADOR:
 ${query}
