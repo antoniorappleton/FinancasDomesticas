@@ -208,9 +208,10 @@ class AIInstance {
 
   executeNav(target) {
     if (target === "REPORTS") {
-      // Logic to open reports (usually a function in main.js or dashboard.js)
-      if (window.openReport) window.openReport();
-      else window.location.hash = "#dashboard"; 
+      window.__pendingReportOpen = true;
+      window.location.hash = "#settings";
+      // Fallback se já estiver lá
+      if (window.openReportModal) window.openReportModal();
       return;
     }
     const hashes = {
@@ -219,6 +220,7 @@ class AIInstance {
       NOVA: "#nova",
       CATEGORIAS: "#categories",
       METAS: "#metas",
+      HEALTH: "#health",
       SETTINGS: "#settings"
     };
     if (hashes[target]) window.location.hash = hashes[target];
@@ -409,17 +411,22 @@ INSTRUÇÕES CRÍTICAS DE NAVEGAÇÃO:
 2. NUNCA digas que "não tens capacidade de interagir" ou que "não podes ajudar com definições". Tu AJUDAS indicando o caminho e fornecendo o botão de salto.
 3. No final da tua resposta, DEVES incluir o comando [GOTO:NOME_ECRÃ] para o ecrã correspondente.
 
-MANUAL DE NAVEGAÇÃO (ONDE FICAM AS COISAS):
-- Criar/Editar Categorias: Menu lateral -> "Categorias" ou [GOTO:CATEGORIAS]. Aqui podes gerir nomes, ícones e orçamentos.
-- Ver/Editar Movimentos: Menu lateral -> "Movimentos" ou [GOTO:MOVIMENTOS]. Podes pesquisar, filtrar e apagar transações.
-- Dashboard/Resumo: Ecrã inicial ou [GOTO:DASHBOARD]. Tem os saldos e o botão 'Relatórios'.
-- Inserir Gastos: Botão flutuante (+) ou [GOTO:NOVA].
-- Configurar IA/API Key: Menu lateral -> "Definições" ou [GOTO:SETTINGS].
-- Metas de Poupança: Menu lateral -> "Metas" ou [GOTO:METAS].
-- Relatórios Mensais: Botão 'Relatórios' no Dashboard ou [GOTO:REPORTS].
+MANUAL DE NAVEGAÇÃO E FUNCIONALIDADES:
+- Dashboard (#dashboard): Saldo, KPI Receitas/Despesas, Temas (carousel), Projeção Cashflow, Tendências, Gasto Diário. (Comando: [GOTO:DASHBOARD])
+- Movimentos (#movimentos): Tabela de transações, Pesquisa, Filtros. (Comando: [GOTO:MOVIMENTOS])
+- Inserir Gastos (#nova): Formulário de nova transação. (Comando: [GOTO:NOVA])
+- Categorias (#categories): Criar categorias, ícones e orçamentos/budgets. (Comando: [GOTO:CATEGORIAS])
+- Metas (#metas): Objetivos de poupança e progresso. (Comando: [GOTO:METAS])
+- Saúde (#health): Análise de liquidez e reserva de emergência. (Comando: [GOTO:HEALTH])
+- Definições (#settings): Configurações gerais, Temas visuais. (Comando: [GOTO:SETTINGS])
+- Relatórios (em Definições): Modal detalhado com gráficos e Análise IA. (Comando: [GOTO:REPORTS])
+- Alocação de Rendimentos (em Definições): Distribuição 50/30/20.
+- Importação/Exportação (em Definições -> Dados): CSV e Excel.
+- Privacidade: Ícone do "Olho" no Dashboard para ocultar valores.
 
 EXEMPLO DE RESPOSTA:
-"Podes gerir as tuas categorias no menu lateral, na secção 'Categorias'. Lá podes criar novas ou editar as existentes. [GOTO:CATEGORIAS]"
+"Podes ver a tua projeção de Cashflow no Dashboard. [GOTO:DASHBOARD]"
+"Para gerar um relatório detalhado, vai à secção de Relatórios. [GOTO:REPORTS]"
 
 PERGUNTA DO UTILIZADOR:
 ${query}

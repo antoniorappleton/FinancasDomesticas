@@ -1752,23 +1752,30 @@ export async function init({ sb, outlet } = {}) {
     lockCanvas($("#rpt-regularity"), 250);
   }
 
-  function openReport() {
-    if (!overlay) return;
-    _lastFocus = document.activeElement;
-    overlay.classList.remove("hidden");
-    overlay.removeAttribute("aria-hidden");
-    document.body.style.overflow = "hidden";
-    overlay.focus();
+    function openReport() {
+      if (!overlay) return;
+      _lastFocus = document.activeElement;
+      overlay.classList.remove("hidden");
+      overlay.removeAttribute("aria-hidden");
+      document.body.style.overflow = "hidden";
+      overlay.focus();
+  
+      // sincroniza filtros de fora -> dentro
+      const type = $("#rpt-type")?.value || "monthly";
+      $("#rpt-type-inside").value = type;
+      $("#rpt-month-inside").value = $("#rpt-month")?.value || "";
+      $("#rpt-from-inside").value = $("#rpt-from")?.value || "";
+      $("#rpt-to-inside").value = $("#rpt-to")?.value || "";
+      $("#rpt-year-inside").value = $("#rpt-year")?.value || "";
+      toggleReportInputsInside();
+    }
+    // Expõe globalmente para o WiseChat
+    window.openReportModal = openReport;
 
-    // sincroniza filtros de fora -> dentro
-    const type = $("#rpt-type")?.value || "monthly";
-    $("#rpt-type-inside").value = type;
-    $("#rpt-month-inside").value = $("#rpt-month")?.value || "";
-    $("#rpt-from-inside").value = $("#rpt-from")?.value || "";
-    $("#rpt-to-inside").value = $("#rpt-to")?.value || "";
-    $("#rpt-year-inside").value = $("#rpt-year")?.value || "";
-    toggleReportInputsInside();
-  }
+    if (window.__pendingReportOpen) {
+      delete window.__pendingReportOpen;
+      setTimeout(openReport, 300);
+    }
   function closeReport() {
     if (!overlay) return;
     overlay.classList.add("hidden");
