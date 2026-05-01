@@ -210,9 +210,10 @@ class AIInstance {
         this.isVoiceMode = false; // Reset
       }
     } catch (e) {
-      console.error("WiseChat Error:", e);
+      console.error("WiseChat Error Detail:", e);
       this.showTyping(false);
-      this.addMessage("Desculpe, ocorreu um erro ao processar o seu pedido. Verifique a sua ligação ou a validade da API Key.");
+      const errorMsg = e.message || "Erro desconhecido";
+      this.addMessage(`❌ Ocorreu um erro: **${errorMsg}**. Verifique a sua ligação ou a validade da API Key.`);
     }
   }
 
@@ -270,13 +271,16 @@ class AIInstance {
       const now = new Date();
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString().slice(0, 10);
       
-      const { data: tExpData } = await window.sb
+      const { data: tExpData, error: tExpError } = await window.sb
         .from("transaction_types")
         .select("id")
         .eq("code", "EXPENSE")
-        .single();
+        .maybeSingle();
       
-      if (!tExpData) return [];
+      if (tExpError || !tExpData) {
+        console.warn("WiseChat: Não foi possível obter ID de despesa.");
+        return [];
+      }
 
       const { data, error } = await window.sb
         .from("transactions")
@@ -288,7 +292,12 @@ class AIInstance {
         .eq("type_id", tExpData.id)
         .gte("date", threeMonthsAgo);
 
-      if (error || !data) return [];
+      if (error) {
+        console.warn("WiseChat: Erro ao obter transações para resumo:", error);
+        return [];
+      }
+      
+      if (!data || data.length === 0) return [];
 
       // Group by month and category
       const groups = {};
@@ -297,11 +306,12 @@ class AIInstance {
         const cat = t.categories?.name || "Outros";
         const key = `${month}_${cat}`;
         if (!groups[key]) groups[key] = { month, category: cat, total: 0 };
-        groups[key].total += Number(t.amount);
+        groups[key].total += Number(t.amount || 0);
       });
 
       return Object.values(groups).sort((a, b) => b.month.localeCompare(a.month));
     } catch (e) {
+      console.error("WiseChat context error:", e);
       return [];
     }
   }
@@ -329,23 +339,49 @@ PERGUNTA DO UTILIZADOR:
 ${query}
 `.trim();
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${key}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      }
-    );
+    const fetchGemini = async (modelName) => {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        }
+      );
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(err.error?.message || response.statusText);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || response.statusText);
+      }
+
+      return response.json();
+    };
+
+    let result;
+    try {
+      result = await fetchGemini("gemini-2.5-flash");
+    } catch (err) {
+      const msg = (err.message || "").toLowerCase();
+      const isOverload = msg.includes("high demand") || 
+                         msg.includes("overloaded") ||
+                         msg.includes("service unavailable") ||
+                         msg.includes("503");
+
+      if (isOverload) {
+        console.warn("WiseChat: Primário sobrecarregado, a tentar Lite...");
+        try {
+          result = await fetchGemini("gemini-2.5-flash-lite");
+        } catch (err2) {
+          console.warn("WiseChat: Lite também falhou, a tentar Pro...");
+          result = await fetchGemini("gemini-2.5-pro");
+        }
+      } else {
+        throw err;
+      }
     }
 
-    const result = await response.json();
     return result.candidates?.[0]?.content?.parts?.[0]?.text || "Não consegui gerar uma resposta.";
   }
 }
