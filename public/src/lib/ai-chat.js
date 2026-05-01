@@ -165,16 +165,63 @@ class AIInstance {
     const div = document.createElement("div");
     div.className = `msg msg--${role}`;
     
-    // Simple markdown-ish formatting
-    const formatted = text
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
-      
-    div.innerHTML = formatted;
+    // Check for navigation commands [GOTO:X]
+    let cleanText = text;
+    let navTarget = null;
+    const navMatch = text.match(/\[GOTO:(\w+)\]/);
+    if (navMatch) {
+      navTarget = navMatch[1];
+      cleanText = text.replace(/\[GOTO:\w+\]/g, "").trim();
+    }
+
+    div.innerHTML = cleanText.replace(/\n/g, "<br>").replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    if (navTarget) {
+      const btn = document.createElement("button");
+      btn.className = "wisechat-nav-btn";
+      btn.innerHTML = `Ir para ${this.formatNavName(navTarget)} ➔`;
+      btn.onclick = () => {
+        this.close();
+        this.executeNav(navTarget);
+      };
+      div.appendChild(btn);
+    }
+
     this.messagesEl.appendChild(div);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
     
     this.messages.push({ role, text });
+  }
+
+  formatNavName(target) {
+    const names = {
+      DASHBOARD: "Dashboard",
+      MOVIMENTOS: "Movimentos",
+      NOVA: "Nova Transação",
+      CATEGORIAS: "Categorias",
+      METAS: "Metas",
+      SETTINGS: "Definições",
+      REPORTS: "Relatórios"
+    };
+    return names[target] || target;
+  }
+
+  executeNav(target) {
+    if (target === "REPORTS") {
+      // Logic to open reports (usually a function in main.js or dashboard.js)
+      if (window.openReport) window.openReport();
+      else window.location.hash = "#dashboard"; 
+      return;
+    }
+    const hashes = {
+      DASHBOARD: "#dashboard",
+      MOVIMENTOS: "#movimentos",
+      NOVA: "#nova",
+      CATEGORIAS: "#categories",
+      METAS: "#metas",
+      SETTINGS: "#settings"
+    };
+    if (hashes[target]) window.location.hash = hashes[target];
   }
 
   showTyping(show = true) {
@@ -358,12 +405,19 @@ HISTÓRICO DA CONVERSA:
 ${this.messages.slice(-4).map(m => `${m.role === 'user' ? 'Utilizador' : 'WiseChat'}: ${m.text}`).join('\n')}
 
 INSTRUÇÕES:
-1. Usa os dados acima para responder. Se te perguntarem quanto gastaram este mês, soma os valores das transações de despesa no contexto ou usa o resumo mensal.
-2. Sê direto. Não dês introduções longas.
-3. Se não tiveres dados suficientes para responder a algo muito específico (ex: um dia exato que não esteja no resumo), diz que não tens acesso a esse detalhe histórico completo no momento, mas dá a informação que tiveres.
-4. Usa negrito (**valor**) para destacar números importantes.
-5. Se o utilizador perguntar "Quanto gastei em [categoria]?", procura nos dados de 'categoryTotals' pelo mês e categoria correspondentes.
-6. Tens acesso aos totais mensais, totais por categoria (últimos 3 meses) e às últimas 30 transações.
+1. Usa os dados financeiros para responder a perguntas sobre dinheiro.
+2. Usa o MANUAL DE NAVEGAÇÃO abaixo para ajudar o utilizador a encontrar funcionalidades.
+3. Se o utilizador quiser ir para um sítio ou perguntar "onde fica X", responde e inclui um comando de navegação no formato [GOTO:NOME_ECRÃ] no final da resposta.
+4. Sê direto e profissional.
+
+MANUAL DE NAVEGAÇÃO:
+- Dashboard: Ecrã principal com resumo de saldos e gráficos. (Comando: [GOTO:DASHBOARD])
+- Movimentos: Lista de todas as transações, onde se pode editar ou apagar. (Comando: [GOTO:MOVIMENTOS])
+- Nova Transação: Onde se inserem novos gastos ou receitas. (Comando: [GOTO:NOVA])
+- Categorias: Gestão de categorias e orçamentos. (Comando: [GOTO:CATEGORIAS])
+- Metas: Definição de objetivos de poupança. (Comando: [GOTO:METAS])
+- Definições: Configurações de IA (API Key), Temas e Exportação. (Comando: [GOTO:SETTINGS])
+- Relatórios: Análise detalhada por mês/ano (Botão 'Relatórios' no Dashboard). (Comando: [GOTO:REPORTS])
 
 PERGUNTA DO UTILIZADOR:
 ${query}
