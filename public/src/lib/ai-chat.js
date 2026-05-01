@@ -15,6 +15,7 @@ class AIInstance {
     this.messagesEl = null;
     this.inputEl = null;
     this.formEl = null;
+    this.containerEl = null;
     this.closeBtn = null;
     this.overlay = null;
     this.voiceBtn = null;
@@ -28,6 +29,7 @@ class AIInstance {
     this.messagesEl = document.getElementById("wisechat-messages");
     this.inputEl = document.getElementById("wisechat-input");
     this.formEl = document.getElementById("wisechat-form");
+    this.containerEl = document.querySelector(".wisechat-container");
     this.closeBtn = document.getElementById("wisechat-close");
     this.overlay = document.getElementById("wisechat-overlay");
     this.voiceBtn = document.getElementById("wisechat-voice");
@@ -35,6 +37,7 @@ class AIInstance {
     if (!this.fab) return;
     
     this.initVoice();
+    this.initViewport();
 
     // Events
     this.fab.addEventListener("click", () => this.toggle());
@@ -132,6 +135,17 @@ class AIInstance {
         this.recognition.start();
       } catch (e) {
         this.recognition.stop();
+      }
+    });
+  }
+
+  initViewport() {
+    if (!window.visualViewport) return;
+    window.visualViewport.addEventListener("resize", () => {
+      if (this.isOpen && window.innerWidth < 600) {
+        const hh = window.visualViewport.height;
+        this.containerEl.style.height = `${hh}px`;
+        this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
       }
     });
   }
