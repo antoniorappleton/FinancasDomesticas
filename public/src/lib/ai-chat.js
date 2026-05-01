@@ -21,6 +21,7 @@ class AIInstance {
     this.voiceBtn = null;
     this.recognition = null;
     this.isVoiceMode = false;
+    this.cache = new Map(); // Simple in-memory cache
   }
 
   init() {
@@ -211,11 +212,26 @@ class AIInstance {
 
     this.addMessage(text, "user");
     this.inputEl.value = "";
+    
+    // Check Cache first (simple key based on question)
+    const cacheKey = text.toLowerCase().trim();
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.time < 1000 * 60 * 30) { // 30 mins cache
+        this.addMessage(cached.response);
+        return;
+      }
+    }
+
     this.showTyping(true);
 
     try {
       const context = await this.getFinancialContext();
       const response = await this.callGemini(text, context, apiKey);
+      
+      // Save to cache
+      this.cache.set(cacheKey, { response, time: Date.now() });
+
       this.showTyping(false);
       this.addMessage(response);
       
@@ -374,25 +390,24 @@ ${query}
     };
 
     let result;
-    try {
-      result = await fetchGemini("gemini-2.5-flash");
-    } catch (err) {
-      const msg = (err.message || "").toLowerCase();
-      const isOverload = msg.includes("high demand") || 
-                         msg.includes("overloaded") ||
-                         msg.includes("service unavailable") ||
-                         msg.includes("503");
+    const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"];
+    
+    for (const model of models) {
+      try {
+        result = await fetchGemini(model);
+        break; // Success!
+      } catch (err) {
+        const msg = (err.message || "").toLowerCase();
+        const isQuota = msg.includes("quota") || msg.includes("rate limit") || msg.includes("429");
+        const isOverload = msg.includes("overloaded") || msg.includes("503");
 
-      if (isOverload) {
-        console.warn("WiseChat: Primário sobrecarregado, a tentar Lite...");
-        try {
-          result = await fetchGemini("gemini-2.5-flash-lite");
-        } catch (err2) {
-          console.warn("WiseChat: Lite também falhou, a tentar Pro...");
-          result = await fetchGemini("gemini-2.5-pro");
+        if (isQuota || isOverload) {
+          console.warn(`WiseChat: Modelo ${model} falhou (${isQuota ? 'Quota' : 'Overload'}), a tentar próximo...`);
+          if (model === models[models.length - 1]) throw err; // Last one failed
+          continue;
+        } else {
+          throw err;
         }
-      } else {
-        throw err;
       }
     }
 
