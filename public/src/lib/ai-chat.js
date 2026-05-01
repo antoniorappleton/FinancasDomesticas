@@ -215,13 +215,13 @@ class AIInstance {
       return;
     }
     const hashes = {
-      DASHBOARD: "#dashboard",
-      MOVIMENTOS: "#movimentos",
-      NOVA: "#nova",
-      CATEGORIAS: "#categories",
-      METAS: "#metas",
-      HEALTH: "#health",
-      SETTINGS: "#settings"
+      DASHBOARD: "#/",
+      MOVIMENTOS: "#/movimentos",
+      NOVA: "#/new",
+      CATEGORIAS: "#/categories",
+      METAS: "#/metas",
+      HEALTH: "#/health",
+      SETTINGS: "#/settings"
     };
     if (hashes[target]) window.location.hash = hashes[target];
   }
@@ -412,13 +412,13 @@ INSTRUÇÕES CRÍTICAS DE NAVEGAÇÃO:
 3. No final da tua resposta, DEVES incluir o comando [GOTO:NOME_ECRÃ] para o ecrã correspondente.
 
 MANUAL DE NAVEGAÇÃO E FUNCIONALIDADES:
-- Dashboard (#dashboard): Saldo, KPI Receitas/Despesas, Temas (carousel), Projeção Cashflow, Tendências, Gasto Diário. (Comando: [GOTO:DASHBOARD])
-- Movimentos (#movimentos): Tabela de transações, Pesquisa, Filtros. (Comando: [GOTO:MOVIMENTOS])
-- Inserir Gastos (#nova): Formulário de nova transação. (Comando: [GOTO:NOVA])
-- Categorias (#categories): Criar categorias, ícones e orçamentos/budgets. (Comando: [GOTO:CATEGORIAS])
-- Metas (#metas): Objetivos de poupança e progresso. (Comando: [GOTO:METAS])
-- Saúde (#health): Análise de liquidez e reserva de emergência. (Comando: [GOTO:HEALTH])
-- Definições (#settings): Configurações gerais, Temas visuais. (Comando: [GOTO:SETTINGS])
+- Dashboard (#/): Saldo, KPI Receitas/Despesas, Temas (carousel), Projeção Cashflow, Tendências, Gasto Diário. (Comando: [GOTO:DASHBOARD])
+- Movimentos (#/movimentos): Tabela de transações, Pesquisa, Filtros. (Comando: [GOTO:MOVIMENTOS])
+- Inserir Gastos (#/new): Formulário de nova transação. (Comando: [GOTO:NOVA])
+- Categorias (#/categories): Criar categorias, ícones e orçamentos/budgets. (Comando: [GOTO:CATEGORIAS])
+- Metas (#/metas): Objetivos de poupança e progresso. (Comando: [GOTO:METAS])
+- Saúde (#/health): Análise de liquidez e reserva de emergência. (Comando: [GOTO:HEALTH])
+- Definições (#/settings): Configurações gerais, Temas visuais. (Comando: [GOTO:SETTINGS])
 - Relatórios (em Definições): Modal detalhado com gráficos e Análise IA. (Comando: [GOTO:REPORTS])
 - Alocação de Rendimentos (em Definições): Distribuição 50/30/20.
 - Importação/Exportação (em Definições -> Dados): CSV e Excel.
