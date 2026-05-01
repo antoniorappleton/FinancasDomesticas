@@ -42,6 +42,7 @@
     />
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./health.css" />
+    <link rel="stylesheet" href="./src/lib/ai-chat.css" />
     <link
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
       rel="stylesheet"
@@ -754,6 +755,45 @@
               Alterar Palavra-passe
             </button>
           </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- WiseChat (AI Assistant) -->
+    <button id="wisechat-fab" class="wisechat-fab hidden" aria-label="Abrir WiseChat">
+      <svg class="icon"><use href="#i-crystal" /></svg>
+    </button>
+
+    <div id="wisechat-panel" class="wisechat-panel">
+      <div class="wisechat-overlay" id="wisechat-overlay"></div>
+      <div class="wisechat-container">
+        <header class="wisechat-header">
+          <div class="wisechat-header-title">
+            <svg class="icon"><use href="#i-crystal" /></svg>
+            <span>WiseChat IA</span>
+          </div>
+          <button class="wisechat-close" id="wisechat-close">×</button>
+        </header>
+
+        <div class="wisechat-messages" id="wisechat-messages">
+          <div class="msg msg--bot">
+            Olá! Sou o seu assistente <strong>WiseChat</strong>. Posso ajudar a analisar os seus gastos ou encontrar movimentos específicos. Como posso ajudar hoje?
+          </div>
+        </div>
+
+        <div class="wisechat-suggestions" id="wisechat-suggestions">
+          <button class="suggestion-chip" data-q="Quanto gastei este mês?">Quanto gastei este mês?</button>
+          <button class="suggestion-chip" data-q="Maior despesa do ano?">Maior despesa do ano?</button>
+          <button class="suggestion-chip" data-q="Resumo da categoria Supermercado">Resumo Supermercado</button>
+        </div>
+
+        <form class="wisechat-input-area" id="wisechat-form">
+          <input type="text" class="wisechat-input" id="wisechat-input" placeholder="Pergunte-me algo..." autocomplete="off">
+          <button type="submit" class="wisechat-send" id="wisechat-send" aria-label="Enviar">
+            <svg style="width:24px;height:24px" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
+            </svg>
+          </button>
         </form>
       </div>
     </div>

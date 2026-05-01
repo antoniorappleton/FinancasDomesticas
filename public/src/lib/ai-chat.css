@@ -1,0 +1,328 @@
+/* WiseChat - AI Assistant Styles */
+
+/* Floating Action Button (FAB) */
+.wisechat-fab {
+  position: fixed;
+  bottom: calc(var(--footer-h) + 20px);
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+  cursor: pointer;
+  z-index: 100;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: none;
+  outline: none;
+}
+
+.wisechat-fab:hover {
+  transform: scale(1.1) translateY(-5px);
+  box-shadow: 0 8px 25px rgba(37, 99, 235, 0.5);
+}
+
+.wisechat-fab:active {
+  transform: scale(0.95);
+}
+
+.wisechat-fab .icon {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+}
+
+/* Chat Panel (Bottom Sheet) */
+.wisechat-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  visibility: hidden;
+  opacity: 0;
+}
+
+.wisechat-panel.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.wisechat-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: -1;
+}
+
+.wisechat-container {
+  background: var(--ui-card-bg);
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  height: 80vh;
+  border-radius: 24px 24px 0 0;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--ui-card-border);
+}
+
+.wisechat-panel.active .wisechat-container {
+  transform: translateY(0);
+}
+
+/* Header */
+.wisechat-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to right, rgba(14, 165, 233, 0.05), rgba(37, 99, 235, 0.05));
+  border-radius: 24px 24px 0 0;
+}
+
+.wisechat-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.wisechat-header-title .icon {
+  color: #0ea5e9;
+}
+
+.wisechat-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+
+.wisechat-close:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red-500);
+}
+
+/* Messages Area */
+.wisechat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  position: relative;
+  animation: msgAppear 0.3s ease-out;
+}
+
+@keyframes msgAppear {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg--bot {
+  align-self: flex-start;
+  background: #f1f5f9;
+  color: #1e293b;
+  border-bottom-left-radius: 4px;
+}
+
+[data-theme="dark"] .msg--bot {
+  background: #334155;
+  color: #f1f5f9;
+}
+
+.msg--user {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  color: white;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+}
+
+/* Quick Actions */
+.wisechat-suggestions {
+  display: flex;
+  gap: 8px;
+  padding: 0 20px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.wisechat-suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestion-chip {
+  background: rgba(14, 165, 233, 0.1);
+  color: #0ea5e9;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.suggestion-chip:hover {
+  background: #0ea5e9;
+  color: white;
+}
+
+/* Input Area */
+.wisechat-input-area {
+  padding: 16px 20px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+}
+
+.wisechat-input {
+  flex: 1;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+[data-theme="dark"] .wisechat-input {
+  background: #1e293b;
+  border-color: #334155;
+  color: white;
+}
+
+.wisechat-input:focus {
+  border-color: #0ea5e9;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="dark"] .wisechat-input:focus {
+  background: #0f172a;
+}
+
+.wisechat-send {
+  background: #0ea5e9;
+  color: white;
+  border: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.wisechat-send:hover:not(:disabled) {
+  background: #0284c7;
+  transform: translateY(-2px);
+}
+
+.wisechat-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Typing Indicator */
+.typing {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-radius: 12px;
+  width: fit-content;
+  align-self: flex-start;
+}
+
+.typing span {
+  width: 6px;
+  height: 6px;
+  background: #94a3b8;
+  border-radius: 50%;
+  animation: typingBounce 1s infinite ease-in-out;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+/* Mobile adjustments */
+@media (max-width: 600px) {
+  .wisechat-container {
+    height: 100%; /* Full screen on mobile */
+    height: -webkit-fill-available;
+    border-radius: 0; /* Remove radius for full immersion */
+    max-width: 100%;
+  }
+
+  .wisechat-header {
+    border-radius: 0;
+    padding: calc(12px + env(safe-area-inset-top)) 20px 12px;
+  }
+
+  .wisechat-input-area {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .wisechat-fab {
+    width: 50px;
+    height: 50px;
+    bottom: calc(var(--footer-h) + 15px);
+    right: 15px;
+  }
+}
+
+/* Fix for background scrolling when chat is open */
+body.wisechat-open {
+  overflow: hidden;
+  height: 100vh;
+  position: fixed;
+  width: 100%;
+}

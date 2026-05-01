@@ -4,6 +4,7 @@ import Guide from "./src/lib/guide.js";
 import { loadTheme, applyTheme } from "./src/lib/theme.js";
 import { Onboarding } from "./src/lib/onboarding.js";
 import { Toast } from "./src/lib/ui.js";
+import { WiseChat } from "./src/lib/ai-chat.js";
 
 /* ===================== Base path ===================== */
 // Ex.: / -> "" ; /REPO -> "/REPO" ; /REPO/index.html -> "/REPO"
@@ -261,6 +262,7 @@ async function onSignedIn() {
   // Show wizard if new user
   setTimeout(() => Onboarding.init(), 1000);
   Guide.mountHeaderButton();
+  WiseChat.checkVisibility();
 }
 
 function onSignedOut() {
@@ -271,6 +273,7 @@ function onSignedOut() {
     login.classList.remove("hidden");
     setStyle(login, { display: "grid" });
   }
+  WiseChat.checkVisibility();
 }
 
 /* ===================== Arranque ===================== */
@@ -290,6 +293,7 @@ function onSignedOut() {
     window.addEventListener("DOMContentLoaded", () => {
       setActiveTab();
       handleRoute();
+      WiseChat.init();
     });
     window.dispatchEvent(new Event("app:ready"));
 
