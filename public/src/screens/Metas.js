@@ -434,10 +434,12 @@ export async function init({ sb, outlet } = {}) {
     const apr = Number(document.getElementById("pf-apr")?.value || 0) / 100;
     const years = Number(document.getElementById("pf-years")?.value || 0);
     const compounding = document.getElementById("pf-comp")?.value || "monthly";
+    const color = document.getElementById("pf-color")?.value || "#0ea5e9";
 
     if (years <= 0) {
       if (document.getElementById("pf-proj-total")) document.getElementById("pf-proj-total").textContent = money(initial);
       if (document.getElementById("pf-proj-profit")) document.getElementById("pf-proj-profit").textContent = money(0);
+      if (document.getElementById("pf-modal-chart")) document.getElementById("pf-modal-chart").innerHTML = "";
       return;
     }
 
@@ -469,10 +471,15 @@ export async function init({ sb, outlet } = {}) {
       el.textContent = money(profit);
       el.style.color = profit >= 0 ? "#10b981" : "#ef4444";
     }
+
+    const chartWrap = document.getElementById("pf-modal-chart");
+    if (chartWrap) {
+      chartWrap.innerHTML = generateProjectionSVG(initial, monthly, apr * 100, years, compounding, color);
+    }
   }
 
   // Bind real-time projection
-  ["pf-initial", "pf-monthly", "pf-years", "pf-apr", "pf-comp"].forEach(id => {
+  ["pf-initial", "pf-monthly", "pf-years", "pf-apr", "pf-comp", "pf-color"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", calculatePortfolioProjection);
   });
 
