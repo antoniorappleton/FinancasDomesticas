@@ -311,11 +311,12 @@ class AIInstance {
       const now = new Date();
       const currentMonth = now.toISOString().slice(0, 7); // YYYY-MM
       
-      const [summary, cats, balances, catSummary] = await Promise.all([
+      const [summary, cats, balances, catSummary, pmSummary] = await Promise.all([
         repo.dashboard.monthlySummary(6),
         repo.refs.allCategories(),
         repo.dashboard.accountBalances(),
-        this.getRecentCategorySummary()
+        this.getRecentCategorySummary(),
+        this.getPaymentMethodSummary()
       ]);
 
       // Recent transactions (last 30)
@@ -324,7 +325,8 @@ class AIInstance {
         .select(`
           date, amount, description, 
           transaction_types(name_pt),
-          categories(name)
+          categories(name),
+          payment_methods(name_pt)
         `)
         .order("date", { ascending: false })
         .limit(30);
@@ -335,7 +337,8 @@ class AIInstance {
         summaries: summary.map(s => `${s.month}: Rec=${s.income}€, Desp=${s.expense}€, Saldo=${s.net}€`),
         categoryTotals: catSummary.map(c => `${c.month} - ${c.category}: ${c.total}€`),
         balances: balances.map(b => `${b.account_name}: ${b.balance}€`),
-        recentTransactions: (recentTxs || []).map(t => `${t.date}: ${t.description} (${t.categories?.name || 'Sem cat'}) = ${t.amount}€`)
+        recentTransactions: (recentTxs || []).map(t => `${t.date}: ${t.description} (${t.categories?.name || 'Sem cat'}) [${t.payment_methods?.name_pt || 'N/A'}] = ${t.amount}€`),
+        paymentMethodsSummary: pmSummary
       };
 
       return JSON.stringify(ctx);
@@ -391,6 +394,28 @@ class AIInstance {
       return Object.values(groups).sort((a, b) => b.month.localeCompare(a.month));
     } catch (e) {
       console.error("WiseChat context error:", e);
+      return [];
+    }
+  }
+
+  async getPaymentMethodSummary() {
+    try {
+      const { data } = await window.sb
+        .from("transactions")
+        .select("amount, payment_methods(name_pt)")
+        .not("payment_method_id", "is", null);
+      
+      if (!data) return [];
+      
+      const counts = {};
+      data.forEach(t => {
+        const pm = t.payment_methods?.name_pt || "Outro";
+        if (!counts[pm]) counts[pm] = { count: 0, total: 0 };
+        counts[pm].count++;
+        counts[pm].total += Number(t.amount || 0);
+      });
+      return Object.entries(counts).map(([name, v]) => `${name}: ${v.count} transações (Total: ${v.total.toFixed(2)}€)`);
+    } catch {
       return [];
     }
   }
