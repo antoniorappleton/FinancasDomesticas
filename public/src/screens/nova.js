@@ -815,10 +815,12 @@ export async function init({ outlet } = {}) {
  * AI Assistant for quick text/voice entries
  */
 function setupAIAssistant(outlet, TYPE_ID, $, toast) {
+  // 1. Injetar Painel (Sem innerHTML no outlet)
+  if (document.getElementById("ai-assistant-panel")) return;
+
   const card = outlet?.querySelector(".card");
   if (!card) return;
 
-  // 1. Injetar Painel (Sem innerHTML no outlet)
   const aiPanel = document.createElement("div");
   aiPanel.id = "ai-assistant-panel";
   aiPanel.className = "ai-panel";

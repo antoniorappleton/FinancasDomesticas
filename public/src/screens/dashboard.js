@@ -1646,7 +1646,7 @@ export async function init({ sb, outlet } = {}) {
       values: [520, 250, 180, 120, 100, 60],
     };
     methodsAgg = {
-      labels: ["Cartão", "MBWay", "Débito", "Transferência"],
+      labels: ["Cartão", "MBWay", "Débito Directo", "Transferência"],
       values: [380, 210, 120, 90],
     };
     regularitiesAgg = {
@@ -1851,7 +1851,7 @@ export async function init({ sb, outlet } = {}) {
       values: [520, 250, 180, 120, 100, 60],
     };
     methodsAgg = {
-      labels: ["Cartão", "MBWay", "Débito", "Transferência"],
+      labels: ["Cartão", "MBWay", "Débito Directo", "Transferência"],
       values: [380, 210, 120, 90],
     };
     regularitiesAgg = {
