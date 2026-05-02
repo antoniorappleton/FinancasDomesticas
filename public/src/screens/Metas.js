@@ -264,6 +264,53 @@ export async function init({ sb, outlet } = {}) {
     return out;
   }
 
+  function generateProjectionSVG(initial, monthly, apr, years, compounding, color) {
+    const months = Math.max(1, (years || 1) * 12);
+    const rate = (apr || 0) / 100;
+    let balance = initial;
+    const points = [balance];
+    
+    for (let m = 1; m <= months; m++) {
+      if (compounding === 'monthly') {
+        balance = balance * (1 + rate / 12) + (monthly || 0);
+      } else {
+        balance += (monthly || 0);
+        if (m % 12 === 0) balance = balance * (1 + rate);
+      }
+      points.push(balance);
+    }
+
+    const width = 200;
+    const height = 40;
+    const max = Math.max(...points, 1);
+    const min = Math.min(...points);
+    const range = max - min || 1;
+    
+    const xStep = width / (points.length - 1);
+    const polyPoints = points.map((p, i) => {
+      const x = i * xStep;
+      const y = height - ((p - min) / range) * height;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+
+    const pathData = "M" + polyPoints.join(" L");
+    const areaData = pathData + ` L${width},${height} L0,${height} Z`;
+    const gradId = `grad-${Math.random().toString(36).substr(2, 9)}`;
+
+    return `
+      <svg viewBox="0 0 ${width} ${height}" style="width:100%; height:${height}px; display:block; overflow:visible" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="${color}" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="${color}" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="${areaData}" fill="url(#${gradId})" />
+        <path d="${pathData}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    `;
+  }
+
   function computeSpentForGoal(o, monthAgg, yearAgg) {
     if (o.type !== "budget_cap") return 0;
     if (Number(o.target_amount) > 0 && !Number(o.monthly_cap)) {
@@ -306,17 +353,54 @@ export async function init({ sb, outlet } = {}) {
       const current = series.length ? series[series.length - 1].balance : invested;
       const interest = current - invested;
       const color = p.color || "#0ea5e9";
+      
+      const initial = Number(p.initial_amount || 0);
+      const dca = Number(p.monthly_contribution || 0);
+      const years = Number(p.target_years || 5);
+      const chartSvg = generateProjectionSVG(initial, dca, p.apr, years, p.compounding, color);
+      
+      // Calculate future total starting from initial_amount
+      let futureTotal = initial;
+      const months = years * 12;
+      const apr = Number(p.apr || 0) / 100;
+      if (p.compounding === "monthly") {
+        const rate = apr / 12;
+        if (rate === 0) futureTotal = initial + (dca * months);
+        else {
+          const pow = Math.pow(1 + rate, months);
+          futureTotal = (initial * pow) + (dca * (pow - 1) / rate);
+        }
+      } else {
+        for (let y = 1; y <= years; y++) {
+          futureTotal = (futureTotal + (dca * 12)) * (1 + apr);
+        }
+      }
+
       return `
-        <div class="cat-card" data-pf="${p.id}" style="border-left:5px solid ${color}">
-          <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <div class="cat-card__title"><strong>${p.name}</strong> <span class="row-note">(${p.kind})</span></div>
-            <div class="row-note">${p.apr}% a.a. • ${p.compounding === "monthly" ? "cap. mensal" : "cap. anual"}</div>
+        <div class="cat-card" data-pf="${p.id}" style="border-left:5px solid ${color}; padding: 16px; transition: transform 0.2s ease; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+          <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px; margin-bottom: 12px;">
+            <div class="cat-card__title" style="font-size: 1.1em;"><strong>${p.name}</strong> <span class="row-note" style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">${p.kind}</span></div>
+            <div class="row-note" style="font-weight: 600;">${p.apr}% a.a.</div>
             <div style="flex:1"></div>
             <button class="icon-btn" data-pf-edit="${p.id}" title="Editar">
               <svg width="18" height="18" viewBox="0 0 24 24"><path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/></svg>
             </button>
           </div>
-          <div class="cat-card__subtitle">Investido: <strong>${money(invested)}</strong> · Valor atual: <strong>${money(current)}</strong> · Juros: <strong>${money(interest)}</strong></div>
+          <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; align-items: end;">
+            <div class="cat-card__subtitle" style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between;"><span class="row-note">Investido:</span> <strong>${money(invested)}</strong></div>
+              <div style="display: flex; justify-content: space-between;"><span class="row-note">Valor atual:</span> <strong>${money(current)}</strong></div>
+              <div style="display: flex; justify-content: space-between;"><span class="row-note">Juros:</span> <strong style="color: #10b981">+${money(interest)}</strong></div>
+              ${dca > 0 ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between;"><span class="row-note">DCA Mensal:</span> <strong style="color: #2563eb">${money(dca)}</strong></div>` : ''}
+            </div>
+            <div style="text-align: right; background: rgba(255,255,255,0.5); padding: 8px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.03);">
+              <div class="row-note" style="margin-bottom: 2px; font-weight: 700;">Em ${years} anos</div>
+              <div style="font-weight: 900; font-size: 1.2em; color: #0f172a; margin-bottom: 6px;">${money(futureTotal)}</div>
+              <div style="height: 36px; display: flex; align-items: flex-end; opacity: 0.8;">
+                ${chartSvg}
+              </div>
+            </div>
+          </div>
         </div>`;
     }));
     wrap.innerHTML = cards.join("");
@@ -415,7 +499,17 @@ export async function init({ sb, outlet } = {}) {
 
   document.getElementById("pf-new")?.addEventListener("click", () => openPfModal());
   document.querySelector("#pf-modal .modal__close")?.addEventListener("click", closePfModal);
-  document.getElementById("pf-save")?.addEventListener("click", async () => {
+document.getElementById("pf-save")?.addEventListener("click", async () => {
+    // Helper to convert empty string to null or parse number properly
+    const parseNum = (val) => {
+      if (!val || !val.trim()) return null;
+      const n = Number(val.trim());
+      return isNaN(n) ? null : n;
+    };
+    
+    const pfMonthly = document.getElementById("pf-monthly");
+    const pfYears = document.getElementById("pf-years");
+    
     const payload = {
       id: document.getElementById("pf-id").value || undefined,
       name: document.getElementById("pf-name").value.trim(),
@@ -426,8 +520,8 @@ export async function init({ sb, outlet } = {}) {
       notes: document.getElementById("pf-notes").value || null,
       initial_amount: Number(document.getElementById("pf-initial").value || 0),
       start_date: document.getElementById("pf-start").value || new Date().toISOString().slice(0, 10),
-      monthly_contribution: document.getElementById("pf-monthly") ? Number(document.getElementById("pf-monthly").value) : null,
-      target_years: document.getElementById("pf-years") ? Number(document.getElementById("pf-years").value) : null,
+      monthly_contribution: pfMonthly ? parseNum(pfMonthly.value) : null,
+      target_years: pfYears ? parseNum(pfYears.value) : null,
     };
     if (!payload.name) return alert("Indica um nome.");
     await upsertPortfolio(payload);
