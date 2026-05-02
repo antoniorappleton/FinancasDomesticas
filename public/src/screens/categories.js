@@ -112,6 +112,22 @@ export async function init() {
         openCreate(el.dataset.id, el.dataset.name);
       };
     });
+    container.querySelectorAll(".btn-delete").forEach((el) => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        deleteCategory(el.dataset.id);
+      };
+    });
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm("Tem a certeza que deseja eliminar esta categoria?")) return;
+    try {
+      await Categories.remove(id);
+      await reload();
+    } catch (err) {
+      alert("Erro ao eliminar: " + err.message);
+    }
   }
 
   function toggleExpand(id) {
@@ -183,6 +199,9 @@ export async function init() {
                     ? `
                 <button class="btn-edit btn" style="width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; border:none; background:transparent;" title="Editar" data-id="${item.id}">
                     <span class="material-symbols-outlined" style="font-size:18px; color:var(--muted);">edit</span>
+                </button>
+                <button class="btn-delete btn" style="width:32px; height:32px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:50%; border:none; background:transparent;" title="Eliminar" data-id="${item.id}">
+                    <span class="material-symbols-outlined" style="font-size:18px; color:var(--red-500);">delete</span>
                 </button>`
                     : ""
                 }
@@ -237,6 +256,8 @@ export async function init() {
     }
 
     modalOverlay.classList.remove("hidden");
+    const btnDel = document.getElementById("modal-delete");
+    if (btnDel) btnDel.classList.add("hidden");
     setTimeout(() => mName.focus(), 100);
   }
 
@@ -287,6 +308,11 @@ export async function init() {
     }
 
     modalOverlay.classList.remove("hidden");
+    const btnDel = document.getElementById("modal-delete");
+    if (btnDel) {
+      if (target.isSystem) btnDel.classList.add("hidden");
+      else btnDel.classList.remove("hidden");
+    }
   }
 
   mForm.onsubmit = async (e) => {
@@ -316,6 +342,23 @@ export async function init() {
       btn.disabled = false;
     }
   };
+
+  const btnDeleteModal = document.getElementById("modal-delete");
+  if (btnDeleteModal) {
+    btnDeleteModal.onclick = async () => {
+      const id = mId.value;
+      if (!id) return;
+      if (confirm("Tem a certeza que deseja eliminar esta categoria?")) {
+        try {
+          await Categories.remove(id);
+          modalOverlay.classList.add("hidden");
+          await reload();
+        } catch (err) {
+          alert("Erro ao eliminar: " + err.message);
+        }
+      }
+    };
+  }
 
   if (searchEl) {
     searchEl.addEventListener("input", (e) => {

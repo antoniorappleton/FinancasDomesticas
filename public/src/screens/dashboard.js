@@ -2290,7 +2290,7 @@ export async function init({ sb, outlet } = {}) {
         const { data } = await sb
           .from("transactions")
           .select(
-            "date, amount, description, notes, category_id, expense_nature, categories(name,parent_id), regularities(name_pt,code)",
+            "date, amount, description, notes, category_id, expense_nature, categories(name,parent_id), regularities(name_pt,code), payment_methods(name_pt)",
           )
           .eq("type_id", expId)
           .gte("date", ymd(back))
@@ -2441,9 +2441,10 @@ export async function init({ sb, outlet } = {}) {
 
       const DIMENSIONS = loadDimensions();
 
-      const getDimensions = (path, description = "") => {
+      const getDimensions = (path, description = "", paymentMethod = "") => {
         const p = (path || '').toLowerCase().trim();
         const desc = (description || '').toLowerCase().trim();
+        const pm = (paymentMethod || '').toLowerCase().trim();
         const segments = p.split('>').map(s => s.trim().toLowerCase());
         const leaf = segments[segments.length - 1];
         
@@ -2458,7 +2459,7 @@ export async function init({ sb, outlet } = {}) {
               
               if (p === hint) return true;
               if (leaf === hint) return true;
-              return p.includes(hint) || desc.includes(hint) || segments.some(s => s.includes(hint));
+              return p.includes(hint) || desc.includes(hint) || pm.includes(hint) || segments.some(s => s.includes(hint));
           });
           
           if (matches) matchedKeys.push(d.key);
@@ -2482,11 +2483,13 @@ export async function init({ sb, outlet } = {}) {
         const dbCats = await repo.refs.categories('expense');
         const dbInc = await repo.refs.categories('income');
         const dbSav = await repo.refs.categories('savings');
+        const dbPMs = await repo.refs.paymentMethods();
         
         const allPossibleCats = Array.from(new Set([
             ...dbCats.map(c => c.label),
             ...dbInc.map(c => c.label),
             ...dbSav.map(c => c.label),
+            ...dbPMs.map(m => m.name_pt),
             ...rows.map(r => catPathName(r))
         ])).sort();
 
@@ -2675,7 +2678,8 @@ export async function init({ sb, outlet } = {}) {
       rows.forEach(r => {
         const d = new Date(r.date);
         const path = catPathName(r);
-        const dKeys = getDimensions(path, r.description);
+        const pm = r.payment_methods?.name_pt || "";
+        const dKeys = getDimensions(path, r.description, pm);
         const amt = Math.abs(Number(r.amount));
         const monthKey = d.toISOString().slice(0, 7);
         
