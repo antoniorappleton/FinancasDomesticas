@@ -283,13 +283,13 @@ export async function init({ sb, outlet } = {}) {
     const width = 200;
     const height = 40;
     const max = Math.max(...points, 1);
-    const min = Math.min(...points);
-    const range = max - min || 1;
+    const min = 0; // Start from 0 to show the full magnitude and the exponential curve
+    const range = max || 1;
     
     const xStep = width / (points.length - 1);
     const polyPoints = points.map((p, i) => {
       const x = i * xStep;
-      const y = height - ((p - min) / range) * height;
+      const y = height - (p / range) * height;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
 
