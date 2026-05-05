@@ -1,12 +1,109 @@
 <!-- TAB NAVIGATION -->
 <div class="tabs-nav">
-  <button class="tab-btn active" data-tab="financeiro">Financeiro</button>
+  <button class="tab-btn active" data-tab="plano">Estratégia</button>
+  <button class="tab-btn" data-tab="financeiro">Financeiro</button>
   <button class="tab-btn" data-tab="dados">Dados</button>
   <button class="tab-btn" data-tab="config">Configuração</button>
   <button class="tab-btn" data-tab="conta">Conta</button>
 </div>
 
-<div id="tab-financeiro" class="tab-content active">
+<!-- TAB: PLANO FINANCEIRO (NOVO) -->
+<div id="tab-plano" class="tab-content active">
+  <div class="strategy-wizard">
+    
+    <!-- Diagnóstico -->
+    <section class="strat-card">
+      <div class="strat-card__header">
+        <span class="material-symbols-outlined">analytics</span>
+        <h3>1. Diagnóstico de Base</h3>
+      </div>
+      <p class="strat-help">Define os teus valores médios para calcularmos a tua capacidade.</p>
+      
+      <div class="grid grid-responsive-2" style="gap:16px; margin-top:16px;">
+        <label>
+          Rendimento Mensal Médio
+          <input type="number" id="average-income" placeholder="0.00" step="0.01">
+        </label>
+        <label>
+          Despesas Fixas Essenciais
+          <input type="number" id="essential-expenses" placeholder="Renda, Luz, Seguros..." step="0.01">
+        </label>
+      </div>
+
+      <div class="strat-section" style="margin-top:20px;">
+        <label class="label-tiny">ALVO: FUNDO DE EMERGÊNCIA</label>
+        <div class="chip-group" id="emergency-target-group">
+          <button class="chip" data-months="3">3 Meses</button>
+          <button class="chip active" data-months="6">6 Meses</button>
+          <button class="chip" data-months="9">9 Meses</button>
+          <button class="chip" data-months="12">12 Meses</button>
+        </div>
+        <div class="calc-box">
+          Fundo Ideal: <strong id="val-emergency-total">€ 0,00</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Estratégia de Alocação -->
+    <section class="strat-card">
+      <div class="strat-card__header">
+        <span class="material-symbols-outlined">pie_chart</span>
+        <h3>2. Estratégia de Alocação</h3>
+      </div>
+      <p class="strat-help">Como queres distribuir cada euro que entra?</p>
+
+      <div class="allocation-layout">
+        <div class="chart-box">
+          <canvas id="alc-pie-chart"></canvas>
+        </div>
+
+        <div class="sliders-list">
+          <div class="slider-control">
+            <div class="slider-label"><span>Despesas</span> <strong id="val-pct-expenses">50%</strong></div>
+            <input type="range" id="range-expenses" min="0" max="100" value="50" class="strat-range range--red">
+          </div>
+          <div class="slider-control">
+            <div class="slider-label"><span>Poupança (Metas)</span> <strong id="val-pct-savings">20%</strong></div>
+            <input type="range" id="range-savings" min="0" max="100" value="20" class="strat-range range--blue">
+          </div>
+          <div class="slider-control">
+            <div class="slider-label"><span>Investimento</span> <strong id="val-pct-investment">20%</strong></div>
+            <input type="range" id="range-investment" min="0" max="100" value="20" class="strat-range range--green">
+          </div>
+          <div class="slider-control">
+            <div class="slider-label"><span>Livre / Margem</span> <strong id="val-pct-free">10%</strong></div>
+            <input type="range" id="range-free" min="0" max="100" value="10" class="strat-range range--gray">
+          </div>
+        </div>
+      </div>
+
+      <div id="allocation-warning" class="warning-alert hidden">
+        <span class="material-symbols-outlined">warning</span>
+        Alocação total excede os 100%!
+      </div>
+    </section>
+
+    <!-- Ação -->
+    <section class="strat-card secondary">
+      <div class="strat-card__header">
+        <span class="material-symbols-outlined">bolt</span>
+        <h3>3. Plano de Ação</h3>
+      </div>
+      <div id="suggested-goals-list" class="suggested-list">
+        <p class="muted">Preenche os valores acima para gerar o teu plano.</p>
+      </div>
+      <div style="margin-top:20px; text-align:right">
+        <button id="btn-save-strategy" class="btn btn--primary" style="width:100%; justify-content:center">
+          <span class="material-symbols-outlined">task_alt</span>
+          Ativar Este Plano
+        </button>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div id="tab-financeiro" class="tab-content">
   <!-- ===== MODAL RELATÓRIO ===== -->
   <section class="card">
   <h2 class="section-title">Relatórios</h2>
@@ -208,8 +305,45 @@
   </div>
 </div>
 
-
 <style>
+  /* STRATEGY WIZARD PREMIUM STYLES */
+  .strategy-wizard { display: flex; flex-direction: column; gap: 20px; padding: 8px 0; }
+  .strat-card { background: #fff; border-radius: 20px; padding: 24px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+  .strat-card.secondary { background: #f8fafc; border: 1px dashed #cbd5e1; }
+  .strat-card__header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .strat-card__header span { font-size: 28px; color: var(--primary); }
+  .strat-card__header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; }
+  .strat-help { font-size: 13px; color: #64748b; margin: 0 0 16px 0; }
+  .label-tiny { display: block; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+  
+  .chip-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 8px 16px; border-radius: 12px; border: 1.5px solid #e2e8f0; background: #fff; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; }
+  .chip.active { background: var(--primary); border-color: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
+  
+  .calc-box { margin-top: 16px; padding: 12px; background: #f1f5f9; border-radius: 12px; font-size: 14px; color: #475569; text-align: center; }
+  .calc-box strong { color: var(--primary); font-size: 1.1rem; }
+  
+  .allocation-layout { display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: center; }
+  @media (max-width: 600px) { .allocation-layout { grid-template-columns: 1fr; } }
+  
+  .chart-box { width: 220px; height: 220px; margin: 0 auto; position: relative; }
+  .sliders-list { display: flex; flex-direction: column; gap: 16px; }
+  .slider-control { display: flex; flex-direction: column; gap: 6px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #475569; }
+  
+  .strat-range { -webkit-appearance: none; width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; outline: none; }
+  .strat-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid var(--primary); cursor: pointer; }
+  .range--red::-webkit-slider-thumb { border-color: #ef4444; }
+  .range--blue::-webkit-slider-thumb { border-color: #3b82f6; }
+  .range--green::-webkit-slider-thumb { border-color: #10b981; }
+  .range--gray::-webkit-slider-thumb { border-color: #94a3b8; }
+  
+  .suggested-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
+  .suggested-item .icon { width: 36px; height: 36px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; color: var(--primary); }
+  .suggested-info strong { display: block; font-size: 14px; color: #1e293b; }
+  .suggested-info span { font-size: 11px; color: #64748b; }
+  .suggested-val { text-align: right; font-weight: 700; color: var(--primary); }
+
   .hidden {
     display: none
   }
