@@ -2690,18 +2690,24 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     const jsPDF = await getJsPDF();
     if (!jsPDF) return alert("Falhou a carregar o gerador de PDF.");
 
+    const fullTitle = ($("#rpt-title")?.textContent || "Relatório Financeiro").trim();
+    const [baseTitle, periodLabel] = fullTitle.includes(" — ") 
+      ? fullTitle.split(" — ") 
+      : [fullTitle, ""];
+
     const REPORT_CFG = {
-      title: ($("#rpt-title")?.textContent || "Relatório Financeiro").trim(),
+      title: baseTitle || "Relatório Financeiro",
+      period: periodLabel || "",
       author: "Relatório WiseBudget",
       subject: "",
       creator: "WiseBudget®",
       filename: "wisebudget-relatorio.pdf",
       brandColor: "#065f46",
       aiAnalysis: _aiAnalysisText,
-      headerGap: 12, // <- um pouco menor (vamos compensar no 'y')
-      logoSize: { w: 54, h: 54 }, // <- tamanho do logo no PDF
-      titleOffsetY: 12, // <- afinação vertical do título
-      logoOffsetY: -30, // <- sobe ligeiramente o logo
+      headerGap: 12,
+      logoSize: { w: 54, h: 54 },
+      titleOffsetY: 12,
+      logoOffsetY: -30,
     };
 
     const doc = new (await getJsPDF())({ unit: "pt", format: "a4" });
@@ -2710,11 +2716,11 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     const M = 40;
     let y = M;
 
-    const FOOTER_SAFE = 44; // reserva real para texto do footer + respiro
+    const FOOTER_SAFE = 44; 
     const CONTENT_BOTTOM = H - M - FOOTER_SAFE;
 
     doc.setProperties({
-      title: REPORT_CFG.title,
+      title: fullTitle,
       subject: REPORT_CFG.subject,
       author: REPORT_CFG.author,
       creator: REPORT_CFG.creator,
@@ -2738,10 +2744,12 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       doc.setDrawColor(230);
       doc.line(x1, y1, x2, y2);
     };
-    const header = (title, subtitle = null) => {
-      // linha base para o bloco do cabeçalho
-      const baseY = y;
 
+    const header = (title, period = "") => {
+      const baseY = y;
+      const creationDate = new Date().toLocaleString("pt-PT");
+
+      // 1. Título e Logo
       if (logoDataUrl) {
         doc.addImage(
           logoDataUrl,
@@ -2754,28 +2762,42 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           "FAST",
         );
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
-        // título alinhado verticalmente ao centro do logo
+        doc.setFontSize(20);
         const titleY = baseY + (REPORT_CFG.titleOffsetY ?? 12);
         doc.text(title, M + REPORT_CFG.logoSize.w + 5, titleY);
       } else {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(16);
+        doc.setFontSize(20);
         doc.text(title, M, baseY);
       }
 
-      if (subtitle) {
-        doc.setFont("helvetica", "normal");
+      // 2. Bloco de Metadados (Data Criação, Produzido por, Período)
+      // Descemos um pouco para não bater no título
+      y = baseY + 45;
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      doc.text(`Data de criação: ${creationDate}`, M, y);
+      doc.text(`Produzido por: Wisebudget.Report`, M, y + 11);
+      
+      // Período em destaque
+      if (period) {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
         doc.setFontSize(10);
-        doc.text(subtitle, W - M, baseY, { align: "right" });
+        doc.text(`Período: ${period}`, M, y + 26);
+        y += 34;
+      } else {
+        y += 20;
       }
 
-      // linha separadora + empurra mais o cursor antes dos KPIs
-      const lineY = baseY + REPORT_CFG.headerGap;
+      // Linha separadora
+      const lineY = y + 8;
       doc.setDrawColor(230);
       doc.line(M, lineY, W - M, lineY);
 
-      y = lineY + 28; // <- espaço extra antes das caixas KPI
+      y = lineY + 32; // Espaço antes dos KPIs
     };
 
     const footer = () => {
@@ -2786,16 +2808,17 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       doc.text(txt, M, H - M + 12);
       doc.setTextColor(0);
     };
+
     const ensureSpace = (need) => {
       if (y + need <= CONTENT_BOTTOM) return;
       footer();
       doc.addPage();
       y = M;
-      header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+      header(REPORT_CFG.title, REPORT_CFG.period);
     };
 
-    // Cabeçalho
-    header(REPORT_CFG.title, new Date().toLocaleString("pt-PT"));
+    // Cabeçalho Inicial
+    header(REPORT_CFG.title, REPORT_CFG.period);
 
     // KPIs (4 colunas)
     const k = [
