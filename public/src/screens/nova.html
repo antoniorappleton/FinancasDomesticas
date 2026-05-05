@@ -51,21 +51,16 @@
 
   <!-- Categoria -->
   <div id="row-category" style="margin-top: 10px">
-    <label>
-      <select id="tx-category"></select>
-    </label>
-
-    <!-- Bloco só para DESPESA -->
-    <div id="exp-cat-wrap" class="hidden" style="margin-top: 8px">
+    <div id="tx-cat-wrap">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
-        <label>Categoria (principal)
+        <label>Categoria
           <select id="cat-parent"></select>
         </label>
-        <label>Subcategoria
+        <label>Subcategoria (opcional)
           <select id="cat-child"></select>
         </label>
       </div>
-      <input type="hidden" id="tx-category-exp" />
+      <input type="hidden" id="tx-category-final" />
     </div>
   </div>
 

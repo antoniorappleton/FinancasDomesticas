@@ -50,11 +50,23 @@ export async function init({ sb, outlet } = {}) {
     }
 
     const { data } = await query;
+    if (!data) return;
+
+    // Create a map for parent names
+    const parents = new Map(data.filter(c => !c.parent_id).map(p => [p.id, p.name]));
+    
+    // Sort and format rows
+    const rows = data.map(c => ({
+      id: c.id,
+      label: c.parent_id ? `${parents.get(c.parent_id) || '?'} > ${c.name}` : c.name
+    })).sort((a, b) => a.label.localeCompare(b.label));
+
     const opts =
       '<option value="">(sem categoria)</option>' +
-      (data || [])
-        .map((c) => `<option value="${c.id}">${c.name}</option>`)
+      rows
+        .map((r) => `<option value="${r.id}">${r.label}</option>`)
         .join("");
+        
     selectEls.forEach((el) => el && (el.innerHTML = opts));
   }
 

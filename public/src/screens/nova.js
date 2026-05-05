@@ -86,44 +86,14 @@ export async function init({ outlet } = {}) {
   // ----- categorias -----
   const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
 
-  async function loadPlainCategories(kind) {
-    const { data, error } = await sb
-      .from("categories")
-      .select("id,name,parent_id")
-      .eq("kind", kind)
-      .order("name");
-    if (error) {
-      console.error(error);
-      toast("Erro a carregar categorias", false);
-      return;
-    }
-    if (!data?.length) {
-      $("tx-category").innerHTML = `<option value="">(sem categorias)</option>`;
-      return;
-    }
-    const parents = new Map(
-      (data || []).filter((c) => !c.parent_id).map((c) => [c.id, c.name]),
-    );
-    const rows = (data || [])
-      .map((c) => ({
-        id: c.id,
-        label: c.parent_id
-          ? `${parents.get(c.parent_id) || ""} > ${c.name}`
-          : c.name,
-      }))
-      .sort((a, b) => coll.compare(a.label, b.label));
-    $("tx-category").innerHTML = rows
-      .map((r) => `<option value="${r.id}">${r.label}</option>`)
-      .join("");
-  }
+  // Removed loadPlainCategories as we unified UI to 2-selects
 
-  async function bindExpenseDropdowns() {
-    // ⚠️ Para NULL em Supabase/PostgREST, usar .is('col', null) — NÃO .eq('col', null)
+  async function bindCategoryDropdowns(kind) {
     const { data: parents, error: e1 } = await sb
       .from("categories")
       .select("id,name")
       .is("parent_id", null)
-      .eq("kind", "expense")
+      .eq("kind", kind)
       .order("name");
     if (e1) {
       console.error(e1);
@@ -135,23 +105,25 @@ export async function init({ outlet } = {}) {
       coll.compare(a.name, b.name),
     );
     $("cat-parent").innerHTML =
-      `<option value="">Categoria (ex.: Casa)</option>` +
+      `<option value="">Selecione...</option>` +
       pSorted.map((p) => `<option value="${p.id}">${p.name}</option>`).join("");
 
-    $("cat-child").innerHTML = `<option value="">Subcategoria</option>`;
+    $("cat-child").innerHTML = `<option value="">(Geral)</option>`;
 
     $("cat-parent").onchange = async () => {
       const pid = $("cat-parent").value;
-      $("tx-category-exp").value = "";
+      // Default to parent if no child selected
+      $("tx-category-final").value = pid || "";
+      
       if (!pid) {
-        $("cat-child").innerHTML = `<option value="">Subcategoria</option>`;
+        $("cat-child").innerHTML = `<option value="">(Geral)</option>`;
         return;
       }
       const { data: subs, error: e2 } = await sb
         .from("categories")
         .select("id,name")
         .eq("parent_id", pid)
-        .eq("kind", "expense")
+        .eq("kind", kind)
         .order("name");
       if (e2) {
         console.error(e2);
@@ -160,13 +132,14 @@ export async function init({ outlet } = {}) {
       }
       const sSorted = (subs || []).sort((a, b) => coll.compare(a.name, b.name));
       $("cat-child").innerHTML =
-        `<option value="">Subcategoria</option>` +
+        `<option value="">(Geral)</option>` +
         sSorted
           .map((s) => `<option value="${s.id}">${s.name}</option>`)
           .join("");
     };
     $("cat-child").onchange = () => {
-      $("tx-category-exp").value = $("cat-child").value || "";
+      // If child is empty, use parent
+      $("tx-category-final").value = $("cat-child").value || $("cat-parent").value || "";
     };
 
     // start
@@ -205,21 +178,15 @@ export async function init({ outlet } = {}) {
     show($("btn-fixed-bulk"), t === "EXPENSE");
     show($("btn-import"), t === "EXPENSE" || t === "INCOME"); // Allow import for Income too
 
-    if (t !== "EXPENSE") {
-      // Receita / Poupança → select plano (inclui sistema + tuas)
-      show(wrapExpense, false);
-      selectLegacy?.classList.remove("hidden");
-      await loadPlainCategories(t === "INCOME" ? "income" : "savings");
-      return;
-    }
-
-    // Despesa → 2 selects (pais = parent_id IS NULL)
-    selectLegacy?.classList.add("hidden");
-    show(wrapExpense, true);
-    if (!wrapExpense.dataset.bound) {
-      await bindExpenseDropdowns();
-      wrapExpense.dataset.bound = "1";
+    // Unified category dropdowns for all types (except Transfer)
+    const kind = t === "EXPENSE" ? "expense" : (t === "INCOME" ? "income" : "savings");
+    
+    // Always clear and reload if type changes
+    if ($("tx-cat-wrap").dataset.kind !== kind) {
+      await bindCategoryDropdowns(kind);
+      $("tx-cat-wrap").dataset.kind = kind;
     } else {
+      // Just ensure parent change is triggered if same kind
       $("cat-parent")?.dispatchEvent(new Event("change"));
     }
   }
@@ -292,10 +259,7 @@ export async function init({ outlet } = {}) {
         ? Number($("tx-status").value)
         : null;
 
-      const category_id =
-        t === "EXPENSE"
-          ? $("tx-category-exp")?.value || null
-          : $("tx-category")?.value || null;
+      const category_id = $("tx-category-final")?.value || null;
 
       const payload = {
         user_id: user.id,
