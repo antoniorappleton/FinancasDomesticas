@@ -4135,10 +4135,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
 
   // Inicializa ao carregar a tab plano
   setTimeout(initStrategyLogic, 200);
-
-
-
-
+  async function initIncomeAllocation() {
     const avgIncomeEl = $("#alc-avg-income");
     const totalAllocatedEl = $("#alc-total-allocated");
     const warningEl = $("#alc-warning");
