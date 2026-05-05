@@ -4060,7 +4060,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         const dateStr = fourAgo.toISOString().slice(0, 10);
 
         const { data: mvs, error: mvsErr } = await sb
-          .from("movimentos")
+          .from("transactions")
           .select("amount,type")
           .gte("date", dateStr);
 
@@ -4098,7 +4098,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       const sixAgo = new Date();
       sixAgo.setMonth(sixAgo.getMonth() - 6);
       const { data: allMvs, error: allErr } = await sb
-        .from("movimentos")
+        .from("transactions")
         .select("amount,type,date")
         .gte("date", sixAgo.toISOString().slice(0, 10))
         .order("date", { ascending: true });
