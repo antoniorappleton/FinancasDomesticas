@@ -75,11 +75,28 @@ export async function init({ sb, outlet } = {}) {
   });
 
   // ===== helpers de legenda/cores (para charts e PDF) =====
-  // (removed duplicated palette)
-  // (removed duplicated legendHTML)
+  function palette(n) {
+    const colors = [
+      "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", 
+      "#ec4899", "#06b6d4", "#84cc16", "#3b82f6", "#14b8a6", 
+      "#f97316", "#d946ef", "#4f46e5", "#059669", "#d97706"
+    ];
+    return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
+  }
 
-  // util: carrega imagem e devolve dataURL
-  // (removed duplicated toDataURL)
+  function legendHTML(labels, values, total, colors) {
+    return labels.map((l, i) => {
+      const v = values[i];
+      const pct = total ? ((v / total) * 100).toFixed(1) : "0";
+      return `
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:4px;">
+          <div style="width:12px; height:12px; border-radius:3px; background:${colors[i]};"></div>
+          <div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${l}</div>
+          <div style="font-weight:700;">${pct}%</div>
+        </div>
+      `;
+    }).join("");
+  }
 
   //==== Mini cards ocultos na dashboard =====//
   // ===== MINI-CARDS SHELF (sincroniza com localStorage que a Dashboard usa) =====
