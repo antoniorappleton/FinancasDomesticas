@@ -3847,7 +3847,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   function initStrategyLogic() {
     const incomeInp = $("#average-income");
     const expenseInp = $("#essential-expenses");
-    const chips = outlet.querySelectorAll(".chip");
+    const chips = document.querySelectorAll(".chip");
     
     const ranges = {
       expenses: $("#range-expenses"),
@@ -3998,12 +3998,40 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       `;
     }
 
-    // Carregar dados iniciais se existirem
+    // Carregar dados iniciais e CALCULAR MÉDIAS REAIS
     loadStrategyData();
     async function loadStrategyData() {
-      // Aqui iríamos buscar ao Supabase (user_settings)
-      // Por agora, usamos valores padrão ou o que estiver nos campos
-      updateCalculations();
+      try {
+        // 1. Tentar calcular médias dos últimos 4 meses
+        const now = new Date();
+        const fourMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 4, 1);
+        
+        const { data: movements, error } = await supabase
+          .from("movimentos")
+          .select("amount, type, category")
+          .gte("date", fourMonthsAgo.toISOString());
+
+        if (!error && movements) {
+          const totalIncome = movements
+            .filter(m => m.type === "INCOME")
+            .reduce((acc, m) => acc + m.amount, 0);
+          
+          // Consideramos "Fixas" as despesas recorrentes ou de categorias essenciais
+          // Por agora, filtramos por categorias que o user marcou como fixas (se existir essa flag)
+          // Simplificação: todas as despesas dos últimos 4 meses / 4 para estimar esforço
+          const totalExpenses = movements
+            .filter(m => m.type === "EXPENSE")
+            .reduce((acc, m) => acc + m.amount, 0);
+
+          if (incomeInp) incomeInp.value = (totalIncome / 4).toFixed(2);
+          if (expenseInp) expenseInp.value = (totalExpenses / 4).toFixed(2);
+        }
+
+        // 2. Atualizar UI
+        updateCalculations();
+      } catch (e) {
+        console.error("Erro ao carregar médias:", e);
+      }
     }
 
     $("#btn-save-strategy")?.addEventListener("click", async () => {
@@ -4014,6 +4042,16 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         Toast.success("Estratégia ativada com sucesso!");
       } catch (e) {
         Toast.error("Erro ao guardar estratégia.");
+      }
+    });
+
+    // Toggle Help Guide (Uso do document para garantir captura)
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("#btn-help-strat");
+      if (btn) {
+        e.preventDefault();
+        const guide = document.getElementById("strat-guide");
+        if (guide) guide.classList.toggle("hidden");
       }
     });
   }
