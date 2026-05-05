@@ -84,14 +84,14 @@ export async function init({ sb, outlet } = {}) {
     return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
   }
 
-  function legendHTML(labels, values, total, colors) {
-    return labels.map((l, i) => {
-      const v = values[i];
-      const pct = total ? ((v / total) * 100).toFixed(1) : "0";
+  function legendHTML(items) {
+    if (!Array.isArray(items)) return "";
+    return items.map((item) => {
+      const pct = (Number(item.pct || 0) * 100).toFixed(1);
       return `
         <div style="display:flex; align-items:center; gap:8px; font-size:12px; margin-bottom:4px;">
-          <div style="width:12px; height:12px; border-radius:3px; background:${colors[i]};"></div>
-          <div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${l}</div>
+          <div style="width:12px; height:12px; border-radius:3px; background:${item.color || '#64748b'};"></div>
+          <div style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${item.label}</div>
           <div style="font-weight:700;">${pct}%</div>
         </div>
       `;
@@ -3896,6 +3896,8 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         allocationChart.data.datasets[0].data = data;
         allocationChart.update();
       } else {
+        // Safety: destroy any orphaned chart on this canvas
+        Chart.getChart(ctx)?.destroy();
         allocationChart = new Chart(ctx, {
           type: "doughnut",
           data: {
