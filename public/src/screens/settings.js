@@ -67,8 +67,10 @@ export async function init({ sb, outlet } = {}) {
         c.classList.toggle("active", c.id === `tab-${target}`);
       });
       
-      // Se for a tab financeiro, reinicializar ou atualizar lógica se necessário
-      if (target === "financeiro") {
+      // Se for a tab plano ou financeiro, reinicializar ou atualizar lógica
+      if (target === "plano") {
+         initStrategyLogic();
+      } else if (target === "financeiro") {
          initIncomeAllocation();
       }
     });
@@ -3841,6 +3843,184 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   if (visuals) applyTheme(visuals);
   // =============== Alocação de Rendimentos Logic =============
   let allocationChart = null;
+  // ================= ESTRATÉGIA FINANCEIRA (WIZARD) ==================
+  function initStrategyLogic() {
+    const incomeInp = $("#average-income");
+    const expenseInp = $("#essential-expenses");
+    const chips = outlet.querySelectorAll(".chip");
+    
+    const ranges = {
+      expenses: $("#range-expenses"),
+      savings: $("#range-savings"),
+      investment: $("#range-investment"),
+      free: $("#range-free")
+    };
+    
+    const displays = {
+      expenses: $("#val-pct-expenses"),
+      savings: $("#val-pct-savings"),
+      investment: $("#val-pct-investment"),
+      free: $("#val-pct-free"),
+      emergencyTotal: $("#val-emergency-total")
+    };
+
+    let currentStrategy = {
+      income: 0,
+      fixedExpenses: 0,
+      emergencyMonths: 6,
+      pctExpenses: 50,
+      pctSavings: 20,
+      pctInvestment: 20,
+      pctFree: 10
+    };
+
+    function updateCalculations() {
+      currentStrategy.income = Number(incomeInp?.value || 0);
+      currentStrategy.fixedExpenses = Number(expenseInp?.value || 0);
+      
+      // Cálculo Fundo Emergência
+      const emergencyTotal = currentStrategy.fixedExpenses * currentStrategy.emergencyMonths;
+      if (displays.emergencyTotal) {
+        displays.emergencyTotal.textContent = money(emergencyTotal);
+      }
+
+      // Atualizar Gráfico e Warning
+      updateAllocationChart();
+      updateSuggestedPlan();
+    }
+
+    function updateAllocationChart() {
+      const total = currentStrategy.pctExpenses + currentStrategy.pctSavings + 
+                    currentStrategy.pctInvestment + currentStrategy.pctFree;
+      
+      const warning = $("#allocation-warning");
+      if (warning) {
+        warning.classList.toggle("hidden", total <= 100);
+      }
+
+      // Reutiliza a lógica de gráfico já existente ou cria uma específica
+      renderStrategyPie(
+        currentStrategy.pctExpenses, 
+        currentStrategy.pctSavings, 
+        currentStrategy.pctInvestment, 
+        currentStrategy.pctFree
+      );
+    }
+
+    // Listeners Inputs
+    [incomeInp, expenseInp].forEach(inp => {
+      inp?.addEventListener("input", updateCalculations);
+    });
+
+    // Listeners Chips
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        chips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        currentStrategy.emergencyMonths = Number(chip.dataset.months);
+        updateCalculations();
+      });
+    });
+
+    // Listeners Ranges
+    Object.keys(ranges).forEach(key => {
+      ranges[key]?.addEventListener("input", (e) => {
+        const val = Number(e.target.value);
+        const prop = "pct" + key.charAt(0).toUpperCase() + key.slice(1);
+        currentStrategy[prop] = val;
+        if (displays[key]) displays[key].textContent = val + "%";
+        updateAllocationChart();
+        updateSuggestedPlan();
+      });
+    });
+
+    // Inicialização do Gráfico Circular
+    let stratChart = null;
+    async function renderStrategyPie(e, s, i, f) {
+      await ensureChartStack();
+      const canvas = $("#alc-pie-chart");
+      if (!canvas) return;
+
+      if (stratChart) stratChart.destroy();
+      // Limpeza de órfãos
+      const prev = Chart.getChart(canvas);
+      if (prev) prev.destroy();
+
+      stratChart = new Chart(canvas, {
+        type: "doughnut",
+        data: {
+          labels: ["Despesas", "Poupança", "Investimento", "Margem"],
+          datasets: [{
+            data: [e, s, i, f],
+            backgroundColor: ["#ef4444", "#3b82f6", "#10b981", "#94a3b8"],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          cutout: "70%",
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: true }
+          }
+        }
+      });
+    }
+
+    function updateSuggestedPlan() {
+      const list = $("#suggested-goals-list");
+      if (!list) return;
+
+      const monthlySavings = currentStrategy.income * (currentStrategy.pctSavings / 100);
+      const emergencyGoal = currentStrategy.fixedExpenses * currentStrategy.emergencyMonths;
+
+      if (currentStrategy.income <= 0) {
+        list.innerHTML = `<p class="muted">Define o teu rendimento para veres as sugestões.</p>`;
+        return;
+      }
+
+      list.innerHTML = `
+        <div class="suggested-item">
+          <div class="icon"><span class="material-symbols-outlined">savings</span></div>
+          <div class="suggested-info">
+            <strong>Retenção Mensal</strong>
+            <span>Valor a separar assim que recebes</span>
+          </div>
+          <div class="suggested-val">${money(monthlySavings)}</div>
+        </div>
+        <div class="suggested-item">
+          <div class="icon"><span class="material-symbols-outlined">emergency_home</span></div>
+          <div class="suggested-info">
+            <strong>Alvo Fundo de Emergência</strong>
+            <span>Para cobrir ${currentStrategy.emergencyMonths} meses</span>
+          </div>
+          <div class="suggested-val">${money(emergencyGoal)}</div>
+        </div>
+      `;
+    }
+
+    // Carregar dados iniciais se existirem
+    loadStrategyData();
+    async function loadStrategyData() {
+      // Aqui iríamos buscar ao Supabase (user_settings)
+      // Por agora, usamos valores padrão ou o que estiver nos campos
+      updateCalculations();
+    }
+
+    $("#btn-save-strategy")?.addEventListener("click", async () => {
+      try {
+        Toast.info("A guardar estratégia...");
+        // Lógica de save para Supabase (a implementar no próximo passo)
+        await new Promise(r => setTimeout(r, 1000));
+        Toast.success("Estratégia ativada com sucesso!");
+      } catch (e) {
+        Toast.error("Erro ao guardar estratégia.");
+      }
+    });
+  }
+
+  // Inicializa a tab ativa por defeito (plano)
+  setTimeout(() => initStrategyLogic(), 100);
+
   async function initIncomeAllocation() {
     const avgIncomeEl = $("#alc-avg-income");
     const totalAllocatedEl = $("#alc-total-allocated");

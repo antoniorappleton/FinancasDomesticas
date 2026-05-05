@@ -1,4 +1,4 @@
-const VERSION = "v142";
+const VERSION = "v143";
 
 // Base do scope: ex. "https://user.github.io/REPO/" -> "/REPO"
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
