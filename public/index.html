@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v123";
+      window.APP_VERSION = "v136";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -552,7 +552,7 @@
         if (!email) return alert("Indica o teu email.");
         try {
           const { error } = await window.sb.auth.resetPasswordForEmail(email, {
-            redirectTo: `${location.origin}${location.pathname}#/?pwreset=1`,
+            redirectTo: `${location.origin}${location.pathname.replace('index.html', '')}confirm.html`,
           });
           if (error) throw error;
           alert("✅ Enviámos um email com o link de recuperação.");
@@ -592,7 +592,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=123", { scope: "./" })
+          .register("./sw.js?v=134", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -804,6 +804,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=123"></script>
+    <script type="module" src="./main.js?v=134"></script>
   </body>
 </html>

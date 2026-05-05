@@ -1,8 +1,8 @@
-// src/screens/nova.js
 import { repo } from "../lib/repo.js";
 import { Toast } from "../lib/ui.js";
-
 import { loadTheme } from "../lib/theme.js";
+import { ymd, parseAmount } from "../lib/helpers.js";
+import { validators } from "../lib/validators.js";
 
 export async function init({ outlet } = {}) {
   const sb = window.sb;
@@ -11,18 +11,10 @@ export async function init({ outlet } = {}) {
     (outlet && outlet.querySelector(`#${id}`)) || document.getElementById(id);
   const show = (el, on = true) => el?.classList.toggle("hidden", !on);
 
-  // ----- helpers -----
-  const todayISO = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
-  };
-  const parseAmount = (s) => Number(String(s || "").replace(",", ".")) || 0;
-  // Use global Toast instead
   const toast = (msg, ok = true) =>
     ok ? Toast.success(msg) : Toast.error(msg);
 
-  $("tx-date") && ($("tx-date").value = todayISO());
+  $("tx-date") && ($("tx-date").value = ymd(new Date()));
 
   // ----- carregar listas base -----
   const [accRes, regRes, pmRes, stRes, ttRes] = await Promise.all([

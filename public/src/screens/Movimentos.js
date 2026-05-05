@@ -1,4 +1,4 @@
-import { money, ptDate } from "../lib/helpers.js";
+import { money, ptDate, ymd } from "../lib/helpers.js";
 import { repo } from "../lib/repo.js";
 import { loadTheme } from "../lib/theme.js";
 
@@ -419,7 +419,6 @@ export async function init(ctx = {}) {
     try {
       const today = new Date();
       const fmt = new Intl.DateTimeFormat("pt-PT").format;
-      const ymd = (d) => d.toISOString().slice(0, 10);
       const { data: { user } } = await sb.auth.getUser();
       const uid = user.id;
       const sumTxs = (txs) => (txs || []).reduce((a, t) => a + Number(t.amount || 0), 0);

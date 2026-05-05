@@ -121,7 +121,7 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
           password: pass,
           options: {
             data: { name: displayName },
-            emailRedirectTo: CONFIRM_URL,
+            redirectTo: CONFIRM_URL,
           },
         });
         if (error) throw error;

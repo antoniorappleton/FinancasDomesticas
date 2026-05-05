@@ -5,6 +5,8 @@ import { exportImportTemplate } from "./export-template.js";
 import { saveTheme as saveGlobalTheme, loadTheme, DEFAULT_THEME, applyTheme } from "../lib/theme.js";
 import { NotificationManager } from "../lib/notifications.js";
 import { Toast } from "../lib/ui.js";
+import { money, ymd, pad2, sum, loadScript, ensureChartStack, getJsPDF, toDataURL } from "../lib/helpers.js";
+import { validators } from "../lib/validators.js";
 
 export async function init({ sb, outlet } = {}) {
   // Import do gerador de template
@@ -52,63 +54,6 @@ export async function init({ sb, outlet } = {}) {
   const $ = (sel) =>
     (outlet && outlet.querySelector(sel)) || document.querySelector(sel);
 
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const ymd = (d) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  const money = (n) =>
-    "€ " +
-    Number(n || 0).toLocaleString("pt-PT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  const sum = (arr) => arr.reduce((a, b) => a + (Number(b) || 0), 0);
-
-  // carrega scripts externos 1x
-  async function loadScript(src) {
-    await new Promise((res, rej) => {
-      const s = document.createElement("script");
-      s.src = src;
-      s.onload = res;
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
-  async function ensureChartStack() {
-    if (!window.Chart) {
-      await loadScript(
-        "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js",
-      );
-    }
-    if (!window.ChartDataLabels && !window.__loadingCDL__) {
-      window.__loadingCDL__ = true;
-      try {
-        await loadScript(
-          "https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js",
-        );
-      } finally {
-        window.__loadingCDL__ = false;
-      }
-    }
-    // regista plugin se existir
-    if (window.Chart && window.ChartDataLabels && !window.__cdlRegistered__) {
-      window.Chart.register(window.ChartDataLabels);
-      window.__cdlRegistered__ = true;
-    }
-  }
-  async function getJsPDF() {
-    if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
-    try {
-      const mod =
-        await import("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.es.min.js");
-      return mod.jsPDF || window.jspdf?.jsPDF;
-    } catch {
-      await loadScript(
-        "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
-      );
-      return window.jspdf?.jsPDF;
-    }
-  }
-
   // =============== Tabs Navigation Logic =====================
   const tabBtns = outlet.querySelectorAll(".tab-btn");
   const tabContents = outlet.querySelectorAll(".tab-content");
@@ -130,57 +75,11 @@ export async function init({ sb, outlet } = {}) {
   });
 
   // ===== helpers de legenda/cores (para charts e PDF) =====
-  function palette(n) {
-    const base = [
-      "#0ea5e9",
-      "#22c55e",
-      "#f97316",
-      "#a78bfa",
-      "#ef4444",
-      "#14b8a6",
-      "#eab308",
-      "#06b6d4",
-      "#f472b6",
-      "#94a3b8",
-      "#10b981",
-      "#3b82f6",
-    ];
-    if (n <= base.length) return base.slice(0, n);
-    const out = [];
-    for (let i = 0; i < n; i++) out.push(base[i % base.length]);
-    return out;
-  }
-  function legendHTML(items) {
-    return (items || [])
-      .map(
-        (it) => `
-      <div class="rpt-legend__item">
-        <span class="rpt-legend__dot" style="background:${it.color}"></span>
-        <span style="flex:1">${it.label}</span>
-        <strong>${money(it.value)}</strong>
-        ${
-          typeof it.pct === "number"
-            ? `<span style="color:#64748b">&nbsp;(${(it.pct * 100).toFixed(
-                1,
-              )}%)</span>`
-            : ""
-        }
-      </div>`,
-      )
-      .join("");
-  }
+  // (removed duplicated palette)
+  // (removed duplicated legendHTML)
 
   // util: carrega imagem e devolve dataURL
-  async function toDataURL(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("IMG not found");
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.readAsDataURL(blob);
-    });
-  }
+  // (removed duplicated toDataURL)
 
   //==== Mini cards ocultos na dashboard =====//
   // ===== MINI-CARDS SHELF (sincroniza com localStorage que a Dashboard usa) =====
@@ -727,55 +626,77 @@ export async function init({ sb, outlet } = {}) {
     return res;
   }
 
-  // CSV Parser (Generic)
+  // CSV Parser (Generic with Header Detection)
   async function parseCSV(file) {
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter((l) => l.trim());
-    const res = [];
-    const sep = text.includes(";") ? ";" : ",";
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) throw new Error("Ficheiro CSV vazio ou inválido.");
 
-    lines.forEach((line) => {
-      if (line.length < 5) return;
-      const cols = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+      const res = [];
+      const sep = text.includes(";") ? ";" : ",";
 
-      const dateIdx = cols.findIndex((c) =>
-        /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(c),
-      );
-      if (dateIdx === -1) return;
+      // Header detection
+      const firstLine = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g, ""));
+      const normHeaders = firstLine.map(h => h.toLowerCase());
+      
+      const dateIdx = normHeaders.findIndex(h => h.includes("data") || h.includes("date"));
+      const amountIdx = normHeaders.findIndex(h => h.includes("valor") || h.includes("montante") || h.includes("quant") || h.includes("amount"));
+      const descIdx = normHeaders.findIndex(h => h.includes("descritivo") || h.includes("descricao") || h.includes("description") || h.includes("memo"));
 
-      const amountCols = cols.map((c, i) => {
-        if (i === dateIdx) return null;
-        const clean = c.replace(/[€\s]/g, "").replace(",", ".");
-        return !isNaN(Number(clean)) && c.length > 0 ? Number(clean) : null;
-      });
+      const startIdx = (dateIdx !== -1 || amountIdx !== -1) ? 1 : 0;
 
-      const validAmtIdx = amountCols.findIndex((v) => v !== null && v !== 0);
-      let amount = 0;
-      if (validAmtIdx !== -1) {
-        amount = amountCols[validAmtIdx];
-      } else {
-        return;
+      for (let i = startIdx; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.length < 5) continue;
+        const cols = line.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+
+        // Use detected indices or fallback to heuristic
+        let dIdx = dateIdx !== -1 ? dateIdx : cols.findIndex((c) => /^\d{2,4}[-/]\d{2}[-/]\d{2,4}$/.test(c));
+        if (dIdx === -1) continue;
+
+        let aIdx = amountIdx !== -1 ? amountIdx : -1;
+        if (aIdx === -1) {
+          // Heuristic for amount
+          const amountCols = cols.map((c, idx) => {
+            if (idx === dIdx) return null;
+            const clean = c.replace(/[€\s]/g, "").replace(",", ".");
+            return !isNaN(Number(clean)) && c.length > 0 ? Number(clean) : null;
+          });
+          aIdx = amountCols.findIndex((v) => v !== null && v !== 0);
+        }
+
+        if (aIdx === -1) continue;
+
+        let amount = Number(cols[aIdx].replace(/[€\s]/g, "").replace(",", "."));
+        if (isNaN(amount)) continue;
+
+        let desc = "";
+        if (descIdx !== -1 && cols[descIdx]) {
+          desc = cols[descIdx];
+        } else {
+          const strCols = cols.filter((c, idx) => idx !== dIdx && idx !== aIdx && c.length > 2);
+          desc = strCols.join(" ") || "Movimento Importado";
+        }
+
+        let dStr = cols[dIdx];
+        if (dStr.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
+          const [d, m, y] = dStr.split(/[-/]/);
+          dStr = `${y}-${m}-${d}`;
+        }
+
+        res.push({
+          date: dStr,
+          amount: amount,
+          description: desc,
+          selected: true,
+        });
       }
-
-      const strCols = cols.filter(
-        (c, i) => i !== dateIdx && i !== validAmtIdx && c.length > 2,
-      );
-      let desc = strCols.join(" ") || "Movimento Importado";
-
-      let dStr = cols[dateIdx];
-      if (dStr.match(/^\d{2}[-/]\d{2}[-/]\d{4}$/)) {
-        const [d, m, y] = dStr.split(/[-/]/);
-        dStr = `${y}-${m}-${d}`;
-      }
-
-      res.push({
-        date: dStr,
-        amount: amount,
-        description: desc,
-        selected: true,
-      });
-    });
-    return res;
+      return res;
+    } catch (e) {
+      console.error("CSV Parse Error:", e);
+      throw new Error("Erro ao ler CSV: " + e.message);
+    }
   }
 
   // === ACTIVO BANK PARSER HELPERS ===
@@ -3294,53 +3215,57 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   if (budTargetYear) budTargetYear.value = new Date().getFullYear() + 1;
 
   async function calculateBudget() {
-    const targetY = Number(
-      budTargetYear?.value || new Date().getFullYear() + 1,
-    );
-    const baseY = targetY - 1;
-    const titleEl = $("#bud-title");
-    if (titleEl) titleEl.textContent = `Orçamento de Estado ${targetY}`;
-
-    let expenses = [];
     try {
+      const targetY = Number(
+        budTargetYear?.value || new Date().getFullYear() + 1,
+      );
+      const baseY = targetY - 1;
+      const titleEl = $("#bud-title");
+      if (titleEl) titleEl.textContent = `Orçamento de Estado ${targetY}`;
+
+      let expenses = [];
       expenses = await repo.transactions.getFixedExpensesByYear(baseY);
+
+      if (!expenses || expenses.length === 0) {
+        throw new Error(`Não foram encontradas despesas fixas em ${baseY} para servir de base.`);
+      }
+
+      // Group by category
+      const cats = new Map();
+      let baseTotal = 0;
+
+      for (const t of expenses) {
+        const cid = t.category_id || "uncat";
+        const cname = t.categories?.name || "(Sem Categoria)";
+        const val = Number(t.amount || 0);
+
+        if (!cats.has(cid))
+          cats.set(cid, {
+            id: cid,
+            name: cname,
+            base: 0,
+            prop: 0,
+            locked: false,
+          });
+        const c = cats.get(cid);
+        c.base += val;
+        baseTotal += val;
+      }
+
+      // Initial Proposed = Base
+      for (const c of cats.values()) {
+        c.prop = c.base;
+      }
+
+      // Sort logic handled in render but convenient to have list
+      const rows = Array.from(cats.values());
+
+      renderBudgetTable(rows, baseTotal);
+      budOverlay?.classList.remove("hidden");
     } catch (e) {
-      alert("Erro a carregar despesas: " + e.message);
-      return;
+      console.error("Budget Calculation Error:", e);
+      alert("Erro ao calcular orçamento: " + e.message);
     }
-
-    // Group by category
-    const cats = new Map();
-    let baseTotal = 0;
-
-    for (const t of expenses) {
-      const cid = t.category_id || "uncat";
-      const cname = t.categories?.name || "(Sem Categoria)";
-      const val = Number(t.amount || 0);
-
-      if (!cats.has(cid))
-        cats.set(cid, {
-          id: cid,
-          name: cname,
-          base: 0,
-          prop: 0,
-          locked: false,
-        });
-      const c = cats.get(cid);
-      c.base += val;
-      baseTotal += val;
-    }
-
-    // Initial Proposed = Base
-    for (const c of cats.values()) {
-      c.prop = c.base;
-    }
-
-    // Sort logic handled in render but convenient to have list
-    const rows = Array.from(cats.values());
-
-    renderBudgetTable(rows, baseTotal);
-    budOverlay?.classList.remove("hidden");
   }
 
   function renderBudgetTable(rows, baseTotal) {

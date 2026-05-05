@@ -9,7 +9,7 @@ import {
   getHealthStatus,
 } from "../lib/healthMetrics.js";
 import { makeChart } from "../lib/chart-loader.js";
-import { money } from "../lib/helpers.js";
+import { money, ymd } from "../lib/helpers.js";
 import Guide from "../lib/guide.js";
 import { loadTheme } from "../lib/theme.js";
 
@@ -90,13 +90,6 @@ async function fetchLast12Months(sb) {
     const now = new Date();
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 1); // Start of next month
     const from = new Date(now.getFullYear() - 1, now.getMonth(), 1); // 12 months ago
-
-    const ymd = (d) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    };
 
     const fromStr = ymd(from);
     const toStr = ymd(to);

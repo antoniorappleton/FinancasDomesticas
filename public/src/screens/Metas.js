@@ -1,5 +1,5 @@
-// src/screens/Metas.js
 import { loadTheme } from "../lib/theme.js";
+import { money, pad2, ymd, monthKeysBetween } from "../lib/helpers.js";
 
 export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
@@ -16,15 +16,7 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // ========= helpers =========
-  const money = (n) =>
-    "€ " +
-    Number(n || 0).toLocaleString("pt-PT", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const ymd = (d) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  // Shared helpers imported
   const firstDay = (y, m) => `${y}-${pad2(m + 1)}-01`;
   const addMonths = (d, n) => {
     const x = new Date(d);
@@ -47,11 +39,17 @@ export async function init({ sb, outlet } = {}) {
   }
 
   // ========= categorias para selects =========
-  async function loadCategories(selectEls) {
-    const { data } = await sb
+  async function loadCategories(selectEls, kindFilter = null) {
+    let query = sb
       .from("categories")
-      .select("id,name,parent_id")
+      .select("id,name,parent_id,kind")
       .order("name", { ascending: true });
+    
+    if (kindFilter) {
+      query = query.eq("kind", kindFilter);
+    }
+
+    const { data } = await query;
     const opts =
       '<option value="">(sem categoria)</option>' +
       (data || [])
@@ -63,9 +61,23 @@ export async function init({ sb, outlet } = {}) {
   // ========= form create: alternância =========
   function refreshCreateForm() {
     const t = $("#obj-type")?.value || "budget_cap";
-    toggle($("#obj-cat-wrap"), t === "budget_cap");
+    // Now we show category wrap for both! But with different labels/filters
+    const catWrap = $("#obj-cat-wrap");
+    if (catWrap) {
+      catWrap.style.display = "block";
+      // Update text of the label (first child node is usually text)
+      const labelText = t === "savings_goal" ? "Categoria de Poupança (opcional)" : "Categoria (opcional)";
+      if (catWrap.childNodes[0]) {
+        catWrap.childNodes[0].textContent = labelText;
+      }
+    }
+
     toggle($("#obj-cap-wrap"), t === "budget_cap");
     toggle($("#obj-target-wrap"), t === "savings_goal");
+
+    // Load compatible categories
+    const kind = t === "savings_goal" ? "savings" : "expense";
+    loadCategories([$("#obj-category")], kind);
   }
   $("#obj-type")?.addEventListener("change", refreshCreateForm);
   window.__refreshObjForm = refreshCreateForm; // usado pelas sugestões
@@ -164,20 +176,6 @@ export async function init({ sb, outlet } = {}) {
     return { total, byCat };
   }
 
-  function monthKeysBetween(fromISO, toISO) {
-    const out = [];
-    const [y1, m1] = fromISO.split("-").map(Number);
-    const [y2, m2] = toISO.split("-").map(Number);
-    for (let y = y1, m = m1; y < y2 || (y === y2 && m <= m2); ) {
-      out.push(`${y}-${pad2(m)}`);
-      m++;
-      if (m === 13) {
-        m = 1;
-        y++;
-      }
-    }
-    return out;
-  }
 
   async function listPortfolios() {
     const uid = await getUserId();
@@ -325,12 +323,19 @@ export async function init({ sb, outlet } = {}) {
     const SAV = await getTypeId("SAVINGS");
     const start = o.start_from ? String(o.start_from).slice(0, 10) : "1970-01-01";
     const end = o.due_date || ymd(new Date());
-    const { data, error } = await sb
+    
+    let query = sb
       .from("transactions")
       .select("amount")
       .eq("type_id", SAV)
       .gte("date", start)
       .lte("date", end);
+
+    if (o.category_id) {
+      query = query.eq("category_id", o.category_id);
+    }
+
+    const { data, error } = await query;
     if (error) return Number(o.current_amount || 0);
     return (data || []).reduce((s, r) => s + (Number(r.amount) || 0), 0);
   }
@@ -714,16 +719,27 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
   async function loadEdit(id) {
     const { data: o, error } = await sb.from("objectives").select("*").eq("id", id).single();
     if (error || !o) return;
-    $("#ed-id").value = o.id;
-    $("#ed-title").value = o.title || "";
-    $("#ed-type").value = o.type || "budget_cap";
-    $("#ed-category").value = o.category_id || "";
-    $("#ed-monthly-cap").value = o.monthly_cap || "";
-    $("#ed-target").value = o.target_amount || "";
-    $("#ed-current").value = o.current_amount || "";
-    $("#ed-due").value = o.due_date || "";
-    $("#ed-active").value = String(!!o.is_active);
-    $("#ed-notes").value = o.notes || "";
+    
+    const setVal = (id, val) => {
+      const el = $(id);
+      if (el) el.value = val;
+    };
+
+    setVal("ed-id", o.id);
+    setVal("ed-title", o.title || "");
+    setVal("ed-type", o.type || "budget_cap");
+    
+    // Load categories for the edit modal based on type
+    const kind = o.type === "savings_goal" ? "savings" : "expense";
+    await loadCategories([$("#ed-category")], kind);
+
+    setVal("ed-category", o.category_id || "");
+    setVal("ed-monthly-cap", o.monthly_cap || "");
+    setVal("ed-target", o.target_amount || "");
+    setVal("ed-current", o.current_amount || "");
+    setVal("ed-due", o.due_date || "");
+    setVal("ed-active", o.is_active ? "true" : "false");
+    setVal("ed-notes", o.notes || "");
   }
 
   $("#ed-save")?.addEventListener("click", async () => {
