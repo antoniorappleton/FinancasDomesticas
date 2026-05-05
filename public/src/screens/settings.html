@@ -36,6 +36,30 @@
 
       <p class="strat-help">Define os teus valores médios para calcularmos a tua capacidade.</p>
       
+      <!-- DIAGNÓSTICO AUTOMÁTICO (via healthMetrics) -->
+      <div class="diag-grid">
+        <div class="diag-item">
+          <span class="diag-label">Taxa de Poupança</span>
+          <span id="diag-savings-rate" class="diag-val">—</span>
+        </div>
+        <div class="diag-item">
+          <span class="diag-label">Esforço Fixo</span>
+          <span id="diag-effort-fixed" class="diag-val">—</span>
+        </div>
+        <div class="diag-item">
+          <span class="diag-label">Esforço Total</span>
+          <span id="diag-effort-total" class="diag-val">—</span>
+        </div>
+        <div class="diag-item">
+          <span class="diag-label">Liquidez Acumulada</span>
+          <span id="diag-liquidity" class="diag-val">—</span>
+        </div>
+        <div class="diag-item">
+          <span class="diag-label">Cobertura Emergência</span>
+          <span id="diag-emergency-cover" class="diag-val">—</span>
+        </div>
+      </div>
+
       <div class="grid grid-responsive-2" style="gap:16px; margin-top:16px;">
         <label>
           Rendimento Mensal Médio <small class="muted">(média 4 meses)</small>
@@ -360,6 +384,13 @@
   .suggested-info strong { display: block; font-size: 14px; color: #1e293b; }
   .suggested-info span { font-size: 11px; color: #64748b; }
   .suggested-val { text-align: right; font-weight: 700; color: var(--primary); }
+  .text-success { color: #10b981 !important; }
+
+  /* DIAGNOSTIC GRID */
+  .diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 16px 0; }
+  .diag-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .diag-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .diag-val { font-size: 16px; font-weight: 700; color: #1e293b; }
 
   /* HELP GUIDE */
   .strat-guide {
