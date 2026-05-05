@@ -3844,30 +3844,42 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
   if (visuals) applyTheme(visuals);
   // =============== Alocação de Rendimentos Logic =============
   let allocationChart = null;
-  // ================= ESTRATÉGIA FINANCEIRA (WIZARD) ==================
-  function initStrategyLogic() {
-    const incomeInp     = document.getElementById("average-income");
-    const expenseInp    = document.getElementById("essential-expenses");
-    const chips         = document.querySelectorAll("#emergency-target-group .chip");
-    const warningEl     = document.getElementById("allocation-warning");
-    const savingsRateEl = document.getElementById("diag-savings-rate");
-    const effortFixEl   = document.getElementById("diag-effort-fixed");
-    const effortTotEl   = document.getElementById("diag-effort-total");
-    const liquidityEl   = document.getElementById("diag-liquidity");
-    const emergCovEl    = document.getElementById("diag-emergency-cover");
+  // Guard para evitar listeners duplicados
+  let _strategyInitialized = false;
+
+  async function initStrategyLogic() {
+    // Usar outlet.querySelector para garantir que os elementos estão no DOM correto
+    const q = (sel) => outlet.querySelector(sel);
+
+    const incomeInp     = q("#average-income");
+    const expenseInp    = q("#essential-expenses");
+    const chips         = outlet.querySelectorAll("#emergency-target-group .chip");
+    const warningEl     = q("#allocation-warning");
+    const savingsRateEl = q("#diag-savings-rate");
+    const effortFixEl   = q("#diag-effort-fixed");
+    const effortTotEl   = q("#diag-effort-total");
+    const liquidityEl   = q("#diag-liquidity");
+    const emergCovEl    = q("#diag-emergency-cover");
+
+    // Se os elementos não existem, o HTML ainda não foi carregado
+    if (!incomeInp) {
+      console.warn("[Strategy] DOM não pronto, retry em 300ms");
+      setTimeout(initStrategyLogic, 300);
+      return;
+    }
 
     const ranges = {
-      expenses:   document.getElementById("range-expenses"),
-      savings:    document.getElementById("range-savings"),
-      investment: document.getElementById("range-investment"),
-      free:       document.getElementById("range-free")
+      expenses:   q("#range-expenses"),
+      savings:    q("#range-savings"),
+      investment: q("#range-investment"),
+      free:       q("#range-free")
     };
     const displays = {
-      expenses:       document.getElementById("val-pct-expenses"),
-      savings:        document.getElementById("val-pct-savings"),
-      investment:     document.getElementById("val-pct-investment"),
-      free:           document.getElementById("val-pct-free"),
-      emergencyTotal: document.getElementById("val-emergency-total")
+      expenses:       q("#val-pct-expenses"),
+      savings:        q("#val-pct-savings"),
+      investment:     q("#val-pct-investment"),
+      free:           q("#val-pct-free"),
+      emergencyTotal: q("#val-emergency-total")
     };
 
     let s = {
@@ -3877,10 +3889,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     let stratChart = null;
     let _healthMetrics = null;
 
-    // ── Render doughnut ──────────────────────────────────────────────
+    // ── Gráfico Doughnut ───────────────────────────────────────────────
     async function renderPie() {
       await ensureChartStack();
-      const canvas = document.getElementById("alc-pie-chart");
+      const canvas = q("#alc-pie-chart");
       if (!canvas) return;
       Chart.getChart(canvas)?.destroy();
       stratChart = new Chart(canvas, {
@@ -3894,21 +3906,21 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       });
     }
 
-    // ── Plano de Ação ────────────────────────────────────────────────
+    // ── Plano de Ação ──────────────────────────────────────────────────
     function renderSuggestedPlan() {
-      const list = document.getElementById("suggested-goals-list");
+      const list = q("#suggested-goals-list");
       if (!list) return;
       if (s.income <= 0) {
         list.innerHTML = `<p class="muted">Define o teu rendimento para veres as sugestões.</p>`;
         return;
       }
-      const mSavings    = s.income * (s.pctSavings / 100);
-      const mInvest     = s.income * (s.pctInvestment / 100);
-      const mFree       = s.income * (s.pctFree / 100);
-      const mExpenses   = s.income * (s.pctExpenses / 100);
-      const emergGoal   = s.fixedExpenses * s.emergencyMonths;
-      const emCoverage  = _healthMetrics?.emergencyFund?.currentCoverage ?? 0;
-      const emNeeded    = Math.max(0, emergGoal - (_healthMetrics?.liquidityAccumulated ?? 0));
+      const mSavings  = s.income * (s.pctSavings    / 100);
+      const mInvest   = s.income * (s.pctInvestment / 100);
+      const mFree     = s.income * (s.pctFree       / 100);
+      const mExpenses = s.income * (s.pctExpenses   / 100);
+      const emergGoal = s.fixedExpenses * s.emergencyMonths;
+      const emCov     = _healthMetrics?.emergencyFund?.currentCoverage ?? 0;
+      const emNeeded  = Math.max(0, emergGoal - (_healthMetrics?.liquidityAccumulated ?? 0));
 
       const item = (icon, title, sub, val, cls="") => `
         <div class="suggested-item">
@@ -3918,26 +3930,24 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         </div>`;
 
       list.innerHTML =
-        item("savings",        "Retenção Mensal",          `${s.pctSavings}% do rendimento a separar`,      money(mSavings)) +
-        item("trending_up",    "Investimento Mensal",      `${s.pctInvestment}% para crescer a longo prazo`, money(mInvest)) +
-        item("wallet",         "Despesas (orçamento)",     `Limite de ${s.pctExpenses}% do rendimento`,     money(mExpenses)) +
-        item("beach_access",   "Margem Livre",             `${s.pctFree}% sem culpa`,                       money(mFree)) +
+        item("savings",        "Retenção Mensal",           `${s.pctSavings}% do rendimento`,           money(mSavings)) +
+        item("trending_up",    "Investimento Mensal",       `${s.pctInvestment}% a crescer`,            money(mInvest)) +
+        item("wallet",         "Orçamento de Despesas",     `Limite de ${s.pctExpenses}%`,              money(mExpenses)) +
+        item("beach_access",   "Margem Livre",              `${s.pctFree}% sem culpa`,                  money(mFree)) +
         item("emergency_home", "Fundo de Emergência (alvo)",
-          `Cobertura atual: ${emCoverage.toFixed(1)} meses | Alvo: ${s.emergencyMonths} meses`,
+          `Atual: ${emCov.toFixed(1)} meses | Alvo: ${s.emergencyMonths} meses`,
           emNeeded > 0 ? `Faltam ${money(emNeeded)}` : "✅ Atingido",
           emNeeded > 0 ? "" : "text-success");
     }
 
-    // ── Cálculos centrais ────────────────────────────────────────────
+    // ── Recalcular ─────────────────────────────────────────────────────
     function recalculate() {
       s.income        = Number(incomeInp?.value || 0);
       s.fixedExpenses = Number(expenseInp?.value || 0);
 
-      // Fundo emergência
       const emergTotal = s.fixedExpenses * s.emergencyMonths;
       if (displays.emergencyTotal) displays.emergencyTotal.textContent = money(emergTotal);
 
-      // Warning alocação > 100%
       const total = s.pctExpenses + s.pctSavings + s.pctInvestment + s.pctFree;
       warningEl?.classList.toggle("hidden", total <= 100);
 
@@ -3945,164 +3955,190 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       renderSuggestedPlan();
     }
 
-    // ── Diagnóstico de Saúde (healthMetrics) ────────────────────────
+    // ── Diagnóstico de Saúde ───────────────────────────────────────────
     function renderDiagnostics(metrics, status) {
       if (!metrics) return;
-      const badge = (val, st) => {
-        const map = { excellent:"#10b981", healthy:"#3b82f6", good:"#3b82f6",
-                      risk:"#f59e0b", poor:"#f59e0b", critical:"#ef4444", concerning:"#f59e0b" };
-        return `<span style="color:${map[st]||"#64748b"};font-weight:700">${val}</span>`;
+      const colorMap = {
+        excellent:"#10b981", healthy:"#3b82f6", good:"#3b82f6",
+        risk:"#f59e0b", poor:"#f59e0b", critical:"#ef4444", concerning:"#f59e0b"
       };
-      if (savingsRateEl) savingsRateEl.innerHTML = badge(`${metrics.savingsRate}%`, status.savingsRateStatus);
-      if (effortFixEl)   effortFixEl.innerHTML   = badge(`${metrics.effortFixed}%`, status.effortFixedStatus);
-      if (effortTotEl)   effortTotEl.innerHTML   = badge(`${metrics.effortTotal}%`, status.effortTotalStatus);
-      if (liquidityEl)   liquidityEl.innerHTML   = badge(money(metrics.liquidityAccumulated), status.liquidityStatus);
-      if (emergCovEl)    emergCovEl.innerHTML     = badge(`${metrics.emergencyFund.currentCoverage} meses`, status.emergencyFundStatus);
+      const badge = (val, st) =>
+        `<span style="color:${colorMap[st] || "#64748b"};font-weight:700">${val}</span>`;
+
+      if (savingsRateEl) savingsRateEl.innerHTML = badge(`${metrics.savingsRate}%`,              status.savingsRateStatus);
+      if (effortFixEl)   effortFixEl.innerHTML   = badge(`${metrics.effortFixed}%`,             status.effortFixedStatus);
+      if (effortTotEl)   effortTotEl.innerHTML   = badge(`${metrics.effortTotal}%`,             status.effortTotalStatus);
+      if (liquidityEl)   liquidityEl.innerHTML   = badge(money(metrics.liquidityAccumulated),   status.liquidityStatus);
+      if (emergCovEl)    emergCovEl.innerHTML     = badge(
+        `${metrics.emergencyFund?.currentCoverage ?? 0} meses`, status.emergencyFundStatus);
     }
 
-    // ── Listeners ────────────────────────────────────────────────────
-    [incomeInp, expenseInp].forEach(inp => inp?.addEventListener("input", recalculate));
+    // ── Listeners (registados apenas uma vez) ──────────────────────────
+    if (!_strategyInitialized) {
+      _strategyInitialized = true;
 
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
-        chips.forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        s.emergencyMonths = Number(chip.dataset.months);
-        recalculate();
+      [incomeInp, expenseInp].forEach(inp => inp?.addEventListener("input", recalculate));
+
+      chips.forEach(chip => {
+        chip.addEventListener("click", () => {
+          chips.forEach(c => c.classList.remove("active"));
+          chip.classList.add("active");
+          s.emergencyMonths = Number(chip.dataset.months);
+          recalculate();
+        });
       });
-    });
 
-    Object.keys(ranges).forEach(key => {
-      ranges[key]?.addEventListener("input", e => {
-        const val = Number(e.target.value);
-        s["pct" + key[0].toUpperCase() + key.slice(1)] = val;
-        if (displays[key]) displays[key].textContent = val + "%";
-        recalculate();
+      Object.keys(ranges).forEach(key => {
+        ranges[key]?.addEventListener("input", e => {
+          const val = Number(e.target.value);
+          s["pct" + key[0].toUpperCase() + key.slice(1)] = val;
+          if (displays[key]) displays[key].textContent = val + "%";
+          recalculate();
+        });
       });
-    });
 
-    // ── Help toggle ──────────────────────────────────────────────────
-    document.getElementById("btn-help-strat")?.addEventListener("click", () => {
-      document.getElementById("strat-guide")?.classList.toggle("hidden");
-    });
+      // Botão de Ajuda
+      q("#btn-help-strat")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        q("#strat-guide")?.classList.toggle("hidden");
+      });
 
-    // ── Guardar no Supabase ──────────────────────────────────────────
-    document.getElementById("btn-save-strategy")?.addEventListener("click", async () => {
-      try {
-        Toast.info("A guardar estratégia...");
-        const uid = (await sb.auth.getUser()).data?.user?.id;
-        if (!uid) throw new Error("Sessão inválida.");
-        const { error } = await sb.from("user_settings").upsert({
-          user_id:              uid,
-          avg_monthly_income:   s.income,
-          avg_fixed_expenses:   s.fixedExpenses,
-          emergency_months:     s.emergencyMonths,
-          pct_expenses:         s.pctExpenses,
-          savings_fund_pct:     s.pctSavings,
-          investment_fund_pct:  s.pctInvestment,
-          pct_free:             s.pctFree,
-          updated_at:           new Date().toISOString()
-        }, { onConflict: "user_id" });
-        if (error) throw error;
-        Toast.success("Estratégia guardada!");
-      } catch (err) {
-        console.error(err);
-        Toast.error("Erro ao guardar: " + err.message);
+      // Guardar no Supabase
+      q("#btn-save-strategy")?.addEventListener("click", async () => {
+        try {
+          Toast.info("A guardar estratégia...");
+          const uid = await getUserId();
+          if (!uid) throw new Error("Sessão inválida.");
+          const { error } = await sb.from("user_settings").upsert({
+            user_id:             uid,
+            avg_monthly_income:  s.income,
+            avg_fixed_expenses:  s.fixedExpenses,
+            emergency_months:    s.emergencyMonths,
+            pct_expenses:        s.pctExpenses,
+            savings_fund_pct:    s.pctSavings,
+            investment_fund_pct: s.pctInvestment,
+            pct_free:            s.pctFree,
+            updated_at:          new Date().toISOString()
+          }, { onConflict: "user_id" });
+          if (error) throw error;
+          Toast.success("Estratégia guardada!");
+        } catch (err) {
+          console.error("[Strategy] Save error:", err);
+          Toast.error("Erro ao guardar: " + err.message);
+        }
+      });
+    }
+
+    // ── Carga de dados (Supabase + Médias dos últimos 4 meses) ─────────
+    try {
+      const uid = await getUserId();
+
+      // 1. Tentar carregar estratégia previamente guardada
+      if (uid) {
+        const { data: saved, error: loadErr } = await sb.from("user_settings")
+          .select("avg_monthly_income,avg_fixed_expenses,emergency_months,pct_expenses,savings_fund_pct,investment_fund_pct,pct_free")
+          .eq("user_id", uid)
+          .maybeSingle();
+
+        if (loadErr) console.warn("[Strategy] Load error:", loadErr.message);
+
+        if (saved) {
+          s.income          = Number(saved.avg_monthly_income)  || 0;
+          s.fixedExpenses   = Number(saved.avg_fixed_expenses)  || 0;
+          s.emergencyMonths = Number(saved.emergency_months)    || 6;
+          s.pctExpenses     = Number(saved.pct_expenses)        || 50;
+          s.pctSavings      = Number(saved.savings_fund_pct)    || 20;
+          s.pctInvestment   = Number(saved.investment_fund_pct) || 20;
+          s.pctFree         = Number(saved.pct_free)            || 10;
+        }
       }
-    });
 
-    // ── Carga Inicial: Supabase + Médias + healthMetrics ─────────────
-    (async () => {
-      try {
-        const uid = (await sb.auth.getUser()).data?.user?.id;
+      // 2. Se rendimento/despesas ainda são 0, calcular médias dos últimos 4 meses
+      if (s.income === 0 || s.fixedExpenses === 0) {
+        const fourAgo = new Date();
+        fourAgo.setMonth(fourAgo.getMonth() - 4);
+        const dateStr = fourAgo.toISOString().slice(0, 10);
 
-        // 1. Carregar estratégia guardada
-        if (uid) {
-          const { data: saved } = await sb.from("user_settings")
-            .select("avg_monthly_income,avg_fixed_expenses,emergency_months,pct_expenses,savings_fund_pct,investment_fund_pct,pct_free")
-            .eq("user_id", uid).maybeSingle();
+        const { data: mvs, error: mvsErr } = await sb
+          .from("movimentos")
+          .select("amount,type")
+          .gte("date", dateStr);
 
-          if (saved) {
-            s.income          = saved.avg_monthly_income  ?? s.income;
-            s.fixedExpenses   = saved.avg_fixed_expenses  ?? s.fixedExpenses;
-            s.emergencyMonths = saved.emergency_months    ?? s.emergencyMonths;
-            s.pctExpenses     = saved.pct_expenses        ?? s.pctExpenses;
-            s.pctSavings      = saved.savings_fund_pct    ?? s.pctSavings;
-            s.pctInvestment   = saved.investment_fund_pct ?? s.pctInvestment;
-            s.pctFree         = saved.pct_free            ?? s.pctFree;
-          }
+        if (mvsErr) console.warn("[Strategy] Movimentos error:", mvsErr.message);
+
+        if (mvs?.length) {
+          const incMvs = mvs.filter(m => m.type === "INCOME");
+          const expMvs = mvs.filter(m => m.type === "EXPENSE");
+          const totalInc = incMvs.reduce((a, m) => a + Number(m.amount), 0);
+          const totalExp = expMvs.reduce((a, m) => a + Number(m.amount), 0);
+          // Dividir por número real de meses com registos (máx 4)
+          const nMonths = Math.min(4, new Set(mvs.map(m => m.date?.slice(0,7))).size) || 4;
+          if (s.income === 0)        s.income        = totalInc / nMonths;
+          if (s.fixedExpenses === 0) s.fixedExpenses = totalExp / nMonths;
         }
+      }
 
-        // 2. Se não há dados guardados, calcular médias dos últimos 4 meses
-        if (s.income === 0 || s.fixedExpenses === 0) {
-          const fourAgo = new Date();
-          fourAgo.setMonth(fourAgo.getMonth() - 4);
-          const { data: mvs } = await sb.from("movimentos")
-            .select("amount,type")
-            .gte("date", fourAgo.toISOString().slice(0, 10));
+      // Preencher inputs
+      if (incomeInp)  incomeInp.value  = s.income.toFixed(2);
+      if (expenseInp) expenseInp.value = s.fixedExpenses.toFixed(2);
 
-          if (mvs?.length) {
-            const totalInc = mvs.filter(m => m.type === "INCOME").reduce((a, m) => a + m.amount, 0);
-            const totalExp = mvs.filter(m => m.type === "EXPENSE").reduce((a, m) => a + m.amount, 0);
-            if (s.income === 0)        s.income        = totalInc / 4;
-            if (s.fixedExpenses === 0) s.fixedExpenses = totalExp / 4;
-          }
-        }
+      // Sincronizar sliders
+      Object.keys(ranges).forEach(key => {
+        const prop = "pct" + key[0].toUpperCase() + key.slice(1);
+        if (ranges[key])  ranges[key].value              = s[prop];
+        if (displays[key]) displays[key].textContent     = s[prop] + "%";
+      });
 
-        // Preencher campos
-        if (incomeInp)  incomeInp.value  = s.income.toFixed(2);
-        if (expenseInp) expenseInp.value = s.fixedExpenses.toFixed(2);
+      // Sincronizar chip ativo
+      chips.forEach(c =>
+        c.classList.toggle("active", Number(c.dataset.months) === s.emergencyMonths)
+      );
 
-        // Sincronizar sliders e labels
-        Object.keys(ranges).forEach(key => {
-          const prop = "pct" + key[0].toUpperCase() + key.slice(1);
-          if (ranges[key]) ranges[key].value = s[prop];
-          if (displays[key]) displays[key].textContent = s[prop] + "%";
+      // 3. Calcular healthMetrics com os últimos 6 meses
+      const sixAgo = new Date();
+      sixAgo.setMonth(sixAgo.getMonth() - 6);
+      const { data: allMvs, error: allErr } = await sb
+        .from("movimentos")
+        .select("amount,type,date")
+        .gte("date", sixAgo.toISOString().slice(0, 10))
+        .order("date", { ascending: true });
+
+      if (allErr) console.warn("[Strategy] HealthMetrics fetch error:", allErr.message);
+
+      if (allMvs?.length) {
+        const byMonth = {};
+        allMvs.forEach(m => {
+          const mo = m.date.slice(0, 7);
+          if (!byMonth[mo]) byMonth[mo] = { month: mo, income: 0, expense: 0, savings: 0, fixed: 0, variable: 0 };
+          const amt = Number(m.amount);
+          if (m.type === "INCOME")  byMonth[mo].income  += amt;
+          if (m.type === "EXPENSE") { byMonth[mo].expense += amt; byMonth[mo].fixed += amt; }
+          if (m.type === "SAVINGS") byMonth[mo].savings  += amt;
         });
 
-        // Chip do fundo de emergência
-        chips.forEach(c => {
-          c.classList.toggle("active", Number(c.dataset.months) === s.emergencyMonths);
-        });
+        const monthlyData = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
+        // net = income - expense - savings (expense e savings são positivos aqui)
+        monthlyData.forEach(m => { m.net = m.income - m.expense - m.savings; });
 
-        // 3. Calcular healthMetrics (últimos 6 meses por mês)
-        const sixAgo = new Date();
-        sixAgo.setMonth(sixAgo.getMonth() - 6);
-        const { data: allMvs } = await sb.from("movimentos")
-          .select("amount,type,date")
-          .gte("date", sixAgo.toISOString().slice(0, 10))
-          .order("date", { ascending: true });
-
-        if (allMvs?.length) {
-          // Agrupar por mês
-          const byMonth = {};
-          allMvs.forEach(m => {
-            const mo = m.date.slice(0, 7);
-            byMonth[mo] ||= { month: mo, income: 0, expense: 0, savings: 0, fixed: 0, variable: 0 };
-            if (m.type === "INCOME")  byMonth[mo].income  += m.amount;
-            if (m.type === "EXPENSE") byMonth[mo].expense -= m.amount;
-            if (m.type === "SAVINGS") byMonth[mo].savings -= m.amount;
-          });
-          const monthlyData = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
-          monthlyData.forEach(m => { m.net = m.income + m.expense + m.savings; m.fixed = m.expense; });
-
-          _healthMetrics = calculateHealthMetrics(monthlyData, {});
-          const status   = getHealthStatus(_healthMetrics);
-          renderDiagnostics(_healthMetrics, status);
-        }
-
-        recalculate();
-      } catch (err) {
-        console.error("Erro ao inicializar estratégia:", err);
-        recalculate();
+        _healthMetrics = calculateHealthMetrics(monthlyData, {});
+        const status   = getHealthStatus(_healthMetrics);
+        renderDiagnostics(_healthMetrics, status);
       }
-    })();
+
+    } catch (err) {
+      console.error("[Strategy] Init error:", err);
+    }
+
+    // Sempre recalcular no fim
+    recalculate();
   }
 
-  // Inicializa a tab plano por defeito
-  setTimeout(() => initStrategyLogic(), 150);
+  // Inicializa ao carregar a tab plano
+  setTimeout(initStrategyLogic, 200);
 
-  async function initIncomeAllocation() {
+
+
+
     const avgIncomeEl = $("#alc-avg-income");
     const totalAllocatedEl = $("#alc-total-allocated");
     const warningEl = $("#alc-warning");
