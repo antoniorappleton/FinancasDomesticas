@@ -40,7 +40,7 @@ async function renderSmartAdvisor(outlet) {
     const { averages, strategy } = profile;
     
     // Só mostramos se houver liquidez média positiva e alguma estratégia definida
-    if (averages.net <= 0 || (strategy.emergency === 0 && strategy.investment === 0 && strategy.savings === 0)) {
+    if (averages.net <= 0 || (strategy.expenses === 0 && strategy.savings === 0 && strategy.investment === 0 && strategy.free === 0)) {
       sec.style.display = "none";
       return;
     }
@@ -50,9 +50,10 @@ async function renderSmartAdvisor(outlet) {
     let html = `Com base na sua média líquida de <strong>${money(averages.net)}</strong> (últimos ${averages.period} meses) e na sua estratégia definida:<br><br>`;
     
     const parts = [];
-    if (strategy.emergency > 0) parts.push(`• <strong>${money(allocations.emergency)}</strong> para o seu Fundo de Emergência (${strategy.emergency}%)`);
+    if (strategy.expenses > 0) parts.push(`• <strong>${money(allocations.expenses)}</strong> para Despesas Essenciais (${strategy.expenses}%)`);
+    if (strategy.savings > 0) parts.push(`• <strong>${money(allocations.savings)}</strong> para Poupanças/Metas (${strategy.savings}%)`);
     if (strategy.investment > 0) parts.push(`• <strong>${money(allocations.investment)}</strong> para Investimentos (${strategy.investment}%)`);
-    if (strategy.savings > 0) parts.push(`• <strong>${money(allocations.savings)}</strong> para Poupanças (${strategy.savings}%)`);
+    if (strategy.free > 0) parts.push(`• <strong>${money(allocations.free)}</strong> para Margem Livre (${strategy.free}%)`);
 
     html += parts.join("<br>");
     html += `<br><br><span style="font-size: 0.85em; opacity: 0.8;">Este conselho é atualizado automaticamente com base no seu histórico real.</span>`;

@@ -637,11 +637,12 @@ async function getFinancialProfile() {
     avgLiquidity = (totalIncome + totalExpense) / history.length;
   }
 
-  // 3. Allocation Strategy
+  // 3. Allocation Strategy (Updated to 4-pillar wizard structure)
   const strategy = {
-    emergency: settings.emergency_fund_pct || 0,
+    expenses: settings.pct_expenses || 0,
+    savings: settings.savings_fund_pct || 0,
     investment: settings.investment_fund_pct || 0,
-    savings: settings.savings_fund_pct || 0
+    free: settings.pct_free || 0
   };
 
   return {
@@ -657,10 +658,11 @@ async function getFinancialProfile() {
     calculateAllocation: (baseAmount) => {
       const amount = baseAmount !== undefined ? baseAmount : Math.max(0, avgLiquidity);
       return {
-        emergency: amount * (strategy.emergency / 100),
-        investment: amount * (strategy.investment / 100),
+        expenses: amount * (strategy.expenses / 100),
         savings: amount * (strategy.savings / 100),
-        total: amount * ((strategy.emergency + strategy.investment + strategy.savings) / 100)
+        investment: amount * (strategy.investment / 100),
+        free: amount * (strategy.free / 100),
+        total: amount * ((strategy.expenses + strategy.savings + strategy.investment + strategy.free) / 100)
       };
     }
   };

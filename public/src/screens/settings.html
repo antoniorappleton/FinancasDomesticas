@@ -969,68 +969,6 @@
   }
   </style>
 
-  <!-- ===== ALOCAÇÃO DE RENDIMENTOS (NOVO) ===== -->
-  <section class="card">
-    <h2 class="section-title">Alocação de Rendimentos</h2>
-    <p class="row-note">Defina a distribuição mensal baseada na média das receitas dos últimos 4 meses.</p>
-
-    <div class="card soft" style="margin-top:16px; padding:20px; background:rgba(var(--primary-rgb), 0.05); border:1px solid var(--border); border-radius:16px;">
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:20px; margin-bottom:20px;">
-        <div style="text-align:center; padding:12px; background:var(--ui-card-bg); border-radius:12px; border:1px solid var(--border);">
-          <div class="row-note" style="margin-bottom:4px">Média Líquida (4m)</div>
-          <strong id="alc-avg-income" style="font-size:1.2rem; color:var(--income)">€ 0,00</strong>
-        </div>
-        <div style="text-align:center; padding:12px; background:var(--ui-card-bg); border-radius:12px; border:1px solid var(--border);">
-          <div class="row-note" style="margin-bottom:4px">Total Alocado</div>
-          <strong id="alc-total-allocated" style="font-size:1.2rem; color:var(--primary)">0%</strong>
-        </div>
-      </div>
-
-      <div class="grid grid-responsive-2" style="gap:24px">
-        <div style="display:grid; gap:16px">
-          <label style="margin:0">
-            <div style="display:flex; justify-content:space-between">
-              <span>Fundo de Emergência (%)</span>
-              <span id="alc-emergency-val" style="font-weight:700">0%</span>
-            </div>
-            <input type="range" id="alc-emergency-pct" min="0" max="100" step="1" value="0" style="width:100%" />
-            <div id="alc-emergency-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--income)">€ 0,00</div>
-          </label>
-
-          <label style="margin:0">
-            <div style="display:flex; justify-content:space-between">
-              <span>Fundo de Investimento (%)</span>
-              <span id="alc-investment-val" style="font-weight:700">0%</span>
-            </div>
-            <input type="range" id="alc-investment-pct" min="0" max="100" step="1" value="0" style="width:100%" />
-            <div id="alc-investment-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--savings)">€ 0,00</div>
-          </label>
-
-          <label style="margin:0">
-            <div style="display:flex; justify-content:space-between">
-              <span>Fundo de Poupança (%)</span>
-              <span id="alc-savings-val" style="font-weight:700">0%</span>
-            </div>
-            <input type="range" id="alc-savings-pct" min="0" max="100" step="1" value="0" style="width:100%" />
-            <div id="alc-savings-euro" class="row-note" style="text-align:right; font-weight:600; color:var(--blue-500)">€ 0,00</div>
-          </label>
-        </div>
-
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; background:var(--ui-card-bg); border-radius:12px; padding:20px; border:1px solid var(--border);">
-          <div id="alc-chart-container" style="width:180px; height:180px; position:relative;">
-             <canvas id="alc-pie-chart"></canvas>
-          </div>
-          <div id="alc-warning" class="row-note" style="margin-top:12px; color:var(--expense); font-weight:700; text-align:center; display:none;">
-            ⚠️ O total excede 100%!
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:flex-end; margin-top:20px">
-        <button id="alc-save" class="btn btn--primary">Guardar Alocação</button>
-      </div>
-    </div>
-  </section>
 
   <!-- ===== ORÇAMENTO DE ESTADO (4º) ===== -->
   <section class="card">
