@@ -1858,6 +1858,8 @@ export async function init({ sb, outlet } = {}) {
   let _incomeCatPDF = [];
   let _expenseCatPDF = [];
   let _regularityAggPDF = [];
+  let _strategyPDF = null;
+  let _objectivesPDF = [];
 
   function syncInsideFromOutsideAndBuild() {
     $("#rpt-type-inside").value = $("#rpt-type").value;
@@ -1936,6 +1938,7 @@ export async function init({ sb, outlet } = {}) {
     if (buildReport._busy) return;
     buildReport._busy = true;
     try {
+      const uid = await getUserId();
       const refreshBtn = $("#rpt-refresh-inside");
       const spinIcon = refreshBtn?.querySelector(".material-symbols-outlined");
       if (refreshBtn) refreshBtn.style.opacity = "0.5";
@@ -2037,6 +2040,62 @@ export async function init({ sb, outlet } = {}) {
           page++;
         }
         rows = fetchedRows;
+
+        // 3. Fetch Strategy & Objectives for PDF
+        const { data: strat } = await sb.from("user_settings").select("*").eq("user_id", uid).maybeSingle();
+        _strategyPDF = strat;
+
+        if (strat) {
+          const { data: objs } = await sb.from("objectives").select("*").eq("user_id", uid).eq("is_active", true);
+          if (objs) {
+            // Calculate progress for each objective
+            const SAVINGS_TYPE = await sb.from("transaction_types").select("id").eq("code", "SAVINGS").single();
+            const EXPENSE_TYPE = await sb.from("transaction_types").select("id").eq("code", "EXPENSE").single();
+            
+            for (const o of objs) {
+              if (o.type === "budget_cap") {
+                const isYearly = Number(o.target_amount) > 0 && !Number(o.monthly_cap);
+                const target = isYearly ? Number(o.target_amount) : Number(o.monthly_cap);
+                let spent = 0;
+
+                if (isYearly) {
+                  // Metas Anuais precisam de dados de todo o ano corrente
+                  const yearStart = `${new Date().getFullYear()}-01-01`;
+                  const yearEnd = `${new Date().getFullYear()}-12-31`;
+                  let q = sb.from("transactions").select("amount")
+                    .eq("user_id", uid)
+                    .in("type_id", [EXPENSE_TYPE.data.id, SAVINGS_TYPE.data.id])
+                    .gte("date", yearStart)
+                    .lte("date", yearEnd);
+                  
+                  // Consideramos tanto EXPENSE como SAVINGS para metas de poupança/investimento
+                  if (o.category_id) q = q.eq("category_id", o.category_id);
+                  
+                  const { data: yearTxs } = await q;
+                  spent = (yearTxs || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
+                } else {
+                  // Metas Mensais usam os dados já carregados para o período do relatório
+                  const filterRows = o.category_id ? rows.filter(r => r.category_id === o.category_id) : rows;
+                  spent = filterRows.reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
+                }
+                o._current = spent;
+                o._target = target;
+              } else {
+                // Savings Goal: Acumulado histórico total
+                let q = sb.from("transactions").select("amount")
+                  .eq("user_id", uid)
+                  .eq("type_id", SAVINGS_TYPE.data.id);
+                if (o.category_id) q = q.eq("category_id", o.category_id);
+                
+                const { data: totalSaved } = await q;
+                const accumulated = (totalSaved || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
+                o._current = accumulated;
+                o._target = o.target_amount || 0;
+              }
+            }
+            _objectivesPDF = objs;
+          }
+        }
       } catch (e) {
         console.error(e);
         rows = [];
@@ -2992,6 +3051,77 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       "Detalhe — Categorias & Resumo",
       new Date().toLocaleDateString("pt-PT"),
     );
+
+    // === SEÇÃO: Estratégia & Plano de Ação (Adicionado aqui para não desarrumar a Pág 1) ===
+    if (_strategyPDF) {
+      ensureSpace(80);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(REPORT_CFG.brandColor);
+      doc.text("Estratégia & Plano de Ação", M, y);
+      y += 20;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      const stratText = `Despesas: ${_strategyPDF.pct_expenses}% | Poupança: ${_strategyPDF.savings_fund_pct}% | Investimento: ${_strategyPDF.investment_fund_pct}% | Livre: ${_strategyPDF.pct_free}%`;
+      doc.text(stratText, M, y);
+      y += 24;
+
+      if (_objectivesPDF && _objectivesPDF.length > 0) {
+        const relevantTitles = [
+          "Fundo de Emergência", 
+          "Investimento (Mensal)", 
+          "Poupança (Mensal)", 
+          "Margem Livre (Mensal)", 
+          "Poupança Geral (Anual)"
+        ];
+        const strategyObjs = _objectivesPDF.filter(o => relevantTitles.includes(o.title));
+        
+        if (strategyObjs.length > 0) {
+          strategyObjs.forEach(o => {
+            ensureSpace(45);
+            const ratio = o._target ? o._current / o._target : 0;
+            const progress = Math.min(1, ratio);
+            const pct = (ratio * 100).toFixed(0);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(0);
+            doc.text(`${o.title} (${pct}%)`, M, y);
+            
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            const detail = `${money(o._current)} de ${money(o._target)}`;
+            doc.text(detail, W - M, y, { align: "right" });
+            y += 8;
+            
+            const barW = W - 2 * M;
+            const barH = 6;
+            doc.setFillColor(240); 
+            doc.roundedRect(M, y, barW, barH, 3, 3, "F");
+            
+            let color = "#10b981"; 
+            if (o.type === "budget_cap") {
+               color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+            } else {
+               color = ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981";
+            }
+            doc.setFillColor(color);
+            if (progress > 0) {
+               doc.roundedRect(M, y, barW * progress, barH, 3, 3, "F");
+            }
+            y += 25;
+          });
+          y += 10;
+        }
+      }
+      doc.setTextColor(0);
+      doc.setDrawColor(230);
+      doc.line(M, y, W - M, y);
+      y += 30;
+    }
 
     // tabela util (c/ cabeçalho colorido)
     function tablePDF(title, cols, rows, widths) {
