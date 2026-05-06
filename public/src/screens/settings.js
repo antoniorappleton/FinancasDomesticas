@@ -3997,12 +3997,6 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         });
       });
 
-      // Botão de Ajuda
-      q("#btn-help-strat")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        q("#strat-guide")?.classList.toggle("hidden");
-      });
-
       // Guardar no Supabase
       q("#btn-save-strategy")?.addEventListener("click", async () => {
         try {
@@ -4053,29 +4047,30 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         }
       }
 
-      // 2. Se rendimento/despesas ainda são 0, calcular médias dos últimos 4 meses
-      if (s.income === 0 || s.fixedExpenses === 0) {
-        const fourAgo = new Date();
-        fourAgo.setMonth(fourAgo.getMonth() - 4);
-        const dateStr = fourAgo.toISOString().slice(0, 10);
+      // 2. Calcular médias dos últimos 4 meses (Rendimento Mensal Médio e Despesas Fixas Essenciais)
+      const fourAgo = new Date();
+      fourAgo.setMonth(fourAgo.getMonth() - 4);
+      const dateStr = fourAgo.toISOString().slice(0, 10);
 
-        const { data: mvs, error: mvsErr } = await sb
-          .from("transactions")
-          .select("amount,type")
-          .gte("date", dateStr);
+      const { data: mvs, error: mvsErr } = await sb
+        .from("transactions")
+        .select("amount, date, expense_nature, transaction_types(code), categories(nature)")
+        .gte("date", dateStr);
 
-        if (mvsErr) console.warn("[Strategy] Movimentos error:", mvsErr.message);
+      if (mvsErr) console.warn("[Strategy] Movimentos error:", mvsErr.message);
 
-        if (mvs?.length) {
-          const incMvs = mvs.filter(m => m.type === "INCOME");
-          const expMvs = mvs.filter(m => m.type === "EXPENSE");
-          const totalInc = incMvs.reduce((a, m) => a + Number(m.amount), 0);
-          const totalExp = expMvs.reduce((a, m) => a + Number(m.amount), 0);
-          // Dividir por número real de meses com registos (máx 4)
-          const nMonths = Math.min(4, new Set(mvs.map(m => m.date?.slice(0,7))).size) || 4;
-          if (s.income === 0)        s.income        = totalInc / nMonths;
-          if (s.fixedExpenses === 0) s.fixedExpenses = totalExp / nMonths;
-        }
+      if (mvs?.length) {
+        const incMvs = mvs.filter(m => m.transaction_types?.code === "INCOME");
+        const expMvs = mvs.filter(m => m.transaction_types?.code === "EXPENSE" && (m.expense_nature === "fixed" || (!m.expense_nature && m.categories?.nature === "fixed")));
+        const totalInc = incMvs.reduce((a, m) => a + Math.abs(Number(m.amount)), 0);
+        const totalExp = expMvs.reduce((a, m) => a + Math.abs(Number(m.amount)), 0);
+        // Dividir por número real de meses com registos (máx 4)
+        const datesSet = new Set();
+        mvs.forEach(m => { if (m.date) datesSet.add(m.date.slice(0,7)) });
+        const nMonths = Math.min(4, datesSet.size) || 4;
+        
+        s.income = totalInc / nMonths;
+        s.fixedExpenses = totalExp / nMonths;
       }
 
       // Preencher inputs
@@ -4094,13 +4089,24 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         c.classList.toggle("active", Number(c.dataset.months) === s.emergencyMonths)
       );
 
-      // 3. Calcular healthMetrics com os últimos 6 meses
-      const sixAgo = new Date();
-      sixAgo.setMonth(sixAgo.getMonth() - 6);
+      // Botão de Ajuda
+      const btnHelp = q("#btn-help-strat") || document.getElementById("btn-help-strat");
+      const guide = q("#strat-guide") || document.getElementById("strat-guide");
+      if (btnHelp && guide) {
+        btnHelp.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          guide.classList.toggle("hidden");
+        };
+      }
+
+      // 3. Calcular healthMetrics com os dados do ano atual
+      const currentYear = new Date().getFullYear();
+      const startOfYear = `${currentYear}-01-01`;
       const { data: allMvs, error: allErr } = await sb
         .from("transactions")
-        .select("amount,type,date")
-        .gte("date", sixAgo.toISOString().slice(0, 10))
+        .select("amount, date, expense_nature, transaction_types(code), categories(nature)")
+        .gte("date", startOfYear)
         .order("date", { ascending: true });
 
       if (allErr) console.warn("[Strategy] HealthMetrics fetch error:", allErr.message);
@@ -4110,10 +4116,17 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         allMvs.forEach(m => {
           const mo = m.date.slice(0, 7);
           if (!byMonth[mo]) byMonth[mo] = { month: mo, income: 0, expense: 0, savings: 0, fixed: 0, variable: 0 };
-          const amt = Number(m.amount);
-          if (m.type === "INCOME")  byMonth[mo].income  += amt;
-          if (m.type === "EXPENSE") { byMonth[mo].expense += amt; byMonth[mo].fixed += amt; }
-          if (m.type === "SAVINGS") byMonth[mo].savings  += amt;
+          const amt = Math.abs(Number(m.amount));
+          const code = m.transaction_types?.code;
+          const isFixed = m.expense_nature === "fixed" || (!m.expense_nature && m.categories?.nature === "fixed");
+
+          if (code === "INCOME")  byMonth[mo].income  += amt;
+          if (code === "EXPENSE") { 
+             byMonth[mo].expense += amt; 
+             if (isFixed) byMonth[mo].fixed += amt; 
+             else byMonth[mo].variable += amt; 
+          }
+          if (code === "SAVINGS") byMonth[mo].savings  += amt;
         });
 
         const monthlyData = Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month));
