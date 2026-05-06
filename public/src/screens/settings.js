@@ -3997,12 +3997,44 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         });
       });
 
-      // Guardar no Supabase
+      // Helper para Objetivos
+      async function upsertObjective(uid, title, type, category_id, monthly_cap, target_amount) {
+        const { data: existing } = await sb.from("objectives")
+          .select("*")
+          .eq("user_id", uid)
+          .eq("title", title)
+          .maybeSingle();
+          
+        const payload = {
+          user_id: uid,
+          title,
+          type,
+          category_id,
+          monthly_cap: monthly_cap || null,
+          target_amount: target_amount || null,
+          is_active: true
+        };
+
+        if (existing) {
+          await sb.from("objectives").update(payload).eq("id", existing.id);
+        } else {
+          await sb.from("objectives").insert(payload);
+        }
+      }
+
+      // Guardar no Supabase e gerar Plano de Ação
       q("#btn-save-strategy")?.addEventListener("click", async () => {
+        const btn = q("#btn-save-strategy");
+        const originalText = btn.innerHTML;
         try {
-          Toast.info("A guardar estratégia...");
+          btn.disabled = true;
+          btn.innerHTML = '<span class="material-symbols-outlined">sync</span> A processar...';
+          Toast.info("A guardar e gerar o seu plano...");
+          
           const uid = await getUserId();
           if (!uid) throw new Error("Sessão inválida.");
+          
+          // 1. Guardar a estratégia
           const { error } = await sb.from("user_settings").upsert({
             user_id:             uid,
             avg_monthly_income:  s.income,
@@ -4015,10 +4047,75 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
             updated_at:          new Date().toISOString()
           }, { onConflict: "user_id" });
           if (error) throw error;
-          Toast.success("Estratégia guardada!");
+
+          // 2. Procurar ou criar categorias
+          const { data: catData } = await sb.from("categories")
+            .select("id, name, parent_id")
+            .or(`user_id.is.null,user_id.eq.${uid}`)
+            .eq("kind", "savings");
+          const cats = catData || [];
+
+          async function ensureCat(name, parentId = null) {
+            const lowName = name.toLowerCase();
+            let c = cats.find(x => x.name.toLowerCase() === lowName && x.parent_id === parentId);
+            if (!c) {
+              const { data: newC, error: errC } = await sb.from("categories")
+                .insert({ user_id: uid, name, kind: "savings", parent_id: parentId })
+                .select().single();
+              if (errC) throw errC;
+              cats.push(newC);
+              c = newC;
+            }
+            return c.id;
+          }
+
+          // Categoria mãe: "Poupança"
+          const parentPoupancaId = await ensureCat("Poupança");
+          
+          // Subcategorias
+          const idEmergencia = await ensureCat("Fundo de Emergência", parentPoupancaId);
+          const idInvestimento = await ensureCat("Investimento", parentPoupancaId);
+          const idPoupancaMensal = await ensureCat("Poupança Mensal", parentPoupancaId);
+          const idMargemLivre = await ensureCat("Margem Livre", parentPoupancaId);
+
+          // 3. Gerar Objetivos (Metas)
+          
+          // Fundo de Emergência (Acumulado)
+          const emergenciaTarget = s.fixedExpenses * s.emergencyMonths;
+          if (emergenciaTarget > 0) {
+            await upsertObjective(uid, "Fundo de Emergência", "savings_goal", idEmergencia, null, emergenciaTarget);
+          }
+
+          // Tetos Mensais
+          const invMonthly = s.income * (s.pctInvestment / 100);
+          if (invMonthly > 0) {
+            await upsertObjective(uid, "Investimento (Mensal)", "budget_cap", idInvestimento, invMonthly, null);
+          }
+
+          const poupMonthly = s.income * (s.pctSavings / 100);
+          if (poupMonthly > 0) {
+            await upsertObjective(uid, "Poupança (Mensal)", "budget_cap", idPoupancaMensal, poupMonthly, null);
+          }
+
+          const freeMonthly = s.income * (s.pctFree / 100);
+          if (freeMonthly > 0) {
+            await upsertObjective(uid, "Margem Livre (Mensal)", "budget_cap", idMargemLivre, freeMonthly, null);
+          }
+
+          // Objetivo Anual Combinado (Parent)
+          // Na tabela objectives, um target_amount > 0 com monthly_cap null é um "Orçamento Anual"
+          const totalAnnualSavings = (invMonthly + poupMonthly + freeMonthly) * 12;
+          if (totalAnnualSavings > 0) {
+            await upsertObjective(uid, "Poupança Geral (Anual)", "budget_cap", parentPoupancaId, null, totalAnnualSavings);
+          }
+
+          Toast.success("Plano ativado! Categorias e Metas criadas.");
         } catch (err) {
           console.error("[Strategy] Save error:", err);
-          Toast.error("Erro ao guardar: " + err.message);
+          Toast.error("Erro ao ativar o plano: " + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
         }
       });
     }
