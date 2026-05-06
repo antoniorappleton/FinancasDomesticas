@@ -733,7 +733,7 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
     if (error || !o) return;
     
     const setVal = (id, val) => {
-      const el = $(id);
+      const el = $("#" + id);
       if (el) el.value = val;
     };
 

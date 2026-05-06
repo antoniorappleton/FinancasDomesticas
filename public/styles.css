@@ -2449,8 +2449,8 @@ td:nth-child(5) {
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   /* impede “sangrar” ao rolar */
 }
@@ -2482,12 +2482,10 @@ td:nth-child(5) {
   cursor: pointer;
 }
 
-/* Corpo rolável (o teu .form-grid) */
 #obj-edit-modal .form-grid {
-  flex: 1 1 auto;
   min-height: 0;
-  /* essencial p/ overflow funcionar em flex */
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2508,8 +2506,6 @@ td:nth-child(5) {
 
 /* Footer fixo/sticky com safe-area */
 #obj-edit-modal .actions {
-  position: sticky;
-  bottom: 0;
   z-index: 1;
   display: flex;
   gap: 10px;

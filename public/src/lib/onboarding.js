@@ -28,6 +28,9 @@ export class Onboarding {
           <li>
             <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-cog'/></svg> Definições:</strong> Configura categorias e contas.
           </li>
+          <li>
+            <strong><svg width='16' height='16' style='vertical-align: middle; margin-right: 4px;'><use href='#i-target'/></svg> Estratégia:</strong> Defina a sua estratégia financeira no separador Definições.
+          </li>
         </ul>
 
         <div class="onboarding-actions">

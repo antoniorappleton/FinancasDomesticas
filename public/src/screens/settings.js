@@ -4047,10 +4047,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         }
       }
 
-      // 2. Calcular médias dos últimos 4 meses (Rendimento Mensal Médio e Despesas Fixas Essenciais)
-      const fourAgo = new Date();
-      fourAgo.setMonth(fourAgo.getMonth() - 4);
-      const dateStr = fourAgo.toISOString().slice(0, 10);
+      // 2. Calcular médias dos últimos 12 meses (Rendimento Mensal Médio e Despesas Fixas Essenciais)
+      const twelveAgo = new Date();
+      twelveAgo.setMonth(twelveAgo.getMonth() - 12);
+      const dateStr = twelveAgo.toISOString().slice(0, 10);
 
       const { data: mvs, error: mvsErr } = await sb
         .from("transactions")
@@ -4064,10 +4064,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         const expMvs = mvs.filter(m => m.transaction_types?.code === "EXPENSE" && (m.expense_nature === "fixed" || (!m.expense_nature && m.categories?.nature === "fixed")));
         const totalInc = incMvs.reduce((a, m) => a + Math.abs(Number(m.amount)), 0);
         const totalExp = expMvs.reduce((a, m) => a + Math.abs(Number(m.amount)), 0);
-        // Dividir por número real de meses com registos (máx 4)
+        // Dividir por número real de meses com registos (máx 12)
         const datesSet = new Set();
         mvs.forEach(m => { if (m.date) datesSet.add(m.date.slice(0,7)) });
-        const nMonths = Math.min(4, datesSet.size) || 4;
+        const nMonths = Math.min(12, datesSet.size) || 12;
         
         s.income = totalInc / nMonths;
         s.fixedExpenses = totalExp / nMonths;
