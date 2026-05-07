@@ -47,7 +47,7 @@ async function renderSmartAdvisor(outlet) {
 
     const allocations = profile.calculateAllocation();
     
-    let html = `Com base na sua média líquida de <strong>${money(averages.net)}</strong> (últimos ${averages.period} meses) e na sua estratégia definida:<br><br>`;
+    let html = `Com base no seu rendimento médio de <strong>${money(averages.income)}</strong> (últimos ${averages.period} meses) e na sua estratégia definida:<br><br>`;
     
     const parts = [];
     if (strategy.expenses > 0) parts.push(`• <strong>${money(allocations.expenses)}</strong> para Despesas Essenciais (${strategy.expenses}%)`);

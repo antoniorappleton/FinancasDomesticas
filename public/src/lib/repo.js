@@ -649,14 +649,15 @@ async function getFinancialProfile() {
     averages: {
       income: avgIncome,
       expense: avgExpense,
-      net: avgLiquidity, // Usamos liquidity como o "net" para fins de alocação
+      net: avgLiquidity, 
       period: history.length
     },
     strategy,
     rawSettings: settings,
     // Helper to calculate amounts based on strategy
     calculateAllocation: (baseAmount) => {
-      const amount = baseAmount !== undefined ? baseAmount : Math.max(0, avgLiquidity);
+      // Corrigido: A base da estratégia (100%) deve ser o Rendimento Médio, não a sobra líquida.
+      const amount = baseAmount !== undefined ? baseAmount : Math.max(0, avgIncome);
       return {
         expenses: amount * (strategy.expenses / 100),
         savings: amount * (strategy.savings / 100),
