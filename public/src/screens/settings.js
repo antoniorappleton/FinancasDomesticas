@@ -2059,37 +2059,46 @@ export async function init({ sb, outlet } = {}) {
                 let spent = 0;
 
                 if (isYearly) {
-                  // Metas Anuais precisam de dados de todo o ano corrente
+                  // Metas Anuais precisam de dados de todo o ano corrente (apenas EXPENSE conforme Metas.js)
                   const yearStart = `${new Date().getFullYear()}-01-01`;
                   const yearEnd = `${new Date().getFullYear()}-12-31`;
                   let q = sb.from("transactions").select("amount")
                     .eq("user_id", uid)
-                    .in("type_id", [EXPENSE_TYPE.data.id, SAVINGS_TYPE.data.id])
+                    .eq("type_id", EXPENSE_TYPE.data.id)
                     .gte("date", yearStart)
                     .lte("date", yearEnd);
                   
-                  // Consideramos tanto EXPENSE como SAVINGS para metas de poupança/investimento
                   if (o.category_id) q = q.eq("category_id", o.category_id);
                   
                   const { data: yearTxs } = await q;
                   spent = (yearTxs || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
                 } else {
-                  // Metas Mensais usam os dados já carregados para o período do relatório
-                  const filterRows = o.category_id ? rows.filter(r => r.category_id === o.category_id) : rows;
+                  // Metas Mensais usam os dados já carregados para o período do relatório (apenas EXPENSE)
+                  const filterRows = rows.filter(r => r.type_id === EXPENSE_TYPE.data.id && (!o.category_id || r.category_id === o.category_id));
                   spent = filterRows.reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
                 }
                 o._current = spent;
                 o._target = target;
               } else {
-                // Savings Goal: Acumulado histórico total
-                let q = sb.from("transactions").select("amount")
-                  .eq("user_id", uid)
-                  .eq("type_id", SAVINGS_TYPE.data.id);
-                if (o.category_id) q = q.eq("category_id", o.category_id);
-                
-                const { data: totalSaved } = await q;
-                const accumulated = (totalSaved || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
-                o._current = accumulated;
+                // Savings Goal: Preferir valor manual se existir (> 0), caso contrário calcular acumulado histórico
+                const manual = Number(o.current_amount || 0);
+                if (manual > 0) {
+                  o._current = manual;
+                } else {
+                  const start = o.start_from ? String(o.start_from).slice(0, 10) : "1970-01-01";
+                  const end = o.due_date || ymd(new Date());
+                  
+                  let q = sb.from("transactions").select("amount")
+                    .eq("user_id", uid)
+                    .eq("type_id", SAVINGS_TYPE.data.id)
+                    .gte("date", start)
+                    .lte("date", end);
+
+                  if (o.category_id) q = q.eq("category_id", o.category_id);
+                  
+                  const { data: totalSaved } = await q;
+                  o._current = (totalSaved || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
+                }
                 o._target = o.target_amount || 0;
               }
             }
@@ -3052,68 +3061,98 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       new Date().toLocaleDateString("pt-PT"),
     );
 
-    // === SEÇÃO: Estratégia & Plano de Ação (Adicionado aqui para não desarrumar a Pág 1) ===
+    // === SEÇÃO: Estratégia & Plano de Ação ===
     if (_strategyPDF) {
-      ensureSpace(80);
+      ensureSpace(120);
       doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(REPORT_CFG.brandColor);
       doc.text("Estratégia & Plano de Ação", M, y);
-      y += 20;
+      y += 22;
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      const stratText = `Despesas: ${_strategyPDF.pct_expenses}% | Poupança: ${_strategyPDF.savings_fund_pct}% | Investimento: ${_strategyPDF.investment_fund_pct}% | Livre: ${_strategyPDF.pct_free}%`;
-      doc.text(stratText, M, y);
-      y += 24;
+      // Badges de percentagem da estratégia
+      const stratCols = [
+        ["Despesas", `${_strategyPDF.pct_expenses}%`],
+        ["Poupança", `${_strategyPDF.savings_fund_pct}%`],
+        ["Investimento", `${_strategyPDF.investment_fund_pct}%`],
+        ["Livre", `${_strategyPDF.pct_free}%`]
+      ];
+      const sCellW = (W - 2 * M) / 4;
+      doc.setFontSize(9);
+      stratCols.forEach((col, i) => {
+        const x = M + i * sCellW;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100);
+        doc.text(col[0], x, y);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0);
+        doc.text(col[1], x, y + 11);
+      });
+      y += 32;
+
+      const relevantTitles = [
+        "Fundo de Emergência", 
+        "Investimento (Mensal)", 
+        "Poupança (Mensal)", 
+        "Margem Livre (Mensal)", 
+        "Poupança Geral (Anual)"
+      ];
+
+      const drawGoal = (o) => {
+        ensureSpace(45);
+        const ratio = o._target ? o._current / o._target : 0;
+        const progress = Math.min(1, ratio);
+        const pct = (ratio * 100).toFixed(0);
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(0);
+        doc.text(`${o.title} (${pct}%)`, M, y);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(100);
+        const detail = `${money(o._current)} de ${money(o._target)}`;
+        doc.text(detail, W - M, y, { align: "right" });
+        y += 8;
+        
+        const barW = W - 2 * M;
+        const barH = 6;
+        doc.setFillColor(240); 
+        doc.roundedRect(M, y, barW, barH, 3, 3, "F");
+        
+        let color = "#10b981"; 
+        if (o.type === "budget_cap") {
+           color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+        } else {
+           color = ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981";
+        }
+        doc.setFillColor(color);
+        if (progress > 0) {
+           doc.roundedRect(M, y, barW * progress, barH, 3, 3, "F");
+        }
+        y += 25;
+      };
 
       if (_objectivesPDF && _objectivesPDF.length > 0) {
-        const relevantTitles = [
-          "Fundo de Emergência", 
-          "Investimento (Mensal)", 
-          "Poupança (Mensal)", 
-          "Margem Livre (Mensal)", 
-          "Poupança Geral (Anual)"
-        ];
         const strategyObjs = _objectivesPDF.filter(o => relevantTitles.includes(o.title));
+        const otherObjs = _objectivesPDF.filter(o => !relevantTitles.includes(o.title));
         
+        // 1. Objetivos do Plano de Ação
         if (strategyObjs.length > 0) {
-          strategyObjs.forEach(o => {
-            ensureSpace(45);
-            const ratio = o._target ? o._current / o._target : 0;
-            const progress = Math.min(1, ratio);
-            const pct = (ratio * 100).toFixed(0);
-            
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.setTextColor(0);
-            doc.text(`${o.title} (${pct}%)`, M, y);
-            
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            const detail = `${money(o._current)} de ${money(o._target)}`;
-            doc.text(detail, W - M, y, { align: "right" });
-            y += 8;
-            
-            const barW = W - 2 * M;
-            const barH = 6;
-            doc.setFillColor(240); 
-            doc.roundedRect(M, y, barW, barH, 3, 3, "F");
-            
-            let color = "#10b981"; 
-            if (o.type === "budget_cap") {
-               color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
-            } else {
-               color = ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981";
-            }
-            doc.setFillColor(color);
-            if (progress > 0) {
-               doc.roundedRect(M, y, barW * progress, barH, 3, 3, "F");
-            }
-            y += 25;
-          });
+          strategyObjs.forEach(drawGoal);
+          y += 10;
+        }
+
+        // 2. As Minhas Metas (Restantes)
+        if (otherObjs.length > 0) {
+          ensureSpace(60);
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(12);
+          doc.setTextColor(REPORT_CFG.brandColor);
+          doc.text("As minhas Metas", M, y);
+          y += 18;
+          otherObjs.forEach(drawGoal);
           y += 10;
         }
       }
