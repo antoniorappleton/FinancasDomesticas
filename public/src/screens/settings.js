@@ -4085,9 +4085,13 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       const mInvest   = s.income * (s.pctInvestment / 100);
       const mFree     = s.income * (s.pctFree       / 100);
       const mExpenses = s.income * (s.pctExpenses   / 100);
+      
       const emergGoal = s.fixedExpenses * s.emergencyMonths;
       const emCov     = _healthMetrics?.emergencyFund?.currentCoverage ?? 0;
       const emNeeded  = Math.max(0, emergGoal - (_healthMetrics?.liquidityAccumulated ?? 0));
+
+      const isShortForFixed = mExpenses < s.fixedExpenses;
+      const remainsForVar = Math.max(0, mExpenses - s.fixedExpenses);
 
       const item = (icon, title, sub, val, cls="") => `
         <div class="suggested-item">
@@ -4099,8 +4103,13 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       list.innerHTML =
         item("savings",        "Retenção Mensal",           `${s.pctSavings}% do rendimento`,           money(mSavings)) +
         item("trending_up",    "Investimento Mensal",       `${s.pctInvestment}% a crescer`,            money(mInvest)) +
-        item("wallet",         "Orçamento de Despesas",     `Limite de ${s.pctExpenses}%`,              money(mExpenses)) +
-        item("beach_access",   "Margem Livre",              `${s.pctFree}% sem culpa`,                  money(mFree)) +
+        item("wallet",         "Orçamento de Despesas",     
+          isShortForFixed 
+            ? `<span style="color:var(--red-500); font-weight:700">⚠️ Insuficiente para fixas (${money(s.fixedExpenses)})</span>`
+            : `Cobre ${money(s.fixedExpenses)} de fixas | Sobra ${money(remainsForVar)}`, 
+          money(mExpenses), 
+          isShortForFixed ? "text-danger" : "") +
+        item("beach_access",   "Margem Livre",              `${s.pctFree}% para estilo de vida`,        money(mFree)) +
         item("emergency_home", "Fundo de Emergência (alvo)",
           `Atual: ${emCov.toFixed(1)} meses | Alvo: ${s.emergencyMonths} meses`,
           emNeeded > 0 ? `Faltam ${money(emNeeded)}` : "✅ Atingido",
