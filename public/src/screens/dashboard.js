@@ -2416,7 +2416,7 @@ export async function init({ sb, outlet } = {}) {
 
       // ===================== LIFE DIMENSIONS (DYNAMIC) =====================
       const DEFAULT_DIMENSIONS = [
-        { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'utilidades', 'água', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas', 'seguro da casa'] },
+        { key: 'casa', name: 'Casa', icon: 'home', hints: ['casa', 'renda', 'condomínio', 'condominio', 'utilidades', 'água', 'àgua', 'luz', 'internet', 'eletricidade', 'tv', 'aluguel', 'imi', 'condo', 'gas', 'seguro da casa', 'empregada', 'lavandaria', 'telemóvel', 'nos', 'comunicações'] },
         { key: 'saude', name: 'Saúde', icon: 'medical_services', hints: ['saúde', 'farmácia', 'médico', 'consulta', 'exame', 'hospital', 'dentista', 'seguro saúde'] },
         { key: 'carro', name: 'Carro', icon: 'directions_car', hints: ['carro', 'transporte', 'combustível', 'oficina', 'pedágio', 'seguro auto', 'via verde', 'gasolina', 'gasóleo', 'iuc', 'reparação'] },
         { key: 'escolas', name: 'Escolas', icon: 'school', hints: ['escola', 'colégio', 'mensalidade escolar', 'educação', 'estudos', 'cursos', 'universidade', 'propinas', 'explicações'] },
@@ -2443,10 +2443,12 @@ export async function init({ sb, outlet } = {}) {
       const DIMENSIONS = loadDimensions();
 
       const getDimensions = (path, description = "", paymentMethod = "") => {
-        const p = (path || '').toLowerCase().trim();
-        const desc = (description || '').toLowerCase().trim();
-        const pm = (paymentMethod || '').toLowerCase().trim();
-        const segments = p.split('>').map(s => s.trim().toLowerCase());
+        const norm = (str) => (str || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        
+        const pNorm = norm(path);
+        const descNorm = norm(description);
+        const pmNorm = norm(paymentMethod);
+        const segments = pNorm.split('>').map(s => s.trim());
         const leaf = segments[segments.length - 1];
         
         const matchedKeys = [];
@@ -2455,12 +2457,12 @@ export async function init({ sb, outlet } = {}) {
           if (!d.hints || !d.hints.length) continue;
           
           const matches = d.hints.some(h => {
-              const hint = h.toLowerCase().trim();
-              if (hint.length < 2) return false;
+              const hintNorm = norm(h);
+              if (hintNorm.length < 2) return false;
               
-              if (p === hint) return true;
-              if (leaf === hint) return true;
-              return p.includes(hint) || desc.includes(hint) || pm.includes(hint) || segments.some(s => s.includes(hint));
+              if (pNorm === hintNorm) return true;
+              if (leaf === hintNorm) return true;
+              return pNorm.includes(hintNorm) || descNorm.includes(hintNorm) || pmNorm.includes(hintNorm) || segments.some(s => s.includes(hintNorm));
           });
           
           if (matches) matchedKeys.push(d.key);
@@ -2914,7 +2916,7 @@ export async function init({ sb, outlet } = {}) {
 
             // 2. Composição (Barras)
             const stackLabels = analytics.sortedMonths.map(m => new Date(m + "-01").toLocaleDateString('pt-PT', { month: 'short' }));
-            const subTypes = Array.from(analytics.bySubCat12m.keys()).slice(0, 5);
+            const subTypes = Array.from(analytics.bySubCat12m.keys()).slice(0, 12);
             const datasets = subTypes.map((sub, i) => ({
                 label: sub,
                 data: analytics.sortedMonths.map(m => {
@@ -2935,7 +2937,7 @@ export async function init({ sb, outlet } = {}) {
             });
 
             // 3. Distribuição (Doughnut - Reforçado)
-            const pieData = (analytics.subCats || []).slice(0, 5);
+            const pieData = (analytics.subCats || []).slice(0, 12);
             if (pieData.length > 0) {
                 new Chart(document.getElementById("chart-theme-pie").getContext("2d"), {
                     type: 'doughnut',
