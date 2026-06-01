@@ -3369,16 +3369,15 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
 
       list.innerHTML = data.map((item) => `
         <article class="settings-tutorial-card">
-          ${item.image_url ? `<img src="${escapeTutorialHtml(item.image_url)}" alt="">` : ""}
+          ${item.image_url ? `<img src="${escapeTutorialHtml(item.image_url)}" alt="">` : "<div class='settings-tutorial-thumb'></div>"}
           <div class="settings-tutorial-card__body">
             <h4>${escapeTutorialHtml(item.title)}</h4>
             ${item.description ? `<p>${escapeTutorialHtml(item.description)}</p>` : ""}
-            ${item.video_url ? `
-              <a class="btn btn--primary" href="${escapeTutorialHtml(item.video_url)}" target="_blank" rel="noopener noreferrer">
-                <span class="material-symbols-outlined">play_circle</span>
-                Abrir video
-              </a>` : ""}
           </div>
+          ${item.video_url ? `
+            <a class="tutorial-play-btn" href="${escapeTutorialHtml(item.video_url)}" target="_blank" rel="noopener noreferrer" title="Abrir video">
+              <span class="material-symbols-outlined">play_circle</span>
+            </a>` : ""}
         </article>
       `).join("");
     } catch (e) {
