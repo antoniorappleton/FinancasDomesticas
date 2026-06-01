@@ -419,15 +419,13 @@ export async function init(ctx = {}) {
     try {
       const today = new Date();
       const fmt = new Intl.DateTimeFormat("pt-PT").format;
-      const { data: { user } } = await sb.auth.getUser();
-      const uid = user.id;
+      await sb.auth.getUser();
       const sumTxs = (txs) => (txs || []).reduce((a, t) => a + Number(t.amount || 0), 0);
 
       // Helper: fetch expenses for a date range
       const fetchExpenses = async (from, to, withDesc = false) => {
         const { data, error } = await sb.from("transactions")
           .select(withDesc ? "amount, description, date, transaction_types!inner(code)" : "amount, transaction_types!inner(code)")
-          .eq("user_id", uid)
           .eq("transaction_types.code", "EXPENSE")
           .gte("date", from).lte("date", to)
           .order("amount", { ascending: false });

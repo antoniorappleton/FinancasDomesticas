@@ -2046,7 +2046,7 @@ export async function init({ sb, outlet } = {}) {
         _strategyPDF = strat;
 
         if (strat) {
-          const { data: objs } = await sb.from("objectives").select("*").eq("user_id", uid).eq("is_active", true);
+          const { data: objs } = await sb.from("objectives").select("*").eq("is_active", true);
           if (objs) {
             // Calculate progress for each objective
             const SAVINGS_TYPE = await sb.from("transaction_types").select("id").eq("code", "SAVINGS").single();
@@ -2063,7 +2063,6 @@ export async function init({ sb, outlet } = {}) {
                   const yearStart = `${new Date().getFullYear()}-01-01`;
                   const yearEnd = `${new Date().getFullYear()}-12-31`;
                   let q = sb.from("transactions").select("amount")
-                    .eq("user_id", uid)
                     .eq("type_id", EXPENSE_TYPE.data.id)
                     .gte("date", yearStart)
                     .lte("date", yearEnd);
@@ -2089,7 +2088,6 @@ export async function init({ sb, outlet } = {}) {
                   const end = o.due_date || ymd(new Date());
                   
                   let q = sb.from("transactions").select("amount")
-                    .eq("user_id", uid)
                     .eq("type_id", SAVINGS_TYPE.data.id)
                     .gte("date", start)
                     .lte("date", end);
@@ -3326,7 +3324,197 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     doc.save(REPORT_CFG.filename);
   });
 
-  // =================== SESSÃO / PASSWORD =================
+  // =================== TUTORIAIS / CONTA PARTILHADA / SESSAO / PASSWORD =================
+  const PROJECT_ADMIN_EMAIL = "antonioappleton@gmail.com";
+  let lastGeneratedShareCode = "";
+
+  function escapeTutorialHtml(value) {
+    return String(value || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  async function loadSettingsTutorials() {
+    const list = $("#settings-tutorials-list");
+    const adminBtn = $("#btn-admin-tutorials");
+    if (!list) return;
+
+    try {
+      const {
+        data: { user },
+      } = await sb.auth.getUser();
+
+      if (adminBtn) {
+        adminBtn.classList.toggle(
+          "hidden",
+          String(user?.email || "").toLowerCase() !== PROJECT_ADMIN_EMAIL,
+        );
+      }
+
+      const { data, error } = await sb
+        .from("app_tutorials")
+        .select("id,title,description,image_url,video_url,sort_order")
+        .eq("is_published", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (!data?.length) {
+        list.innerHTML = "<div class='muted'>Ainda não existem tutoriais publicados.</div>";
+        return;
+      }
+
+      list.innerHTML = data.map((item) => `
+        <article class="settings-tutorial-card">
+          ${item.image_url ? `<img src="${escapeTutorialHtml(item.image_url)}" alt="">` : ""}
+          <div class="settings-tutorial-card__body">
+            <h4>${escapeTutorialHtml(item.title)}</h4>
+            ${item.description ? `<p>${escapeTutorialHtml(item.description)}</p>` : ""}
+            ${item.video_url ? `
+              <a class="btn btn--primary" href="${escapeTutorialHtml(item.video_url)}" target="_blank" rel="noopener noreferrer">
+                <span class="material-symbols-outlined">play_circle</span>
+                Abrir video
+              </a>` : ""}
+          </div>
+        </article>
+      `).join("");
+    } catch (e) {
+      console.warn("[tutorials] load error", e);
+      list.innerHTML = "<div class='muted'>Tutoriais indisponíveis. Confirma a migração no Supabase.</div>";
+    }
+  }
+
+  function normalizeShareCode(value) {
+    return String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, "");
+  }
+
+  async function loadHouseholdContext() {
+    const nameEl = $("#shared-household-name");
+    const metaEl = $("#shared-household-meta");
+    if (!nameEl || !metaEl) return;
+
+    try {
+      const { data, error } = await sb.rpc("get_household_context");
+      if (error) throw error;
+      const ctx = Array.isArray(data) ? data[0] : data;
+
+      if (!ctx) {
+        nameEl.textContent = "Conta financeira";
+        metaEl.textContent = "Executa a migracao de contas partilhadas no SQL Editor.";
+        return;
+      }
+
+      nameEl.textContent = ctx.household_name || "Conta financeira";
+      const role = ctx.role === "owner" ? "Owner" : ctx.role === "admin" ? "Admin" : "Membro";
+      const members = Number(ctx.members_count || 1);
+      metaEl.textContent = `${role} - ${members} ${members === 1 ? "membro" : "membros"}`;
+    } catch (e) {
+      console.warn("[shared-account] context error", e);
+      if (metaEl) metaEl.textContent = "Backend ainda nao configurado para contas partilhadas.";
+    }
+  }
+
+  $("#btn-generate-share-code")?.addEventListener("click", async () => {
+    const btn = $("#btn-generate-share-code");
+    const out = $("#share-code-output");
+    const copy = $("#btn-copy-share-code");
+    const hint = $("#share-code-hint");
+    const old = btn?.innerHTML;
+
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined">sync</span> A gerar';
+      }
+
+      const { data, error } = await sb.rpc("create_household_invite", {
+        p_expires_hours: 168,
+        p_max_uses: 1,
+      });
+      if (error) throw error;
+
+      lastGeneratedShareCode = normalizeShareCode(data);
+      if (out) out.value = lastGeneratedShareCode;
+      if (copy) copy.disabled = !lastGeneratedShareCode;
+      if (hint) hint.textContent = "Codigo valido durante 7 dias e para 1 utilizacao.";
+      Toast.success("Codigo gerado.");
+    } catch (e) {
+      Toast.error(e?.message || "Nao foi possivel gerar o codigo.");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = old;
+      }
+    }
+  });
+
+  $("#btn-copy-share-code")?.addEventListener("click", async () => {
+    const code = normalizeShareCode($("#share-code-output")?.value);
+    if (!code) return;
+
+    try {
+      await navigator.clipboard.writeText(code);
+      Toast.success("Codigo copiado.");
+    } catch {
+      $("#share-code-output")?.select();
+      Toast.info("Seleciona e copia o codigo.");
+    }
+  });
+
+  $("#share-code-input")?.addEventListener("input", (ev) => {
+    ev.target.value = normalizeShareCode(ev.target.value);
+  });
+
+  $("#btn-join-share-code")?.addEventListener("click", async () => {
+    const btn = $("#btn-join-share-code");
+    const input = $("#share-code-input");
+    const code = normalizeShareCode(input?.value);
+    const old = btn?.innerHTML;
+
+    if (!code) {
+      Toast.error("Insere o codigo recebido.");
+      return;
+    }
+
+    if (lastGeneratedShareCode && code === lastGeneratedShareCode) {
+      Toast.error("Nao podes aderir com o codigo que acabaste de gerar nesta sessao.");
+      return;
+    }
+
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined">sync</span> A aderir';
+      }
+
+      const { error } = await sb.rpc("join_household_by_invite", {
+        p_code: code,
+      });
+      if (error) throw error;
+
+      if (input) input.value = "";
+      Toast.success("Conta partilhada ligada. A atualizar dados...");
+      await loadHouseholdContext();
+      setTimeout(() => window.location.reload(), 700);
+    } catch (e) {
+      Toast.error(e?.message || "Nao foi possivel aderir a conta.");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = old;
+      }
+    }
+  });
+
+  await loadHouseholdContext();
+  await loadSettingsTutorials();
+
   // Mostrar email da sessão
   try {
     const { data } = await sb.auth.getUser();
@@ -4177,7 +4365,6 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       async function upsertObjective(uid, title, type, category_id, monthly_cap, target_amount) {
         const { data: existing } = await sb.from("objectives")
           .select("*")
-          .eq("user_id", uid)
           .eq("title", title)
           .maybeSingle();
           
@@ -4227,7 +4414,6 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           // 2. Procurar ou criar categorias
           const { data: catData } = await sb.from("categories")
             .select("id, name, parent_id")
-            .or(`user_id.is.null,user_id.eq.${uid}`)
             .eq("kind", "savings");
           const cats = catData || [];
 

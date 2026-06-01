@@ -1144,6 +1144,67 @@
 </div>
 
 <div id="tab-conta" class="tab-content">
+  <section class="card" id="sec-app-tutorials">
+    <div class="tutorials-settings-header">
+      <div>
+        <h3 class="section-title">Tutoriais</h3>
+        <p class="muted">Guias rápidos para aprender a usar a app.</p>
+      </div>
+      <a id="btn-admin-tutorials" class="btn btn--primary hidden" href="#/admin-tutorials">
+        <span class="material-symbols-outlined">admin_panel_settings</span>
+        Gerir
+      </a>
+    </div>
+    <div id="settings-tutorials-list" class="settings-tutorials-list">
+      <div class="muted">A carregar tutoriais...</div>
+    </div>
+  </section>
+
+  <section class="card" id="sec-shared-account">
+    <h3 class="section-title">Conta partilhada</h3>
+    <div class="shared-account-panel">
+      <div class="shared-account-status">
+        <span class="material-symbols-outlined">groups</span>
+        <div>
+          <strong id="shared-household-name">Conta financeira</strong>
+          <div id="shared-household-meta" class="muted">A carregar...</div>
+        </div>
+      </div>
+
+      <div class="shared-account-grid">
+        <div class="shared-account-box">
+          <h4>Enviar convite</h4>
+          <p class="muted">Gera um codigo temporario e envia-o ao outro utilizador.</p>
+          <div class="share-code-row">
+            <input id="share-code-output" type="text" readonly placeholder="Codigo de partilha" />
+            <button id="btn-generate-share-code" class="btn btn--primary" type="button">
+              <span class="material-symbols-outlined">vpn_key</span>
+              Gerar
+            </button>
+            <button id="btn-copy-share-code" class="btn" type="button" disabled>
+              <span class="material-symbols-outlined">content_copy</span>
+              Copiar
+            </button>
+          </div>
+          <div id="share-code-hint" class="small muted">O codigo expira e so pode ser usado por outro login.</div>
+        </div>
+
+        <div class="shared-account-box">
+          <h4>Entrar numa conta</h4>
+          <p class="muted">Cola aqui o codigo recebido para passares a ver os mesmos dados.</p>
+          <div class="share-code-row">
+            <input id="share-code-input" type="text" autocomplete="off" placeholder="ABCDE-12345" />
+            <button id="btn-join-share-code" class="btn btn--primary" type="button">
+              <span class="material-symbols-outlined">login</span>
+              Aderir
+            </button>
+          </div>
+          <div id="join-code-hint" class="small muted">Nao podes usar um codigo gerado pela tua propria sessao.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section id="sec-password" class="card">
     <h3 class="section-title">Alterar palavra-passe</h3>
     <div class="grid grid-responsive-4" style="gap:10px">

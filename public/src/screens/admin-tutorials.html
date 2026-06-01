@@ -1,0 +1,71 @@
+<section class="card admin-tutorials">
+  <div class="admin-tutorials__header">
+    <div>
+      <h2 class="section-title">Tutoriais da app</h2>
+      <p class="muted">Gerir imagens ilustrativas e links externos para ajudar os utilizadores.</p>
+    </div>
+    <a href="#/settings" class="btn">
+      <span class="material-symbols-outlined">arrow_back</span>
+      Definicoes
+    </a>
+  </div>
+
+  <form id="tutorial-form" class="tutorial-admin-form">
+    <input id="tutorial-id" type="hidden" />
+
+    <div class="grid grid-responsive-2" style="gap:12px">
+      <label>
+        Titulo
+        <input id="tutorial-title" type="text" required maxlength="120" />
+      </label>
+      <label>
+        Ordem
+        <input id="tutorial-order" type="number" value="0" step="1" />
+      </label>
+    </div>
+
+    <label>
+      Descricao
+      <textarea id="tutorial-description" rows="3" maxlength="500"></textarea>
+    </label>
+
+    <div class="grid grid-responsive-2" style="gap:12px">
+      <label>
+        Link video
+        <input id="tutorial-video-url" type="url" placeholder="https://youtube.com/..." />
+      </label>
+      <label>
+        Imagem
+        <input id="tutorial-image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+      </label>
+    </div>
+
+    <label>
+      URL da imagem
+      <input id="tutorial-image-url" type="url" placeholder="Preenchido automaticamente apos upload" />
+    </label>
+
+    <label class="checkline">
+      <input id="tutorial-published" type="checkbox" checked />
+      <span>Publicado</span>
+    </label>
+
+    <div class="tutorial-actions">
+      <button id="tutorial-save" class="btn btn--primary" type="submit">
+        <span class="material-symbols-outlined">save</span>
+        Guardar
+      </button>
+      <button id="tutorial-reset" class="btn" type="button">
+        <span class="material-symbols-outlined">add</span>
+        Novo
+      </button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h3 class="section-title">Conteudo existente</h3>
+  <div id="tutorial-admin-list" class="tutorial-admin-list">
+    <div class="muted">A carregar...</div>
+  </div>
+</section>

@@ -1720,11 +1720,10 @@ export async function init({ sb, outlet } = {}) {
     return out;
   }
   async function dashFetchPortfoliosAgg() {
-    const uid = await dashGetUserId();
+    await dashGetUserId();
     const { data: pf } = await sb
       .from("portfolios")
-      .select("*")
-      .eq("user_id", uid);
+      .select("*");
     if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
 
     const { data: ttype } = await sb

@@ -74,12 +74,10 @@ export const refs = {
     return data;
   },
   async categories(kind) {
-    const u = await requireUser();
     let q = window.sb
       .from("categories")
       .select("id,name,parent_id,kind,user_id")
       .eq("kind", kind)
-      .or(`user_id.is.null,user_id.eq.${u.id}`)
       .order("name", { ascending: true });
 
     const { data, error } = await q;
@@ -88,8 +86,7 @@ export const refs = {
     const { data: parents } = await window.sb
       .from("categories")
       .select("id,name")
-      .is("parent_id", null)
-      .or(`user_id.is.null,user_id.eq.${u.id}`);
+      .is("parent_id", null);
 
     const pmap = new Map((parents || []).map((p) => [p.id, p.name]));
     return (data || [])
@@ -123,11 +120,9 @@ export const refs = {
 
   // --- NEW LOGIC (Refactor) ---
   async getTree({ kind = null } = {}) {
-    const u = await requireUser();
     let q = window.sb
       .from("categories")
       .select("id,name,parent_id,kind,user_id")
-      .or(`user_id.is.null,user_id.eq.${u.id}`)
       .order("name", { ascending: true });
 
     if (kind) q = q.eq("kind", kind);
@@ -188,11 +183,10 @@ export const refs = {
 // ========= Contas =========
 export const accounts = {
   async list() {
-    const u = await requireUser();
+    await requireUser();
     const { data, error } = await window.sb
       .from("accounts")
       .select("*")
-      .eq("user_id", u.id)
       .order("name", { ascending: true });
     if (error) throw error;
     return data;
@@ -443,11 +437,8 @@ export const dashboard = {
 export const portfolios = {
   async aggregate() {
     const sb = window.sb;
-    const uid = (await sb.auth.getUser()).data?.user?.id;
-    const { data: pf } = await sb
-      .from("portfolios")
-      .select("*")
-      .eq("user_id", uid);
+    await requireUser();
+    const { data: pf } = await sb.from("portfolios").select("*");
     if (!pf?.length) return { kinds: [], byKind: new Map(), raw: [] };
 
     const { data: ttype } = await sb
@@ -576,11 +567,10 @@ export const portfolios = {
 
 // Tree View for Categories
 async function getTree() {
-  const u = await requireUser();
+  await requireUser();
   const { data, error } = await window.sb
     .from("categories")
     .select("*")
-    .or(`user_id.is.null,user_id.eq.${u.id}`)
     .order("name");
 
   if (error) throw error;

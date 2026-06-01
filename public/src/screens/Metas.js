@@ -190,11 +190,10 @@ export async function init({ sb, outlet } = {}) {
 
 
   async function listPortfolios() {
-    const uid = await getUserId();
+    await getUserId();
     const { data, error } = await sb
       .from("portfolios")
       .select("*")
-      .eq("user_id", uid)
       .order("created_at", { ascending: true });
     if (error) throw error;
     return data || [];

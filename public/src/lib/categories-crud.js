@@ -1,5 +1,5 @@
 // src/lib/categories-crud.js
-// CRUD de categorias (globais: user_id=null; do utilizador: user_id=auth.uid())
+// CRUD de categorias. A RLS filtra globais + categorias da conta ativa.
 // Requer window.sb criado no index.html
 
 export const Categories = (() => {
@@ -13,11 +13,10 @@ export const Categories = (() => {
   }
 
   async function listAll() {
-    const uid = await currentUserId();
+    await currentUserId();
     const { data, error } = await sb
       .from("categories")
       .select("id,name,kind,parent_id,user_id,created_at")
-      .or(`user_id.is.null,user_id.eq.${uid}`)
       .order("name", { ascending: true });
     if (error) throw error;
 
@@ -56,14 +55,14 @@ export const Categories = (() => {
   }
 
   async function update(id, { name, kind, parent_id = null }) {
-    const uid = await currentUserId();
+    await currentUserId();
     const patch = {};
     if (name != null) patch.name = String(name).trim();
     if (kind != null) patch.kind = kind;
     if (parent_id !== undefined) patch.parent_id = parent_id;
 
     const { data, error } = await sb.from("categories")
-      .update(patch).eq("id", id).eq("user_id", uid).select().maybeSingle();
+      .update(patch).eq("id", id).select().maybeSingle();
     if (error) {
       if ((error.code||"").toString() === "23505")
         throw new Error("Já existe uma categoria com esse nome no mesmo nível.");
@@ -74,10 +73,10 @@ export const Categories = (() => {
   }
 
   async function remove(id) {
-    const uid = await currentUserId();
+    await currentUserId();
     const { error, count } = await sb.from("categories")
       .delete({ count:"exact" })
-      .eq("id", id).eq("user_id", uid);
+      .eq("id", id);
     if (error) {
       if ((error.code||"").toString() === "23503")
         throw new Error("Não é possível apagar: existem transações associadas.");

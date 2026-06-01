@@ -104,6 +104,11 @@ const ROUTES = {
     js: "/src/screens/Metas.js",
     showFooter: true,
   },
+  "#/admin-tutorials": {
+    file: "/src/screens/admin-tutorials.html",
+    js: "/src/screens/admin-tutorials.js",
+    showFooter: true,
+  },
 };
 
 function normalizeRoute(hash) {

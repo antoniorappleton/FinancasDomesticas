@@ -4615,3 +4615,205 @@ label,
   background: var(--blue-100);
   color: var(--blue-500);
 }
+.shared-account-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.shared-account-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-body, #f8fafc);
+}
+
+.shared-account-status .material-symbols-outlined {
+  color: var(--primary, #2563eb);
+}
+
+.shared-account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.shared-account-box {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.shared-account-box h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.share-code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.share-code-row input {
+  flex: 1 1 180px;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  letter-spacing: 0;
+}
+
+.share-code-row .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .shared-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .share-code-row .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+.tutorials-settings-header,
+.admin-tutorials__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.settings-tutorials-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.settings-tutorial-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-tutorial-card img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.settings-tutorial-card__body {
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.settings-tutorial-card__body h4 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.settings-tutorial-card__body p {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+
+.settings-tutorial-card__body .btn {
+  justify-content: center;
+}
+
+.admin-tutorials,
+.tutorial-admin-form {
+  display: grid;
+  gap: 14px;
+}
+
+.tutorial-admin-form textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-admin-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tutorial-admin-item {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.tutorial-admin-item img,
+.tutorial-admin-thumb {
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f1f5f9;
+}
+
+.tutorial-admin-item__body {
+  min-width: 0;
+}
+
+.tutorial-admin-item__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tutorial-admin-item__body p {
+  margin: 4px 0;
+  color: var(--muted, #64748b);
+  font-size: 13px;
+}
+
+.tutorial-admin-item__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .tutorials-settings-header,
+  .admin-tutorials__header {
+    flex-direction: column;
+  }
+
+  .tutorial-admin-item {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-admin-item img,
+  .tutorial-admin-thumb {
+    width: 100%;
+  }
+}
