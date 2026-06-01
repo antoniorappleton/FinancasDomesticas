@@ -237,15 +237,22 @@ async function handleRoute() {
 
 /* ===================== Auth callbacks ===================== */
 let _lastUserId = null;
+let _signInInFlight = false;
 
 async function onSignedIn() {
+  if (_signInInFlight) return;
+  _signInInFlight = true;
+
   // Evitar reloads redundantes quando o token expira/renova no focus
   try {
     const {
       data: { session },
     } = await window.sb.auth.getSession();
     const uid = session?.user?.id;
-    if (uid && uid === _lastUserId) return;
+    if (uid && uid === _lastUserId) {
+      _signInInFlight = false;
+      return;
+    }
     _lastUserId = uid;
   } catch (e) {
     console.warn("Erro ao validar sessão no onSignedIn:", e);
@@ -259,8 +266,8 @@ async function onSignedIn() {
   // Carregar tema visual do utilizador
   if (window.sb) loadTheme(window.sb);
 
-  // Em vez de pedir getSession de novo, carrega a rota atual diretamente
-  loadScreen(normalizeRoute(location.hash || "#/")).catch((e) => {
+  // Usa o router central para evitar carregamentos duplicados no arranque.
+  handleRoute().catch((e) => {
     if (!isAbortError(e)) console.error(e);
   });
 
@@ -268,6 +275,7 @@ async function onSignedIn() {
   setTimeout(() => Onboarding.init(), 1000);
   Guide.mountHeaderButton();
   WiseChat.checkVisibility();
+  _signInInFlight = false;
 }
 
 function onSignedOut() {

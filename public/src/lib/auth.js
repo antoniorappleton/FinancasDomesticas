@@ -35,7 +35,6 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     return `${location.origin}${dir}confirm.html`;
   };
   const CONFIRM_URL = getConfirmUrl();
-  console.log("Redirect URL definida para:", CONFIRM_URL);
 
   // helpers UI
   const setOverlay = (visible) => {
@@ -272,6 +271,8 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
 
       form.onsubmit = async (e) => {
         e.preventDefault();
+        const resetUsername = document.getElementById("reset-username");
+        if (resetUsername) resetUsername.value = emailEl?.value || "";
         const p1 = document.getElementById("reset-new-pw").value;
         const p2 = document.getElementById("reset-conf-pw").value;
 

@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v160";
+      window.APP_VERSION = "v161";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -40,7 +40,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=160" />
+    <link rel="stylesheet" href="./styles.css?v=161" />
     <link rel="stylesheet" href="./health.css" />
     <link rel="stylesheet" href="./src/lib/ai-chat.css" />
     <link
@@ -592,7 +592,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=160", { scope: "./" })
+          .register("./sw.js?v=161", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -720,6 +720,13 @@
           class="grid grid-responsive-1"
           style="gap: 16px"
         >
+          <input
+            id="reset-username"
+            type="email"
+            autocomplete="username"
+            hidden
+            tabindex="-1"
+          />
           <label style="color: #1e293b">
             Nova palavra-passe
             <input
@@ -804,6 +811,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=160"></script>
+    <script type="module" src="./main.js?v=161"></script>
   </body>
 </html>

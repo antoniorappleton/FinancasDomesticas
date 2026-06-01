@@ -1450,8 +1450,6 @@ export async function init({ sb, outlet } = {}) {
         if (k === "2025-12" && isExp && amt > 2500) {
           const path = catPath(r.category_id, r.categories).toLowerCase();
           if (path.includes("manutenção") && path.includes("casa")) {
-            console.log(`⚠️ Excluding outlier from ${k}: ${amt}€ (${path})`);
-
             // 1. Corrigir allHistoryMap (que vem da View com dados agregados)
             const hist = allHistoryMap.get(k);
             if (hist) {
@@ -3726,14 +3724,6 @@ export async function init({ sb, outlet } = {}) {
         cfNetTotal: cfFixed && cfFixed.netTotal ? cfFixed.netTotal : [],
         cfCumTotal: cfFixed && cfFixed.cumTotal ? cfFixed.cumTotal : [],
       };
-
-      // Debug: verificar se os dados estão sendo calculados
-      console.log("📊 Dashboard Data para Modal:", {
-        cfLabels: dsMini.cfLabels,
-        cfNet: dsMini.cfNet,
-        cfCum: dsMini.cfCum,
-        monthlyCount: dsMini.labels12m?.length,
-      });
 
       setupDashboardModal(dsMini, {
         allHistoryMap,
