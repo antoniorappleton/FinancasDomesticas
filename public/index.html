@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v161";
+      window.APP_VERSION = "v162";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -40,7 +40,7 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=161" />
+    <link rel="stylesheet" href="./styles.css?v=162" />
     <link rel="stylesheet" href="./health.css" />
     <link rel="stylesheet" href="./src/lib/ai-chat.css" />
     <link
@@ -49,7 +49,7 @@
     />
 
     <link rel="icon" type="image/png" href="./icon-192.png" />
-    <link rel="manifest" href="./manifest.json?v=13" />
+    <link rel="manifest" href="./manifest.json?v=14" />
   </head>
 
   <body>
@@ -565,7 +565,7 @@
       });
     </script>
 
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" href="manifest.json?v=14" />
     <!-- PDF.js — carregado uma única vez (Android fix: was duplicated) -->
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
@@ -592,7 +592,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=161", { scope: "./" })
+          .register("./sw.js?v=162", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -811,6 +811,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=161"></script>
+    <script type="module" src="./main.js?v=162"></script>
   </body>
 </html>
