@@ -16,14 +16,85 @@ export async function init({ outlet } = {}) {
 
   $("tx-date") && ($("tx-date").value = ymd(new Date()));
 
+  const DEMO_KEY = "wisebudget_demo_transactions";
+  const demoMode = !sb;
+  const demoAccounts = [{ id: "demo-account", name: "Carteira" }];
+  const demoRefs = {
+    regularities: [{ id: 1, name_pt: "Pontual", code: "ONCE" }],
+    methods: [{ id: 1, name_pt: "Cartao" }],
+    statuses: [{ id: 1, name_pt: "Pago" }],
+    types: [
+      { id: 1, code: "INCOME", name_pt: "Receita" },
+      { id: 2, code: "EXPENSE", name_pt: "Despesa" },
+      { id: 3, code: "SAVINGS", name_pt: "Poupanca" },
+      { id: 4, code: "TRANSFER", name_pt: "Transferencia" },
+    ],
+    categories: {
+      expense: [
+        { id: "demo-exp-food", name: "Alimentacao", parent_id: null },
+        { id: "demo-exp-home", name: "Casa", parent_id: null },
+        { id: "demo-exp-transport", name: "Transportes", parent_id: null },
+        { id: "demo-exp-health", name: "Saude", parent_id: null },
+        { id: "demo-exp-other", name: "Outros", parent_id: null },
+        { id: "demo-exp-supermarket", name: "Supermercado", parent_id: "demo-exp-food" },
+        { id: "demo-exp-restaurant", name: "Restaurante", parent_id: "demo-exp-food" },
+        { id: "demo-exp-fuel", name: "Combustivel", parent_id: "demo-exp-transport" },
+        { id: "demo-exp-pharmacy", name: "Farmacia", parent_id: "demo-exp-health" },
+      ],
+      income: [
+        { id: "demo-inc-salary", name: "Ordenado", parent_id: null },
+        { id: "demo-inc-other", name: "Outras receitas", parent_id: null },
+      ],
+      savings: [
+        { id: "demo-sav-general", name: "Poupanca geral", parent_id: null },
+      ],
+    },
+  };
+
+  const setDemoMode = (on) => {
+    $("tx-demo-status")?.classList.toggle("hidden", !on);
+  };
+  setDemoMode(demoMode);
+
+  const getDemoTransactions = () => {
+    try {
+      return JSON.parse(localStorage.getItem(DEMO_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  };
+
+  const saveDemoTransaction = (payload) => {
+    const rows = getDemoTransactions();
+    rows.unshift({ ...payload, id: crypto.randomUUID?.() || String(Date.now()), created_at: new Date().toISOString() });
+    localStorage.setItem(DEMO_KEY, JSON.stringify(rows.slice(0, 50)));
+  };
+  const formatDemoMoney = (value) =>
+    `${Number(value || 0).toFixed(2).replace(".", ",")} EUR`;
+  const labelForType = (type) =>
+    ({
+      EXPENSE: "Despesa",
+      INCOME: "Receita",
+      SAVINGS: "Poupanca",
+      TRANSFER: "Transferencia",
+    })[type] || "Movimento";
+
   // ----- carregar listas base -----
-  const [accRes, regRes, pmRes, stRes, ttRes] = await Promise.all([
-    sb.from("accounts").select("id,name").order("name"),
-    sb.from("regularities").select("id,name_pt").order("id"),
-    sb.from("payment_methods").select("id,name_pt").order("id"),
-    sb.from("statuses").select("id,name_pt").order("id"),
-    sb.from("transaction_types").select("id,code,name_pt"),
-  ]);
+  const [accRes, regRes, pmRes, stRes, ttRes] = sb
+    ? await Promise.all([
+        sb.from("accounts").select("id,name").order("name"),
+        sb.from("regularities").select("id,name_pt,code").order("id"),
+        sb.from("payment_methods").select("id,name_pt").order("id"),
+        sb.from("statuses").select("id,name_pt").order("id"),
+        sb.from("transaction_types").select("id,code,name_pt"),
+      ])
+    : [
+        { data: demoAccounts },
+        { data: demoRefs.regularities },
+        { data: demoRefs.methods },
+        { data: demoRefs.statuses },
+        { data: demoRefs.types },
+      ];
   if (
     accRes.error ||
     regRes.error ||
@@ -34,8 +105,13 @@ export async function init({ outlet } = {}) {
     console.error(
       accRes.error || regRes.error || pmRes.error || stRes.error || ttRes.error,
     );
-    toast("Erro a carregar listas", false);
-    return;
+    setDemoMode(true);
+    toast("Sem ligacao ao banco. A usar modo demo.", false);
+    accRes.data = demoAccounts;
+    regRes.data = demoRefs.regularities;
+    pmRes.data = demoRefs.methods;
+    stRes.data = demoRefs.statuses;
+    ttRes.data = demoRefs.types;
   }
   const TYPE_ID = Object.fromEntries(
     (ttRes.data || []).map((t) => [t.code, t.id]),
@@ -55,22 +131,19 @@ export async function init({ outlet } = {}) {
 
   // contas
   async function loadAccounts() {
-    const { data, error } = await sb
-      .from("accounts")
-      .select("id,name")
-      .order("name");
+    const { data, error } = sb
+      ? await sb.from("accounts").select("id,name").order("name")
+      : { data: demoAccounts, error: null };
     if (error || !data?.length) {
-      putPlaceholder($("tx-account"));
-      putPlaceholder($("tx-account-from"));
-      putPlaceholder($("tx-account-to"));
-      $("tx-save") &&
-        (($("tx-save").disabled = true),
-        ($("tx-save").title = "Cria pelo menos uma conta nas Definições."));
-      return;
+      fill($("tx-account"), demoAccounts, "name");
+      fill($("tx-account-from"), demoAccounts, "name");
+      fill($("tx-account-to"), demoAccounts, "name");
+      setDemoMode(true);
+    } else {
+      fill($("tx-account"), data, "name");
+      fill($("tx-account-from"), data, "name");
+      fill($("tx-account-to"), data, "name");
     }
-    fill($("tx-account"), data, "name");
-    fill($("tx-account-from"), data, "name");
-    fill($("tx-account-to"), data, "name");
     if ($("tx-save")) {
       $("tx-save").disabled = false;
       $("tx-save").title = "";
@@ -85,23 +158,29 @@ export async function init({ outlet } = {}) {
 
   // ----- categorias -----
   const coll = new Intl.Collator("pt-PT", { sensitivity: "base" });
+  let activeCategoryRows = [];
 
   // Removed loadPlainCategories as we unified UI to 2-selects
 
   async function bindCategoryDropdowns(kind) {
-    const { data: parents, error: e1 } = await sb
-      .from("categories")
-      .select("id,name")
-      .is("parent_id", null)
-      .eq("kind", kind)
-      .order("name");
+    const localCats = demoRefs.categories[kind] || [];
+    const { data: cats, error: e1 } = sb
+      ? await sb
+          .from("categories")
+          .select("id,name,parent_id")
+          .eq("kind", kind)
+          .order("name")
+      : {
+          data: localCats,
+          error: null,
+        };
     if (e1) {
       console.error(e1);
-      toast("Erro a carregar categorias", false);
-      return;
+      setDemoMode(true);
     }
 
-    const pSorted = (parents || []).sort((a, b) =>
+    activeCategoryRows = e1 ? localCats : cats || [];
+    const pSorted = activeCategoryRows.filter((c) => !c.parent_id).sort((a, b) =>
       coll.compare(a.name, b.name),
     );
     $("cat-parent").innerHTML =
@@ -110,7 +189,18 @@ export async function init({ outlet } = {}) {
 
     $("cat-child").innerHTML = `<option value="">(Geral)</option>`;
 
-    $("cat-parent").onchange = async () => {
+    const loadChildren = (pid) => {
+      const sSorted = activeCategoryRows
+        .filter((c) => c.parent_id === pid)
+        .sort((a, b) => coll.compare(a.name, b.name));
+      $("cat-child").innerHTML =
+        `<option value="">(Geral)</option>` +
+        sSorted
+          .map((s) => `<option value="${s.id}">${s.name}</option>`)
+          .join("");
+    };
+
+    $("cat-parent").onchange = () => {
       const pid = $("cat-parent").value;
       // Default to parent if no child selected
       $("tx-category-final").value = pid || "";
@@ -119,23 +209,7 @@ export async function init({ outlet } = {}) {
         $("cat-child").innerHTML = `<option value="">(Geral)</option>`;
         return;
       }
-      const { data: subs, error: e2 } = await sb
-        .from("categories")
-        .select("id,name")
-        .eq("parent_id", pid)
-        .eq("kind", kind)
-        .order("name");
-      if (e2) {
-        console.error(e2);
-        toast("Erro a carregar subcategorias", false);
-        return;
-      }
-      const sSorted = (subs || []).sort((a, b) => coll.compare(a.name, b.name));
-      $("cat-child").innerHTML =
-        `<option value="">(Geral)</option>` +
-        sSorted
-          .map((s) => `<option value="${s.id}">${s.name}</option>`)
-          .join("");
+      loadChildren(pid);
     };
     $("cat-child").onchange = () => {
       // If child is empty, use parent
@@ -156,17 +230,25 @@ export async function init({ outlet } = {}) {
 
   const currentType = () =>
     (
-      document.querySelector('input[name="tx-type"]:checked')?.value || "INCOME"
+      document.querySelector('input[name="tx-type"]:checked')?.value || "EXPENSE"
     ).toUpperCase();
 
   async function applyTypeUI() {
     const t = currentType();
+    const saveLabel = {
+      EXPENSE: "Guardar despesa",
+      INCOME: "Guardar receita",
+      SAVINGS: "Guardar poupanca",
+      TRANSFER: "Guardar transferencia",
+    };
+    if ($("tx-save")) $("tx-save").textContent = saveLabel[t] || "Guardar";
 
     if (t === "TRANSFER") {
       show(rowAccSingle, false);
       show(rowAccTransfer, true);
       show(rowCategory, false);
       show(rowNature, false);
+      show(document.querySelector(".tx-suggestions"), false);
       return;
     }
 
@@ -174,6 +256,7 @@ export async function init({ outlet } = {}) {
     show(rowAccTransfer, false);
     show(rowCategory, true);
     show(rowNature, t === "EXPENSE");
+    show(document.querySelector(".tx-suggestions"), t === "EXPENSE");
     // FAB Toggle
     show($("btn-fixed-bulk"), t === "EXPENSE");
     show($("btn-import"), t === "EXPENSE" || t === "INCOME"); // Allow import for Income too
@@ -196,6 +279,77 @@ export async function init({ outlet } = {}) {
     .forEach((r) => r.addEventListener("change", applyTypeUI));
   await applyTypeUI();
 
+  function normalizeSearch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function pickCategoryByText(text) {
+    const base = normalizeSearch(text);
+    if (!base) return;
+
+    const parentSelect = $("cat-parent");
+    const childSelect = $("cat-child");
+    if (!parentSelect) return;
+
+    const termsByShortcut = {
+      supermercado: ["supermercado", "mercearia", "alimentacao"],
+      restaurante: ["restaurante", "almoco", "refeicao", "alimentacao"],
+      combustivel: ["combustivel", "gasolina", "transportes"],
+      saude: ["farmacia", "saude"],
+    };
+    const terms = termsByShortcut[base] || [base];
+    const normalizedRows = activeCategoryRows.map((row) => ({
+      ...row,
+      normalizedName: normalizeSearch(row.name),
+      isChild: Boolean(row.parent_id),
+    }));
+
+    const exactChild = normalizedRows.find(
+      (row) => row.isChild && terms.includes(row.normalizedName),
+    );
+    const exactParent = normalizedRows.find(
+      (row) => !row.isChild && terms.includes(row.normalizedName),
+    );
+    const partialChild = normalizedRows.find(
+      (row) => row.isChild && terms.some((term) => row.normalizedName.includes(term) || term.includes(row.normalizedName)),
+    );
+    const partialParent = normalizedRows.find(
+      (row) => !row.isChild && terms.some((term) => row.normalizedName.includes(term) || term.includes(row.normalizedName)),
+    );
+    const match = exactChild || partialChild || exactParent || partialParent;
+    if (!match) return;
+
+    if (match.parent_id) {
+      parentSelect.value = match.parent_id;
+      parentSelect.dispatchEvent(new Event("change"));
+      if (childSelect) {
+        childSelect.value = match.id;
+        childSelect.dispatchEvent(new Event("change"));
+      }
+      return;
+    }
+
+    parentSelect.value = match.id;
+    parentSelect.dispatchEvent(new Event("change"));
+  }
+
+  document.querySelectorAll(".tx-chip").forEach((chip) => {
+    chip.addEventListener("click", async () => {
+      const expenseRadio = document.querySelector('input[name="tx-type"][value="EXPENSE"]');
+      if (expenseRadio && !expenseRadio.checked) {
+        expenseRadio.checked = true;
+        await applyTypeUI();
+      }
+      if ($("tx-desc")) $("tx-desc").value = chip.dataset.desc || chip.textContent.trim();
+      pickCategoryByText(chip.dataset.cat || chip.textContent);
+      $("tx-amount")?.focus();
+    });
+  });
+
   // ----- guardar -----
   $("tx-save")?.addEventListener("click", async () => {
     try {
@@ -208,6 +362,16 @@ export async function init({ outlet } = {}) {
       const description = $("tx-desc")?.value || null;
       const location = $("tx-loc")?.value || null;
       const notes = $("tx-notes")?.value || null;
+      const regularity_id = $("tx-regularity")?.value
+        ? Number($("tx-regularity").value)
+        : null;
+      const payment_method_id = $("tx-method")?.value
+        ? Number($("tx-method").value)
+        : null;
+      const status_id = $("tx-status")?.value
+        ? Number($("tx-status").value)
+        : null;
+      const category_id = $("tx-category-final")?.value || null;
 
       if (t === "TRANSFER") {
         const from_account = $("tx-account-from")?.value;
@@ -221,6 +385,25 @@ export async function init({ outlet } = {}) {
           throw new Error("Selecione as duas contas.");
         if (from_account === to_account)
           throw new Error("As contas têm de ser diferentes.");
+
+        if (!sb || from_account.startsWith("demo-") || to_account.startsWith("demo-")) {
+          saveDemoTransaction({
+            type: t,
+            from_account,
+            to_account,
+            amount,
+            date,
+            description,
+            notes,
+            currency: "EUR",
+          });
+          setDemoMode(true);
+          toast(`Transferencia demo guardada: ${formatDemoMoney(amount)}`);
+          ["tx-amount", "tx-desc", "tx-notes"].forEach(
+            (id) => $(id) && ($(id).value = ""),
+          );
+          return;
+        }
 
         const { error } = await sb.rpc("create_transfer", {
           p_from_account: from_account,
@@ -243,23 +426,42 @@ export async function init({ outlet } = {}) {
       if (!account_id || account_id === "__none__")
         throw new Error("Escolhe a conta.");
 
+      if (!sb || account_id.startsWith("demo-")) {
+        const payload = {
+          type: t,
+          regularity_id,
+          account_id,
+          category_id,
+          payment_method_id,
+          status_id,
+          date,
+          amount,
+          description,
+          location,
+          notes,
+          currency: "EUR",
+        };
+
+        if (t === "EXPENSE") {
+          payload.expense_nature =
+            document.querySelector('input[name="tx-nature"]:checked')?.value ||
+            "variable";
+        }
+
+        saveDemoTransaction(payload);
+        setDemoMode(true);
+        toast(`${labelForType(t)} demo guardada: ${description || "Sem descricao"} - ${formatDemoMoney(amount)}`);
+        ["tx-amount", "tx-desc", "tx-loc", "tx-notes"].forEach(
+          (id) => $(id) && ($(id).value = ""),
+        );
+        return;
+      }
+
       const {
         data: { user },
       } = await sb.auth.getUser();
       const type_id = TYPE_ID[t];
       if (!type_id) throw new Error("Tipo inválido.");
-
-      const regularity_id = $("tx-regularity")?.value
-        ? Number($("tx-regularity").value)
-        : null;
-      const payment_method_id = $("tx-method")?.value
-        ? Number($("tx-method").value)
-        : null;
-      const status_id = $("tx-status")?.value
-        ? Number($("tx-status").value)
-        : null;
-
-      const category_id = $("tx-category-final")?.value || null;
 
       const payload = {
         user_id: user.id,
@@ -344,9 +546,14 @@ export async function init({ outlet } = {}) {
 
     btn.onclick = async () => {
       try {
+        if (!sb) {
+          setDemoMode(true);
+          toast("Despesas fixas precisam de historico ligado ao banco.", false);
+          return;
+        }
         const t = (
           document.querySelector('input[name="tx-type"]:checked')?.value ||
-          "INCOME"
+          "EXPENSE"
         ).toUpperCase();
         if (t !== "EXPENSE") {
           toast("Esta ação é apenas para Despesas.", false);
@@ -764,13 +971,13 @@ export async function init({ outlet } = {}) {
   // ===== Importar PDF/CSV =====
 
   // ===== ASSISTENTE IA (VOZ & TEXTO) =====
-  setupAIAssistant(outlet, TYPE_ID, $, toast);
+  setupAIAssistant(outlet, TYPE_ID, $, toast, sb);
 }
 
 /**
  * AI Assistant for quick text/voice entries
  */
-function setupAIAssistant(outlet, TYPE_ID, $, toast) {
+function setupAIAssistant(outlet, TYPE_ID, $, toast, sb) {
   // 1. Injetar Painel (Sem innerHTML no outlet)
   if (document.getElementById("ai-assistant-panel")) return;
 
@@ -1008,6 +1215,7 @@ function setupAIAssistant(outlet, TYPE_ID, $, toast) {
    */
   async function matchCategory(subject, type) {
     if (!subject) return;
+    if (!sb) return;
     const kind = type.toLowerCase();
 
     try {
