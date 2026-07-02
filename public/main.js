@@ -303,11 +303,20 @@ function onSignedOut() {
     await waitForSupabase();
     initAuth({ onSignedIn, onSignedOut });
     window.addEventListener("hashchange", handleRoute);
-    window.addEventListener("DOMContentLoaded", () => {
+
+    // Nota: chegámos aqui depois de um `await`, por isso o DOMContentLoaded
+    // pode já ter disparado antes deste listener ser registado (o script é um
+    // módulo, corre depois do HTML estar parseado). Se já passou, corre já.
+    const onDomReady = () => {
       setActiveTab();
       handleRoute();
       WiseChat.init();
-    });
+    };
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", onDomReady);
+    } else {
+      onDomReady();
+    }
     window.dispatchEvent(new Event("app:ready"));
 
     // Service Worker Update Toasts

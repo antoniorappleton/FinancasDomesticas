@@ -18,6 +18,8 @@ export async function init() {
   const mParentId = document.getElementById("modal-parent-id");
   const mName = document.getElementById("modal-name");
   const mKind = document.getElementById("modal-kind");
+  const mNatureSection = document.getElementById("modal-nature-section");
+  const mNature = document.getElementById("modal-nature");
   const mParentSection = document.getElementById("modal-parent-section");
   const mParentName = document.getElementById("modal-parent-name");
   const mTitle = document.getElementById("modal-title");
@@ -237,10 +239,16 @@ export async function init() {
   const btnGlobalAdd = document.getElementById("btn-add-global");
   if (btnGlobalAdd) btnGlobalAdd.onclick = () => openCreate();
 
+  function syncNatureVisibility() {
+    if (mNatureSection) mNatureSection.classList.toggle("hidden", mKind.value !== "expense");
+  }
+  mKind.addEventListener("change", syncNatureVisibility);
+
   function openCreate(parentId = null, parentName = null) {
     mForm.reset();
     mId.value = "";
     mParentId.value = parentId || "";
+    if (mNature) mNature.value = "";
 
     if (parentId) {
       document.getElementById("modal-title").innerText = "Nova Subcategoria";
@@ -255,6 +263,7 @@ export async function init() {
       mKind.value = currentKind;
     }
 
+    syncNatureVisibility();
     modalOverlay.classList.remove("hidden");
     const btnDel = document.getElementById("modal-delete");
     if (btnDel) btnDel.classList.add("hidden");
@@ -282,6 +291,7 @@ export async function init() {
     mName.value = target.name;
     mKind.value = target.kind;
     mParentId.value = target.parent_id || "";
+    if (mNature) mNature.value = target.nature || "";
 
     if (target.isSystem) {
       alert("Categorias de sistema não podem ser editadas.");
@@ -307,6 +317,7 @@ export async function init() {
       mKind.disabled = false;
     }
 
+    syncNatureVisibility();
     modalOverlay.classList.remove("hidden");
     const btnDel = document.getElementById("modal-delete");
     if (btnDel) {
@@ -321,6 +332,7 @@ export async function init() {
       name: mName.value,
       kind: mKind.value,
       parent_id: mParentId.value || null,
+      nature: mNature ? mNature.value || null : null,
     };
 
     const id = mId.value;

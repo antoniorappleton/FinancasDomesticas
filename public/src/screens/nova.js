@@ -167,7 +167,7 @@ export async function init({ outlet } = {}) {
     const { data: cats, error: e1 } = sb
       ? await sb
           .from("categories")
-          .select("id,name,parent_id")
+          .select("id,name,parent_id,nature")
           .eq("kind", kind)
           .order("name")
       : {
@@ -200,11 +200,28 @@ export async function init({ outlet } = {}) {
           .join("");
     };
 
+    // Pré-seleciona Fixa/Variável a partir da categoria escolhida (só se o
+    // utilizador ainda não tiver escolhido manualmente nesta sessão do form).
+    let natureTouchedByUser = false;
+    document
+      .querySelectorAll('input[name="tx-nature"]')
+      .forEach((r) => r.addEventListener("change", () => (natureTouchedByUser = true)));
+
+    const applyNatureFromCategory = (catId) => {
+      if (natureTouchedByUser || !catId) return;
+      const cat = activeCategoryRows.find((c) => String(c.id) === String(catId));
+      const nature = cat?.nature;
+      if (nature !== "fixed" && nature !== "variable") return;
+      const radio = document.querySelector(`input[name="tx-nature"][value="${nature}"]`);
+      if (radio) radio.checked = true;
+    };
+
     $("cat-parent").onchange = () => {
       const pid = $("cat-parent").value;
       // Default to parent if no child selected
       $("tx-category-final").value = pid || "";
-      
+      applyNatureFromCategory(pid);
+
       if (!pid) {
         $("cat-child").innerHTML = `<option value="">(Geral)</option>`;
         return;
@@ -213,7 +230,9 @@ export async function init({ outlet } = {}) {
     };
     $("cat-child").onchange = () => {
       // If child is empty, use parent
-      $("tx-category-final").value = $("cat-child").value || $("cat-parent").value || "";
+      const finalId = $("cat-child").value || $("cat-parent").value || "";
+      $("tx-category-final").value = finalId;
+      applyNatureFromCategory(finalId);
     };
 
     // start

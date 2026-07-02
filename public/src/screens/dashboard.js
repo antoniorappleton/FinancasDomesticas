@@ -38,10 +38,20 @@ async function renderSmartAdvisor(outlet) {
     if (!profile) return;
 
     const { averages, strategy } = profile;
-    
-    // Só mostramos se houver liquidez média positiva e alguma estratégia definida
-    if (averages.net <= 0 || (strategy.expenses === 0 && strategy.savings === 0 && strategy.investment === 0 && strategy.free === 0)) {
+
+    const hasStrategy = strategy.expenses > 0 || strategy.savings > 0 || strategy.investment > 0 || strategy.free > 0;
+
+    // Sem liquidez média positiva ainda não há histórico suficiente para aconselhar nada
+    if (averages.net <= 0 && !hasStrategy) {
       sec.style.display = "none";
+      return;
+    }
+
+    // Estratégia por definir: convite em vez de esconder a secção por completo
+    if (!hasStrategy) {
+      content.innerHTML = `Ainda não definiste a tua estratégia financeira — leva 2 minutos e passa a ter sugestões automáticas aqui.<br><br>
+        <a href="#/settings?tab=plano" class="btn btn--primary" style="display:inline-block">Definir agora</a>`;
+      sec.style.display = "block";
       return;
     }
 
@@ -109,7 +119,10 @@ function setupDashboardModal(ds, rawData) {
 
   // ---------- Renderers ----------
   // ---------- Helpers para Ajustes Manuais (Dynamic Year) ----------
-  function loadFixedSettings(year) {
+  // Guardados em user_settings.fixed_projection_overrides (Supabase) para ficarem
+  // consistentes entre dispositivos. O localStorage é mantido só como fallback
+  // (sem sessão/erro de rede) e para migração silenciosa de dados antigos.
+  function loadFixedSettingsLocal(year) {
     try {
       return JSON.parse(localStorage.getItem(`wb:fixed:${year}`) || "{}");
     } catch {
@@ -117,8 +130,52 @@ function setupDashboardModal(ds, rawData) {
     }
   }
 
-  function saveFixedSettings(year, obj) {
+  async function loadFixedSettings(year) {
+    const local = loadFixedSettingsLocal(year);
+    try {
+      const uid = window.sb ? (await window.sb.auth.getUser()).data?.user?.id : null;
+      if (!uid) return local;
+
+      const { data } = await window.sb
+        .from("user_settings")
+        .select("fixed_projection_overrides")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      const remote = data?.fixed_projection_overrides?.[year];
+      if (remote) return remote;
+
+      // Migração silenciosa: existe ajuste antigo só em localStorage, envia-o para a BD
+      if (local && Object.keys(local).length) {
+        await saveFixedSettings(year, local);
+      }
+      return local;
+    } catch (e) {
+      console.warn("[Dashboard] Falha ao carregar ajustes fixos da BD, a usar localStorage", e);
+      return local;
+    }
+  }
+
+  async function saveFixedSettings(year, obj) {
     localStorage.setItem(`wb:fixed:${year}`, JSON.stringify(obj || {}));
+    try {
+      const uid = window.sb ? (await window.sb.auth.getUser()).data?.user?.id : null;
+      if (!uid) return;
+
+      const { data } = await window.sb
+        .from("user_settings")
+        .select("fixed_projection_overrides")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      const merged = { ...(data?.fixed_projection_overrides || {}), [year]: obj || {} };
+      await window.sb.from("user_settings").upsert(
+        { user_id: uid, fixed_projection_overrides: merged, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" },
+      );
+    } catch (e) {
+      console.warn("[Dashboard] Falha ao gravar ajustes fixos na BD (guardado só localmente)", e);
+    }
   }
 
   function rebuildSeriesWithOverrides(settings) {
@@ -161,15 +218,14 @@ function setupDashboardModal(ds, rawData) {
   }
 
   // ---------- Renderers ----------
-  function renderCashflow() {
+  async function renderCashflow() {
     const targetYear = String(new Date().getFullYear());
     titleEl.textContent = `Previsão de Saldo ${targetYear} (Contas Fixas)`;
 
     // 1) Lê settings e constrói séries (com/sem override)
-    // 1) Lê settings e constrói séries (com/sem override)
     // rawData is already available in closure and contains the maps we need
 
-    const settings = loadFixedSettings(targetYear);
+    const settings = await loadFixedSettings(targetYear);
     const series = rebuildSeriesWithOverrides(settings);
 
     // 2) Monta/atualiza Chart
@@ -334,7 +390,7 @@ function setupDashboardModal(ds, rawData) {
 
     function updateChart() {
       const newSet = buildSettingsFromInputs();
-      saveFixedSettings(targetYear, newSet);
+      saveFixedSettings(targetYear, newSet); // fire-and-forget (localStorage já é síncrono)
       mapToInputs(newSet); // Refresh inputs/state if needed
       const s = rebuildSeriesWithOverrides(newSet);
 
@@ -360,7 +416,7 @@ function setupDashboardModal(ds, rawData) {
     resetBtn.addEventListener("click", () => {
       localStorage.removeItem(`wb:fixed:${targetYear}`);
       mapToInputs({});
-      updateChart();
+      updateChart(); // já grava {} (inputs a zero) na BD e localStorage
     });
   }
 

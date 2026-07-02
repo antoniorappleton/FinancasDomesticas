@@ -415,6 +415,7 @@ function renderIndicators(metrics, status) {
       status: status.effortFixedStatus,
       barWidth: Math.min(metrics.effortFixed, 100),
       statusText: getStatusText(status.effortFixedStatus, "< 40%"),
+      help: "Percentagem do teu rendimento que já está comprometida com despesas fixas (renda, seguros, prestações). Quanto mais baixo, mais margem tens para imprevistos.",
     },
     {
       icon: "trending_down",
@@ -423,6 +424,7 @@ function renderIndicators(metrics, status) {
       status: status.effortTotalStatus,
       barWidth: Math.min(metrics.effortTotal, 100),
       statusText: getStatusText(status.effortTotalStatus, "< 85%"),
+      help: "Percentagem do teu rendimento que gastas no total (fixas + variáveis) num mês típico. Acima de 85% sobra pouco para poupar ou lidar com imprevistos.",
     },
     {
       icon: "savings",
@@ -431,6 +433,7 @@ function renderIndicators(metrics, status) {
       status: status.savingsRateStatus,
       barWidth: Math.min(metrics.savingsRate, 100),
       statusText: getStatusText(status.savingsRateStatus, ">= 10%"),
+      help: "Percentagem do teu rendimento que efetivamente guardas todos os meses. Regra geral: quanto mais alto, melhor — 10% ou mais é um bom ponto de partida.",
     },
     {
       icon: "show_chart",
@@ -439,6 +442,7 @@ function renderIndicators(metrics, status) {
       status: status.liquidityStatus,
       barWidth: 0, // No bar for liquidity (it's an absolute value)
       statusText: `Tendência: ${metrics.liquidityTrend === "up" ? "↑ Subida" : metrics.liquidityTrend === "down" ? "↓ Descida" : "→ Estável"}`,
+      help: "Dinheiro acumulado (receitas menos despesas) ao longo do período analisado. É o teu 'colchão' disponível.",
     },
     {
       icon: "account_balance",
@@ -447,6 +451,7 @@ function renderIndicators(metrics, status) {
       status: status.emergencyFundStatus || "critical",
       barWidth: 0,
       statusText: `Recomendado: 3-6 meses (${money(metrics.emergencyFund?.threeMonths ?? 0)} - ${money(metrics.emergencyFund?.sixMonths ?? 0)})`,
+      help: "Quantos meses de despesas fixas consegues cobrir com o que tens acumulado, caso deixes de ter rendimento. 3 a 6 meses é o intervalo recomendado.",
     },
     {
       icon: "warning",
@@ -463,6 +468,7 @@ function renderIndicators(metrics, status) {
         metrics.consecutiveNegativeMonths === 0
           ? "Sem consecutivos"
           : "Atenção!",
+      help: "Número de meses seguidos em que gastaste mais do que recebeste. Vários meses seguidos negativos é um sinal de alerta.",
     },
     {
       icon: "trending_up",
@@ -473,13 +479,20 @@ function renderIndicators(metrics, status) {
       statusText: metrics.irregularSpending
         ? "Alta variabilidade"
         : "Despesas estáveis",
+      help: "Mede o quanto as tuas despesas mensais variam de mês para mês. Despesas muito irregulares dificultam o planeamento.",
     },
   ];
 
-  grid.innerHTML = indicators.map((ind) => renderIndicator(ind)).join("");
+  grid.innerHTML = indicators.map((ind, idx) => renderIndicator(ind, idx)).join("");
+
+  grid.querySelectorAll(".indicator-help-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      btn.closest(".indicator")?.querySelector(".indicator-help-text")?.classList.toggle("hidden");
+    });
+  });
 }
 
-function renderIndicator(ind) {
+function renderIndicator(ind, idx) {
   const statusColors = {
     excellent: "#22c55e",
     healthy: "#3b82f6",
@@ -497,6 +510,13 @@ function renderIndicator(ind) {
       <div class="indicator-header">
         <span class="material-symbols-outlined indicator-icon">${ind.icon}</span>
         <span class="indicator-title">${ind.title}</span>
+        ${
+          ind.help
+            ? `<button type="button" class="indicator-help-btn btn-icon-small" title="O que é isto?" aria-label="Explicação de ${ind.title}">
+                 <span class="material-symbols-outlined" style="font-size:16px">help_outline</span>
+               </button>`
+            : ""
+        }
       </div>
       <div class="indicator-value">${ind.value}</div>
       ${
@@ -509,6 +529,11 @@ function renderIndicator(ind) {
           : ""
       }
       <div class="indicator-status">${ind.statusText}</div>
+      ${
+        ind.help
+          ? `<p class="indicator-help-text hidden muted" style="margin-top:6px; font-size:0.8rem">${ind.help}</p>`
+          : ""
+      }
     </div>
   `;
 }

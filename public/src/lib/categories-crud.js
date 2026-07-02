@@ -33,13 +33,14 @@ export const Categories = (() => {
     };
   }
 
-  async function create({ name, kind, parent_id = null }) {
+  async function create({ name, kind, parent_id = null, nature = null }) {
     const uid = await currentUserId();
     const payload = {
       user_id: uid,
       name: String(name||"").trim(),
       kind: kind || "expense",
-      parent_id: parent_id || null
+      parent_id: parent_id || null,
+      nature: kind === "expense" ? (nature || null) : null
     };
     if (!payload.name) throw new Error("Nome obrigatório.");
     if (!["income","expense","savings","transfer"].includes(payload.kind)) {
@@ -54,12 +55,13 @@ export const Categories = (() => {
     return data;
   }
 
-  async function update(id, { name, kind, parent_id = null }) {
+  async function update(id, { name, kind, parent_id = null, nature }) {
     await currentUserId();
     const patch = {};
     if (name != null) patch.name = String(name).trim();
     if (kind != null) patch.kind = kind;
     if (parent_id !== undefined) patch.parent_id = parent_id;
+    if (nature !== undefined) patch.nature = kind === "expense" ? (nature || null) : null;
 
     const { data, error } = await sb.from("categories")
       .update(patch).eq("id", id).select().maybeSingle();

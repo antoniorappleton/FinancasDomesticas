@@ -59,21 +59,25 @@ export async function init({ sb, outlet } = {}) {
   const tabBtns = outlet.querySelectorAll(".tab-btn");
   const tabContents = outlet.querySelectorAll(".tab-content");
 
-  tabBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.tab;
-      
-      tabBtns.forEach(b => b.classList.toggle("active", b === btn));
-      tabContents.forEach(c => {
-        c.classList.toggle("active", c.id === `tab-${target}`);
-      });
-      
-      // Se for a tab plano ou financeiro, reinicializar ou atualizar lógica
-      if (target === "plano") {
-         initStrategyLogic();
-      }
+  function activateTab(target) {
+    const btn = Array.from(tabBtns).find((b) => b.dataset.tab === target);
+    if (!btn) return;
+    tabBtns.forEach(b => b.classList.toggle("active", b === btn));
+    tabContents.forEach(c => {
+      c.classList.toggle("active", c.id === `tab-${target}`);
     });
+    if (target === "plano") {
+      initStrategyLogic();
+    }
+  }
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => activateTab(btn.dataset.tab));
   });
+
+  // Deep-link: #/settings?tab=plano abre diretamente no separador Estratégia
+  const deepLinkTab = new URLSearchParams(location.hash.split("?")[1] || "").get("tab");
+  if (deepLinkTab) activateTab(deepLinkTab);
 
   // ===== helpers de legenda/cores (para charts e PDF) =====
   function palette(n) {
@@ -258,17 +262,7 @@ export async function init({ sb, outlet } = {}) {
         : { id: null, confidence: 0.4, skip: false, forceType: "INCOME" };
     }
 
-    // TRF P/ PoupeUp -> Saída (EXPENSE) -> sugerir "Outro(s)" (editável)
-    if (/trf\s+p\/\s*poupeup/.test(d) || /trf\s+p\s+poupeup/.test(d)) {
-      const other =
-        findLeafByNameIncludes("expense", "Outro") ||
-        findLeafByNameIncludes("expense", "Outros");
-      return other
-        ? { id: other.id, confidence: 0.65, skip: false, forceType: "EXPENSE" }
-        : { id: null, confidence: 0.35, skip: false, forceType: "EXPENSE" };
-    }
-
-    // "TRF P/ PoupeUp" -> Poupança (savings) - REMOVIDO EM FAVOR DO FORCE EXPENSE ACIMA
+    // TRF P/ PoupeUp -> dinheiro a sair da conta corrente para a poupança
     if (/trf\s+p\/\s*poupeup/.test(d) || /trf\s+p\s+poupeup/.test(d)) {
       const pouLeaf = findLeafExact("savings", "Poupança");
       return pouLeaf
@@ -825,6 +819,158 @@ export async function init({ sb, outlet } = {}) {
     return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46;
   }
 
+  // ── Perfis de banco ──────────────────────────────────────────────────
+  // Cada perfil sabe (1) reconhecer se o PDF lhe pertence, (2) opcionalmente
+  // ler cabeçalhos de colunas por página, (3) reconhecer a linha de uma
+  // transação e (4) decidir o sinal (débito/crédito). Adicionar um banco novo
+  // é criar um perfil novo em BANK_PROFILES — não é preciso tocar no resto.
+  const ACTIVOBANK_PROFILE = {
+    id: "activobank",
+    detect(allTextUpper) {
+      if (/ACTIVOBANK/.test(allTextUpper)) return true;
+      return (
+        /D[EÉ]BITO/.test(allTextUpper) &&
+        /CR[EÉ]DITO/.test(allTextUpper) &&
+        /LANC/.test(allTextUpper)
+      );
+    },
+    // Descobre a posição (x) das colunas Débito/Crédito nesta página, se existirem
+    detectHeaders(items, ctx) {
+      const debitItem = items.find((it) => /D[EÉ]BITO/i.test(it.clean));
+      const creditItem = items.find((it) => /CR[EÉ]DITO/i.test(it.clean));
+      if (debitItem) ctx.xDebit = debitItem.x;
+      if (creditItem) ctx.xCredit = creditItem.x;
+    },
+    // Formato ActivoBank: "M.DD  M.DD  DESCRIÇÃO ..." (mês sem zero à esquerda)
+    matchDateLine(raw) {
+      const m = raw.trim().match(/^(\d{1,2}\.\d{2})\s+(\d{1,2}\.\d{2})\s+(.+)$/);
+      if (!m) return null;
+      return { dateToken: m[1], rest: m[3] };
+    },
+    parseDate: parseActivoBankDateMD,
+    determineSign({ amountItem, rest, moneyRegex, currentBalanceStr, mov, ctx }) {
+      let sign = -1;
+
+      // Estratégia A: geometria das colunas Débito/Crédito
+      if (amountItem && ctx.xDebit > 0 && ctx.xCredit > 0) {
+        const mid = (ctx.xDebit + ctx.xCredit) / 2;
+        sign = amountItem.x > mid ? 1 : -1;
+      } else {
+        // Estratégia B: heurística de texto
+        const cleanDesc = rest.replace(moneyRegex, "");
+        sign = inferSignFromText(cleanDesc.toUpperCase());
+      }
+
+      // Estratégia C: validação pelo saldo (desempate final)
+      if (currentBalanceStr && ctx.lastExtractedBalance !== null) {
+        const curBal = parseMoneyPt(currentBalanceStr);
+        const diff = curBal - ctx.lastExtractedBalance;
+        if (Math.abs(Math.abs(diff) - mov) < 0.02) {
+          sign = diff > 0 ? 1 : -1;
+        }
+      }
+
+      if (currentBalanceStr) {
+        ctx.lastExtractedBalance = parseMoneyPt(currentBalanceStr);
+      }
+
+      return sign;
+    },
+  };
+
+  // Fallback para extratos de bancos ainda não suportados: não depende de
+  // cabeçalhos de colunas nem de um formato de data fixo. Todos os itens
+  // ficam marcados como baixa confiança (badge "Rever" na UI de revisão)
+  // porque o sinal é sempre uma heurística de texto, sem geometria/saldo.
+  const GENERIC_PROFILE = {
+    id: "generic",
+    detect: () => true, // último recurso: só é usado se nenhum perfil específico reconhecer o PDF
+    detectHeaders() {},
+    // Aceita "DD.MM", "DD/MM", "DD-MM", com ou sem ano — um único par data+descrição por linha
+    matchDateLine(raw) {
+      const m = raw
+        .trim()
+        .match(/^(\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?)\s+(.+)$/);
+      if (!m) return null;
+      return { dateToken: m[1], rest: m[2] };
+    },
+    parseDate(token, year) {
+      const m = token.match(/^(\d{1,2})[./-](\d{1,2})(?:[./-](\d{2,4}))?$/);
+      if (!m) return null;
+      let day = Number(m[1]);
+      let month = Number(m[2]);
+      let y = m[3] ? Number(m[3]) : year;
+      if (y < 100) y += 2000;
+      // Se o "mês" não é válido mas o "dia" é, provavelmente estão trocados
+      if (month > 12 && day <= 12) [day, month] = [month, day];
+      if (!month || !day || month > 12 || day > 31) return null;
+      const mm = String(month).padStart(2, "0");
+      const dd = String(day).padStart(2, "0");
+      return `${y}-${mm}-${dd}`;
+    },
+    determineSign({ rest, moneyRegex }) {
+      const cleanDesc = rest.replace(moneyRegex, "");
+      return inferSignFromText(cleanDesc.toUpperCase());
+    },
+  };
+
+  const BANK_PROFILES = [ACTIVOBANK_PROFILE];
+
+  // Deteta pares de movimentos que parecem a mesma transferência a aparecer
+  // duas vezes (ex.: transferência entre "Conta Simples" e "Conta PoupeUp" no
+  // mesmo extrato ActivoBank) e desmarca-os por defeito, sinalizados na UI
+  // para o utilizador confirmar antes de importar.
+  function flagInternalTransfers(items, primaryAccountLabel) {
+    const STOPWORDS = new Set(["TRF", "P", "DE", "O", "A", "PARA", "EUR", "LDA", "SA"]);
+    const tokenize = (desc) =>
+      new Set(
+        String(desc || "")
+          .toUpperCase()
+          .split(/[^A-ZÀ-Ú0-9]+/)
+          .filter((t) => t.length > 2 && !STOPWORDS.has(t)),
+      );
+
+    for (let i = 0; i < items.length; i++) {
+      const a = items[i];
+      if (a._internalTransferPair) continue;
+      for (let j = i + 1; j < items.length; j++) {
+        const b = items[j];
+        if (b._internalTransferPair) continue;
+        if (Math.sign(a.amount) === Math.sign(b.amount)) continue;
+        if (Math.abs(Math.abs(a.amount) - Math.abs(b.amount)) > 0.01) continue;
+
+        const da = new Date(a.date).getTime();
+        const db = new Date(b.date).getTime();
+        if (!Number.isFinite(da) || !Number.isFinite(db)) continue;
+        if (Math.abs(da - db) > 86400000 * 2) continue; // até 2 dias (lançamento vs. valor)
+
+        const ta = tokenize(a.description);
+        const tb = tokenize(b.description);
+        let overlap = 0;
+        ta.forEach((t) => {
+          if (tb.has(t)) overlap++;
+        });
+        if (overlap === 0) continue;
+
+        a._internalTransferPair = true;
+        b._internalTransferPair = true;
+
+        // Se o par pertence à mesma conta (ou não sabemos a que conta cada um
+        // pertence), é provavelmente o mesmo movimento a aparecer duas vezes —
+        // desmarcamos os dois por segurança. Se pertencerem a contas diferentes
+        // do mesmo extrato, a exclusão de quem não é a conta principal já foi
+        // feita antes desta função correr; não mexemos na conta principal aqui.
+        const sameAccount =
+          !primaryAccountLabel || a._accountLabel === b._accountLabel;
+        if (sameAccount) {
+          a.selected = false;
+          b.selected = false;
+        }
+      }
+    }
+    return items;
+  }
+
   async function parsePDF(input) {
     if (!window.pdfjsLib) {
       throw new Error("Biblioteca PDF não carregada. Verifique a internet.");
@@ -847,15 +993,11 @@ export async function init({ sb, outlet } = {}) {
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       setImpInfo(`PDF carregado. ${pdf.numPages} páginas.`);
 
-      const res = [];
       let fullTextDebug = [];
       let totalPDFTextItems = 0;
 
-      // Coordinates for columns (discovered dynamically and persisted across pages)
-      let xDebit = 0;
-      let xCredit = 0;
-      let lastExtractedBalance = null;
-
+      // Passo 1: extrai items/linhas de todas as páginas (comum a qualquer banco)
+      const pages = [];
       for (let i = 1; i <= pdf.numPages; i++) {
         setImpInfo(`A ler página ${i}/${pdf.numPages}...`);
         const page = await pdf.getPage(i);
@@ -865,7 +1007,6 @@ export async function init({ sb, outlet } = {}) {
           totalPDFTextItems += textContent.items.length;
         }
 
-        // 1. Get Items with Coords
         const items = textContent.items
           .map((item) => ({
             str: item.str,
@@ -880,15 +1021,6 @@ export async function init({ sb, outlet } = {}) {
             return b.y - a.y;
           });
 
-        // 2. Discover Headers (if not yet found or refine)
-        // ActivoBank headers: "DÉBITO" and "CRÉDITO"
-        const debitItem = items.find((it) => /D[EÉ]BITO/i.test(it.clean));
-        const creditItem = items.find((it) => /CR[EÉ]DITO/i.test(it.clean));
-
-        if (debitItem) xDebit = debitItem.x;
-        if (creditItem) xCredit = creditItem.x;
-
-        // 3. Group into lines
         const lines = [];
         let currentLine = null;
         for (const it of items) {
@@ -902,13 +1034,42 @@ export async function init({ sb, outlet } = {}) {
           }
         }
 
-        // Add to debug log
         fullTextDebug.push(...lines.map((l) => l.text));
+        pages.push({ items, lines });
+      }
 
-        // 4. Extract Year (Page Context)
-        // Try to find "EXTRATO DE 202X..."
+      // Passo 2: escolhe o perfil de banco com base no texto completo do documento
+      const allTextUpper = fullTextDebug.join(" ").toUpperCase();
+      const profile =
+        BANK_PROFILES.find((p) => p.detect(allTextUpper)) || GENERIC_PROFILE;
+
+      // Passo 3: processa as transações com o perfil escolhido
+      const res = [];
+      const ctx = {
+        xDebit: 0,
+        xCredit: 0,
+        lastExtractedBalance: null,
+        // Alguns extratos (ex. "Extrato Combinado" ActivoBank) trazem mais do que
+        // uma conta/sub-conta no mesmo PDF (ex. "Conta Simples" + "Conta PoupeUp").
+        // Guardamos a primeira conta encontrada como "principal" — é a que o
+        // utilizador está a importar — para depois sabermos qual dos lados de uma
+        // transferência interna manter selecionado.
+        currentAccountLabel: null,
+        primaryAccountLabel: null,
+      };
+      // (?<![\d.,-]) evita que o casamento comece a meio de outro número ou logo
+      // a seguir a um hífen de código de referência — sem isto, um ano ("Ferias
+      // 2026 150.00") ou um código de referência ("CACEM 2735-001 104.41")
+      // "empresta" dígitos ao valor monetário seguinte (ex.: 150.00 -> 26150.00,
+      // 104.41 -> 1104.41).
+      const moneyRegex = /(?<![\d.,-])(\d{1,3}(?:[\s\xa0]\d{3})*(?:[.,]\d{2}))/g;
+
+      for (const page of pages) {
+        profile.detectHeaders(page.items, ctx);
+
+        // Extrai o ano da página ("EXTRATO DE 202X/MM/DD..."); default = ano atual
         let pageYear = new Date().getFullYear();
-        const yearLine = lines.find((l) =>
+        const yearLine = page.lines.find((l) =>
           /EXTRATO.*(\d{4})\/\d{2}\/\d{2}/i.test(l.text),
         );
         if (yearLine) {
@@ -916,28 +1077,31 @@ export async function init({ sb, outlet } = {}) {
           if (m) pageYear = Number(m[1]);
         }
 
-        // 5. Detect Transactions
-        const moneyRegex = /(\d{1,3}(?:[\s\xa0]\d{3})*(?:[.,]\d{2}))/g;
-
-        for (const line of lines) {
+        for (const line of page.lines) {
           const raw = line.text;
           const u = raw.toUpperCase().trim();
+
+          // Cabeçalho de conta/sub-conta (ex.: "CONTA SIMPLES N. 123..." ou
+          // "CONTA POUPEUP N. 456..."). Nunca é uma transação — só atualiza o
+          // rótulo da conta corrente para as linhas seguintes.
+          const acctMatch = raw.match(/^CONTA\s+([A-ZÀ-Ú]+(?:\s+[A-ZÀ-Ú]+)?)\s+N\.?\s*\d/i);
+          if (acctMatch) {
+            ctx.currentAccountLabel = acctMatch[1].trim().toUpperCase();
+            if (!ctx.primaryAccountLabel) {
+              ctx.primaryAccountLabel = ctx.currentAccountLabel;
+            }
+            continue;
+          }
+
           if (isNoiseLine(u)) continue;
 
-          // Pattern: DD.MM  DD.MM  DESCRIPTION ...
-          const mDate = raw
-            .trim()
-            .match(/^(\d{1,2}\.\d{2})\s+(\d{1,2}\.\d{2})\s+(.+)$/);
-          if (!mDate) continue;
+          const dateMatch = profile.matchDateLine(raw);
+          if (!dateMatch) continue;
+          const { dateToken, rest } = dateMatch;
 
-          const dateToken = mDate[1];
-          const rest = mDate[3];
-
-          // 5. Detection Logic
           const allMatches = [...raw.matchAll(moneyRegex)];
           const itemsAfterDate = allMatches.filter((m) => m.index > 10);
           const monies = itemsAfterDate.map((x) => x[1]);
-
           if (monies.length < 1) continue;
 
           // If there are at least 2 money values, the last one is the balance.
@@ -949,7 +1113,6 @@ export async function init({ sb, outlet } = {}) {
           const mov = parseMoneyPt(targetMoneyStr);
           if (!Number.isFinite(mov) || mov === 0) continue;
 
-          // Determine Sign (Debit vs Credit)
           const amountMatch = itemsAfterDate.find((m) =>
             m[1].includes(targetMoneyStr),
           );
@@ -960,31 +1123,14 @@ export async function init({ sb, outlet } = {}) {
               )
             : line.items.find((it) => it.str.includes(targetMoneyStr));
 
-          let sign = -1;
-
-          // Strategy A: Geometric Check
-          if (amountItem && xDebit > 0 && xCredit > 0) {
-            const mid = (xDebit + xCredit) / 2;
-            sign = amountItem.x > mid ? 1 : -1;
-          } else {
-            // Strategy B: Text Heuristic
-            let cleanDesc = rest.replace(moneyRegex, "");
-            sign = inferSignFromText(cleanDesc.toUpperCase());
-          }
-
-          // Strategy C: Balance Validation (The ultimate tie-breaker)
-          if (currentBalanceStr && lastExtractedBalance !== null) {
-            const curBal = parseMoneyPt(currentBalanceStr);
-            const diff = curBal - lastExtractedBalance;
-            // If the difference matches the mountain, we use the diff sign
-            if (Math.abs(Math.abs(diff) - mov) < 0.02) {
-              sign = diff > 0 ? 1 : -1;
-            }
-          }
-
-          if (currentBalanceStr) {
-            lastExtractedBalance = parseMoneyPt(currentBalanceStr);
-          }
+          const sign = profile.determineSign({
+            amountItem,
+            rest,
+            moneyRegex,
+            currentBalanceStr,
+            mov,
+            ctx,
+          });
 
           // Clean Description
           let desc = rest
@@ -993,7 +1139,7 @@ export async function init({ sb, outlet } = {}) {
             .trim();
           if (desc.length < 3) continue;
 
-          const isoDate = parseActivoBankDateMD(dateToken, pageYear);
+          const isoDate = profile.parseDate(dateToken, pageYear);
           if (!isoDate) continue;
 
           const normalizedDesc = normalizeDescription(desc);
@@ -1013,12 +1159,30 @@ export async function init({ sb, outlet } = {}) {
               amount: finalAmount,
               description: normalizedDesc,
               selected: true,
+              _accountLabel: ctx.currentAccountLabel,
+              _lowConfidenceSource: profile.id === "generic",
             });
           }
         }
       }
 
-      console.log("PDF Extracted Lines (Debug):", fullTextDebug);
+      // Extratos com mais do que uma conta/sub-conta no mesmo PDF (ex.: "Conta
+      // Simples" + "Conta PoupeUp"): por defeito só importamos a conta principal
+      // (a primeira encontrada no documento). Movimentos de outras contas ficam
+      // visíveis na revisão mas desmarcados, para não misturar saldos de contas
+      // que não estás a acompanhar na app.
+      if (ctx.primaryAccountLabel) {
+        res.forEach((item) => {
+          if (item._accountLabel && item._accountLabel !== ctx.primaryAccountLabel) {
+            item.selected = false;
+            item._otherAccount = true;
+          }
+        });
+      }
+
+      flagInternalTransfers(res, ctx.primaryAccountLabel);
+
+      console.log(`PDF Extracted Lines (Debug, perfil=${profile.id}):`, fullTextDebug);
 
       if (res.length === 0) {
         const info = document.getElementById("imp-info");
@@ -1035,7 +1199,7 @@ export async function init({ sb, outlet } = {}) {
           "<br><b>Debug (5 linhas):</b><br>" +
           fullTextDebug.slice(0, 5).map(escapeHtml).join("<br>");
         if (info)
-          info.innerHTML = "Não encontrei movimentos ActivoBank. " + dbg;
+          info.innerHTML = "Não foi possível identificar movimentos neste extrato. " + dbg;
       }
 
       return res;
@@ -1119,12 +1283,18 @@ export async function init({ sb, outlet } = {}) {
 
     list.innerHTML = parsedItems
       .map((item, idx) => {
-        const isLowConf = (item.confidence || 0) < 0.75;
+        const isLowConf = (item.confidence || 0) < 0.75 || item._lowConfidenceSource;
         const borderStyle = isLowConf
           ? "border-left: 4px solid var(--orange-400);"
           : "border-left: 4px solid var(--green-500);";
         const badge = isLowConf
           ? `<span style="background:var(--orange-100); color:var(--orange-700); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold">Rever</span>`
+          : ``;
+        const transferBadge = item._internalTransferPair
+          ? `<span style="background:var(--purple-100, #ede9fe); color:var(--purple-700, #6d28d9); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Valores e datas coincidem com outro movimento deste extrato — pode ser uma transferência entre as tuas próprias contas.">Transf. interna?</span>`
+          : ``;
+        const otherAccountBadge = item._otherAccount
+          ? `<span style="background:var(--gray-100, #f1f5f9); color:var(--gray-700, #334155); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Este movimento pertence a outra conta do mesmo extrato, não à conta principal detetada. Fica desmarcado por defeito.">Outra conta</span>`
           : ``;
 
         // Check if categorized as Savings (Badge Blue)
@@ -1160,7 +1330,7 @@ export async function init({ sb, outlet } = {}) {
                   <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:14px; margin:0">
                      <input type="checkbox" ${item.selected ? "checked" : ""} data-idx="${idx}" class="imp-cb">
                      ${item.date}
-                     ${badge} ${catBadge}
+                     ${badge} ${catBadge} ${transferBadge} ${otherAccountBadge}
                   </label>
                   <div style="display:flex; align-items:center; gap:6px">
                       ${natureHtml}
@@ -4240,6 +4410,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       income: 0, fixedExpenses: 0, emergencyMonths: 6,
       pctExpenses: 50, pctSavings: 20, pctInvestment: 20, pctFree: 10
     };
+    let _monthCount = 0;
     let stratChart = null;
     let _healthMetrics = null;
 
@@ -4336,6 +4507,67 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         `${metrics.emergencyFund?.currentCoverage ?? 0} meses`, status.emergencyFundStatus);
     }
 
+    // ── Sugestão automática (com base no histórico real) ────────────────
+    function round5(n) {
+      return Math.round(n / 5) * 5;
+    }
+
+    function suggestAllocationFromHistory() {
+      const note = q("#suggest-allocation-note");
+      if (!_healthMetrics || _monthCount < 2) {
+        if (note) {
+          note.textContent = "Ainda não há histórico suficiente (mínimo 2 meses) para sugerir uma alocação personalizada.";
+          note.classList.remove("hidden");
+        }
+        return;
+      }
+
+      const { effortTotal, savingsRate } = _healthMetrics;
+
+      // "Despesas" = tudo o que não é poupança dentro do esforço total
+      const expensesPct = Math.min(90, Math.max(10, round5(effortTotal - savingsRate)));
+      const remainder = Math.max(0, 100 - expensesPct);
+
+      // Orçamento combinado Poupança+Investimento: usa a taxa de poupança real,
+      // com um mínimo de 60% do remanescente quando ainda não há histórico de poupança.
+      const combinedPct = Math.min(remainder, round5(savingsRate) || round5(remainder * 0.6));
+
+      // Reparte o combinado mantendo a proporção já definida entre Poupança/Investimento
+      const prevSavings = s.pctSavings || 0;
+      const prevInvestment = s.pctInvestment || 0;
+      const ratioSavings = (prevSavings + prevInvestment) > 0
+        ? prevSavings / (prevSavings + prevInvestment)
+        : 0.6;
+
+      let savingsPct = round5(combinedPct * ratioSavings);
+      let investmentPct = combinedPct - savingsPct;
+      let freePct = 100 - expensesPct - savingsPct - investmentPct;
+
+      // Ajuste de arredondamento: absorve na Margem Livre para garantir soma = 100
+      if (freePct < 0) {
+        investmentPct = Math.max(0, investmentPct + freePct);
+        freePct = 100 - expensesPct - savingsPct - investmentPct;
+      }
+
+      s.pctExpenses = expensesPct;
+      s.pctSavings = savingsPct;
+      s.pctInvestment = investmentPct;
+      s.pctFree = freePct;
+
+      Object.keys(ranges).forEach(key => {
+        const prop = "pct" + key[0].toUpperCase() + key.slice(1);
+        if (ranges[key]) ranges[key].value = s[prop];
+        if (displays[key]) displays[key].textContent = s[prop] + "%";
+      });
+
+      if (note) {
+        note.textContent = `Sugestão baseada no teu esforço total (${effortTotal}%) e taxa de poupança (${savingsRate}%) reais. Ajusta livremente antes de guardar.`;
+        note.classList.remove("hidden");
+      }
+
+      recalculate();
+    }
+
     // ── Listeners (registados apenas uma vez) ──────────────────────────
     if (!_strategyInitialized) {
       _strategyInitialized = true;
@@ -4359,6 +4591,8 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           recalculate();
         });
       });
+
+      q("#btn-suggest-allocation")?.addEventListener("click", suggestAllocationFromHistory);
 
       // Helper para Objetivos
       async function upsertObjective(uid, title, type, category_id, monthly_cap, target_amount) {
@@ -4591,6 +4825,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         // net = income - expense - savings (expense e savings são positivos aqui)
         monthlyData.forEach(m => { m.net = m.income - m.expense - m.savings; });
 
+        _monthCount = monthlyData.length;
         _healthMetrics = calculateHealthMetrics(monthlyData, {});
         const status   = getHealthStatus(_healthMetrics);
         renderDiagnostics(_healthMetrics, status);

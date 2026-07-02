@@ -66,6 +66,7 @@ class AIInstance {
   }
 
   async checkVisibility() {
+    if (!this.fab) return; // init() ainda não correu (ex.: auth disparou primeiro)
     try {
       const { data: { session } } = await window.sb.auth.getSession();
       if (session) {

@@ -122,7 +122,7 @@ export const refs = {
   async getTree({ kind = null } = {}) {
     let q = window.sb
       .from("categories")
-      .select("id,name,parent_id,kind,user_id")
+      .select("id,name,parent_id,kind,user_id,nature")
       .order("name", { ascending: true });
 
     if (kind) q = q.eq("kind", kind);
