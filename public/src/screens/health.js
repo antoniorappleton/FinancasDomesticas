@@ -9,13 +9,18 @@ import {
   getHealthStatus,
 } from "../lib/healthMetrics.js";
 import { makeChart } from "../lib/chart-loader.js";
-import { money, ymd } from "../lib/helpers.js";
+import {
+  calculateRoutineFixedAverage,
+  projectCashflow as projectDashboardCashflow,
+} from "../lib/analytics.js";
+import { money } from "../lib/helpers.js";
 import Guide from "../lib/guide.js";
 import { loadTheme } from "../lib/theme.js";
 
 let healthChart = null;
 let currentLayer = "net";
 let monthlyData = [];
+let healthContext = {};
 
 export async function init({ sb, outlet } = {}) {
   sb = sb || window.sb;
@@ -35,8 +40,10 @@ export async function init({ sb, outlet } = {}) {
   await waitForElements(["#health-chart", "#indicators-grid", "#health-score"]);
 
   try {
-    // 1. Fetch last 12 months data
-    monthlyData = await fetchLast12Months(sb);
+    // 1. Fetch aligned data and DB context
+    const dataset = await fetchHealthDataset(sb);
+    monthlyData = dataset.monthlyData;
+    healthContext = dataset.context;
 
     if (!monthlyData || !monthlyData.length) {
       renderEmptyState(outlet);
@@ -44,7 +51,7 @@ export async function init({ sb, outlet } = {}) {
     }
 
     // 2. Calculate metrics
-    const metrics = calculateHealthMetrics(monthlyData);
+    const metrics = calculateHealthMetrics(monthlyData, healthContext);
     const status = getHealthStatus(metrics);
 
     // 3. Render health score
@@ -84,101 +91,223 @@ export function cleanup() {
 
 // ===== Data Fetching =====
 
-async function fetchLast12Months(sb) {
+async function fetchHealthDataset(sb) {
   try {
-    // Calculate date range (last 12 months)
     const now = new Date();
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 1); // Start of next month
-    const from = new Date(now.getFullYear() - 1, now.getMonth(), 1); // 12 months ago
+    const currentYear = now.getFullYear();
+    const currentMonthKey = `${currentYear}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const historyFrom = `${currentYear - 1}-01-01`;
+    const historyTo = `${currentYear + 1}-01-01`;
+    const last12From = new Date(currentYear, now.getMonth() - 11, 1);
 
-    const fromStr = ymd(from);
-    const toStr = ymd(to);
-
-    // Fetch transaction types
-    const [{ data: tInc }, { data: tExp }, { data: tSav }] = await Promise.all([
+    const [{ data: tInc }, { data: tExp }, { data: tSav }, userRes] = await Promise.all([
       sb.from("transaction_types").select("id").eq("code", "INCOME").single(),
       sb.from("transaction_types").select("id").eq("code", "EXPENSE").single(),
       sb.from("transaction_types").select("id").eq("code", "SAVINGS").single(),
+      sb.auth.getUser(),
     ]);
 
     const incId = tInc?.id;
     const expId = tExp?.id;
     const savId = tSav?.id;
+    const uid = userRes?.data?.user?.id;
 
-    // Fetch transactions
-    const { data: txs } = await sb
-      .from("transactions")
-      .select(
-        "date, amount, type_id, expense_nature, categories(expense_nature_default)",
-      )
-      .gte("date", fromStr)
-      .lt("date", toStr)
-      .order("date", { ascending: true });
+    const [txRes, settingsRes, objectivesRes, savingsCategoriesRes] = await Promise.all([
+      sb
+        .from("transactions")
+        .select(
+          "date, amount, type_id, category_id, expense_nature, regularities(code,name_pt), categories(name,parent_id,expense_nature_default)",
+        )
+        .gte("date", historyFrom)
+        .lt("date", historyTo)
+        .order("date", { ascending: true }),
+      uid
+        ? sb
+            .from("user_settings")
+            .select("avg_fixed_expenses,emergency_months")
+            .eq("user_id", uid)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      sb
+        .from("objectives")
+        .select("id,title,type,category_id,current_amount,target_amount,due_date,is_active")
+        .eq("is_active", true),
+      sb.from("categories").select("id,name,parent_id,kind").eq("kind", "savings"),
+    ]);
 
-    // Group by month
-    const monthsMap = new Map();
+    const txs = txRes.data || [];
+    const settings = settingsRes.data || {};
+    const objectives = objectivesRes.data || [];
+    const savingsCategories = savingsCategoriesRes.data || [];
 
-    (txs || []).forEach((tx) => {
-      const monthKey = tx.date.slice(0, 7); // YYYY-MM
-      if (!monthsMap.has(monthKey)) {
-        monthsMap.set(monthKey, {
-          month: monthKey,
-          label: formatMonthLabel(monthKey),
-          income: 0,
-          expense: 0,
-          savings: 0,
-          net: 0,
-          fixed: 0,
-          variable: 0,
-        });
-      }
+    const allHistoryMap = new Map();
+    const fixedVarByMonth = new Map();
+    const annualFixedByMonth = new Map();
 
-      const month = monthsMap.get(monthKey);
-      const amt = Number(tx.amount) || 0;
+    for (let month = 1; month <= 12; month++) {
+      const key = `${currentYear}-${String(month).padStart(2, "0")}`;
+      allHistoryMap.set(key, { income: 0, expense: 0, savings: 0, net: 0 });
+      fixedVarByMonth.set(key, { fixed: 0, variable: 0 });
+    }
+
+    txs.forEach((tx) => {
+      const key = String(tx.date).slice(0, 7);
+      const row = allHistoryMap.get(key) || { income: 0, expense: 0, savings: 0, net: 0 };
+      const fv = fixedVarByMonth.get(key) || { fixed: 0, variable: 0 };
+      const amount = Math.abs(Number(tx.amount) || 0);
 
       if (tx.type_id === incId) {
-        month.income += amt;
+        row.income += amount;
       } else if (tx.type_id === expId) {
-        month.expense += amt;
-
-        // Classify as fixed or variable
-        const isFixed = isFixedExpense(tx);
-        if (isFixed) {
-          month.fixed += Math.abs(amt);
+        row.expense += amount;
+        if (isFixedExpense(tx)) {
+          fv.fixed += amount;
+          if (isAnnualExpense(tx)) {
+            annualFixedByMonth.set(key, (annualFixedByMonth.get(key) || 0) + amount);
+          }
         } else {
-          month.variable += Math.abs(amt);
+          fv.variable += amount;
         }
       } else if (tx.type_id === savId) {
-        month.savings += Math.abs(amt);
+        row.savings += amount;
       }
+
+      row.net = row.income - row.expense - row.savings;
+      allHistoryMap.set(key, row);
+      fixedVarByMonth.set(key, fv);
     });
 
-    // Calculate net for each month
-    monthsMap.forEach((m) => {
-      m.net = m.income - Math.abs(m.expense) - Math.abs(m.savings);
+    const monthlyData = monthKeysBetween(last12From, now).map((key) => {
+      const row = allHistoryMap.get(key) || { income: 0, expense: 0, savings: 0, net: 0 };
+      const fv = fixedVarByMonth.get(key) || { fixed: 0, variable: 0 };
+      return {
+        month: key,
+        label: formatMonthLabel(key),
+        income: Number(row.income) || 0,
+        expense: Number(row.expense) || 0,
+        savings: Number(row.savings) || 0,
+        net: Number(row.net) || 0,
+        fixed: Number(fv.fixed) || 0,
+        variable: Number(fv.variable) || 0,
+      };
     });
 
-    // Convert to sorted array
-    return Array.from(monthsMap.values()).sort((a, b) =>
-      a.month.localeCompare(b.month),
+    const emergencyFundBalance = await fetchEmergencyFundBalance(sb, {
+      savId,
+      objectives,
+      savingsCategories,
+    });
+
+    const projectionSettings = getProjectionSettings(settings, currentYear);
+    const routineAvg = calculateRoutineFixedAverage(
+      fixedVarByMonth,
+      annualFixedByMonth,
+      String(currentYear),
+      currentMonthKey,
     );
+    const projectionSeries = projectDashboardCashflow(
+      String(currentYear),
+      allHistoryMap,
+      fixedVarByMonth,
+      annualFixedByMonth,
+      projectionSettings,
+      routineAvg,
+    );
+
+    return {
+      monthlyData,
+      context: {
+        avgFixedExpenses: Number(settings.avg_fixed_expenses) || 0,
+        emergencyMonthsTarget: Number(settings.emergency_months) || 6,
+        emergencyFundBalance,
+        projectionSeries,
+      },
+    };
   } catch (err) {
     console.error("[Health] Fetch error:", err);
-    return [];
+    return { monthlyData: [], context: {} };
   }
 }
 
+function monthKeysBetween(fromDate, toDate) {
+  const out = [];
+  const d = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  const end = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
+  while (d <= end) {
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    d.setMonth(d.getMonth() + 1);
+  }
+  return out;
+}
+
+function getProjectionSettings(settings, year) {
+  try {
+    return JSON.parse(localStorage.getItem(`wb:fixed:${year}`) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+async function fetchEmergencyFundBalance(sb, { savId, objectives, savingsCategories }) {
+  const normalize = (value) => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const emergencyObjectives = (objectives || []).filter((o) => {
+    const title = normalize(o.title);
+    return o.type === "savings_goal" && title.includes("emerg");
+  });
+
+  const categoryIds = new Set(emergencyObjectives.map((o) => o.category_id).filter(Boolean));
+  const byParent = new Map();
+  (savingsCategories || []).forEach((cat) => {
+    if (!cat.parent_id) return;
+    const list = byParent.get(cat.parent_id) || [];
+    list.push(cat.id);
+    byParent.set(cat.parent_id, list);
+  });
+  (savingsCategories || [])
+    .filter((cat) => normalize(cat.name).includes("emerg"))
+    .forEach((cat) => {
+      categoryIds.add(cat.id);
+      (byParent.get(cat.id) || []).forEach((childId) => categoryIds.add(childId));
+    });
+
+  const manualTotal = emergencyObjectives.reduce(
+    (sum, o) => sum + Math.max(0, Number(o.current_amount) || 0),
+    0,
+  );
+
+  if (!savId || !categoryIds.size) return manualTotal;
+
+  const { data, error } = await sb
+    .from("transactions")
+    .select("amount,category_id,date")
+    .eq("type_id", savId)
+    .in("category_id", Array.from(categoryIds));
+
+  if (error) {
+    console.warn("[Health] Emergency fund transaction fetch failed:", error.message);
+    return manualTotal;
+  }
+
+  const autoTotal = (data || []).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  return manualTotal > 0 ? manualTotal : autoTotal;
+}
 function isFixedExpense(tx) {
-  // Check explicit expense_nature first
   const txNature = tx.expense_nature?.toLowerCase();
   if (txNature && ["fixed", "fixa"].includes(txNature)) return true;
 
-  // Check category default
   const catNature = tx.categories?.expense_nature_default?.toLowerCase();
   if (catNature && ["fixed", "fixa"].includes(catNature)) return true;
 
-  // Default to variable if not specified
-  return false;
+  const reg = `${tx.regularities?.code || ""} ${tx.regularities?.name_pt || ""}`;
+  if (/monthly|mensal|yearly|annual|anual|trimestral|semestral/i.test(reg)) return true;
+
+  const catName = String(tx.categories?.name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /(renda|prestacao|credito|seguro|internet|agua|luz|gas|condominio|mensalidade|subscricao|assinatura)/.test(catName);
+}
+
+function isAnnualExpense(tx) {
+  const reg = `${tx.regularities?.code || ""} ${tx.regularities?.name_pt || ""}`;
+  return /yearly|annual|anual/i.test(reg);
 }
 
 function formatMonthLabel(monthKey) {
@@ -194,7 +323,7 @@ async function createHealthChart(data) {
   const canvas = outlet.querySelector("#health-chart");
   if (!canvas) return;
 
-  const series = buildHealthSeries(data, currentLayer);
+  const series = buildHealthSeries(data, currentLayer, healthContext);
 
   healthChart = await makeChart(canvas, {
     type: series.type,
@@ -281,7 +410,7 @@ function setupLayerToggles() {
 function updateChart(layer) {
   if (!healthChart) return;
 
-  const series = buildHealthSeries(monthlyData, layer);
+  const series = buildHealthSeries(monthlyData, layer, healthContext);
 
   // Update chart type if needed
   if (healthChart.config.type !== series.type) {
@@ -308,7 +437,7 @@ function updateChart(layer) {
 // ===== Metric Summary =====
 
 function updateMetricSummary(layer, data) {
-  const series = buildHealthSeries(data, layer);
+  const series = buildHealthSeries(data, layer, healthContext);
   const values = series.values.filter((v) => v !== null);
 
   const outlet = document.getElementById("outlet");
@@ -318,7 +447,6 @@ function updateMetricSummary(layer, data) {
 
   // Check if elements exist
   if (!currentEl || !avgEl || !badgeEl) {
-    console.warn("[Health] Metric summary elements not found");
     return;
   }
 
@@ -450,7 +578,7 @@ function renderIndicators(metrics, status) {
       value: `${(metrics.emergencyFund?.currentCoverage ?? 0).toFixed(1)} meses`,
       status: status.emergencyFundStatus || "critical",
       barWidth: 0,
-      statusText: `Recomendado: 3-6 meses (${money(metrics.emergencyFund?.threeMonths ?? 0)} - ${money(metrics.emergencyFund?.sixMonths ?? 0)})`,
+      statusText: `Atual: ${money(metrics.emergencyFund?.currentAmount ?? 0)} · Alvo: ${metrics.emergencyFund?.targetMonths ?? 6} meses (${money(metrics.emergencyFund?.targetAmount ?? metrics.emergencyFund?.sixMonths ?? 0)})`,
       help: "Quantos meses de despesas fixas consegues cobrir com o que tens acumulado, caso deixes de ter rendimento. 3 a 6 meses é o intervalo recomendado.",
     },
     {
@@ -564,7 +692,6 @@ function renderAlerts(alerts) {
   }
 
   if (!section || !list) {
-    console.warn("[Health] Alerts section or list element not found");
     return;
   }
 

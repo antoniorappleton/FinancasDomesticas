@@ -31,7 +31,7 @@ export function calculateHealthMetrics(monthlyData, settings = {}) {
   const effortTotal = income > 0 ? ((expense + savings) / income) * 100 : 0;
   const savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
-  // Calculate liquidity (accumulated net over time)
+  // Calculate liquidity (accumulated cashflow over the analysed period)
   let liquidityAccumulated = 0;
   monthlyData.forEach((m) => {
     liquidityAccumulated += Number(m.net) || 0;
@@ -82,17 +82,29 @@ export function calculateHealthMetrics(monthlyData, settings = {}) {
   const last6Fixed = monthlyData
     .slice(-6)
     .map((m) => Math.abs(Number(m.fixed)) || 0);
-  const avgFixedExpenses =
+  const historicalAvgFixed =
     last6Fixed.reduce((a, b) => a + b, 0) / last6Fixed.length;
+  const avgFixedExpenses =
+    Number(settings.avgFixedExpenses) > 0
+      ? Number(settings.avgFixedExpenses)
+      : historicalAvgFixed;
+  const emergencyFundBalance =
+    settings.emergencyFundBalance !== undefined
+      ? Number(settings.emergencyFundBalance) || 0
+      : liquidityAccumulated;
+  const emergencyMonthsTarget = Number(settings.emergencyMonthsTarget) || 6;
 
   const emergencyFund = {
     avgFixedExpenses: Number(avgFixedExpenses.toFixed(2)),
     threeMonths: Number((avgFixedExpenses * 3).toFixed(2)),
     sixMonths: Number((avgFixedExpenses * 6).toFixed(2)),
     nineMonths: Number((avgFixedExpenses * 9).toFixed(2)),
+    targetMonths: emergencyMonthsTarget,
+    targetAmount: Number((avgFixedExpenses * emergencyMonthsTarget).toFixed(2)),
+    currentAmount: Number(emergencyFundBalance.toFixed(2)),
     currentCoverage:
       avgFixedExpenses > 0
-        ? Number((liquidityAccumulated / avgFixedExpenses).toFixed(1))
+        ? Number((emergencyFundBalance / avgFixedExpenses).toFixed(1))
         : 0,
   };
 
@@ -123,7 +135,9 @@ export function calculateHealthMetrics(monthlyData, settings = {}) {
     emergencyFund,
 
     // Projections
-    projected3Months,
+    projected3Months: Array.isArray(settings.projectedCashflow)
+      ? settings.projectedCashflow
+      : projected3Months,
     monthsUntilNegative,
   };
 }
@@ -222,7 +236,7 @@ export function getHealthStatus(metrics) {
 
   if (metrics.emergencyFund && metrics.emergencyFund.currentCoverage < 3) {
     const needed =
-      metrics.emergencyFund.threeMonths - metrics.liquidityAccumulated;
+      metrics.emergencyFund.threeMonths - (metrics.emergencyFund.currentAmount ?? metrics.liquidityAccumulated);
     alerts.push({
       type: "emergencyFund",
       severity: metrics.emergencyFund.currentCoverage < 1 ? "high" : "medium",
@@ -244,7 +258,7 @@ export function getHealthStatus(metrics) {
  * @param {String} layer - 'net' | 'liquidity' | 'effortFixed' | 'effortTotal' | 'savingsRate' | 'projection'
  * @returns {Object} Series object with labels, values, color, type
  */
-export function buildHealthSeries(monthlyData, layer) {
+export function buildHealthSeries(monthlyData, layer, settings = {}) {
   const labels = monthlyData.map((m) => m.label || m.month || "");
   let values = [];
   let color = "#3b82f6";
@@ -301,16 +315,24 @@ export function buildHealthSeries(monthlyData, layer) {
       break;
 
     case "projection":
-      // Use actual data + 3-month projection
-      const projected = projectCashflow(monthlyData, 3);
-      values = monthlyData.map((m) => Number(m.net) || 0);
-      // Add projected values
-      projected.forEach((p) => {
-        labels.push(p.month);
-        values.push(p.net);
-      });
+      if (settings.projectionSeries?.labels?.length) {
+        labels.splice(0, labels.length, ...settings.projectionSeries.labels);
+        values = settings.projectionSeries.cumTotal?.length
+          ? settings.projectionSeries.cumTotal.map((v) => Number(v) || 0)
+          : settings.projectionSeries.netTotal.map((v) => Number(v) || 0);
+      } else {
+        // Use actual data + 3-month projection
+        const projected = projectCashflow(monthlyData, 3);
+        values = monthlyData.map((m) => Number(m.net) || 0);
+        projected.forEach((p) => {
+          labels.push(p.month);
+          values.push(p.net);
+        });
+      }
       color = "#64748b";
-      label = "Projeção 3 Meses (€)";
+      label = settings.projectionSeries?.labels?.length
+        ? "Cashflow Acumulado Previsto (EUR)"
+        : "Projecao 3 Meses (EUR)";
       type = "line";
       break;
 
@@ -351,6 +373,9 @@ function getEmptyMetrics() {
       threeMonths: 0,
       sixMonths: 0,
       nineMonths: 0,
+      targetMonths: 6,
+      targetAmount: 0,
+      currentAmount: 0,
       currentCoverage: 0,
     },
     projected3Months: [],
