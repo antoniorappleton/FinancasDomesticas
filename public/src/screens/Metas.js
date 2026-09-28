@@ -1,6 +1,14 @@
 import { loadTheme } from "../lib/theme.js";
 import { money, pad2, ymd, monthKeysBetween } from "../lib/helpers.js";
 
+export function resolveObjectiveCategoryKind(type) {
+  return type === "savings_goal" ? "savings" : "expense";
+}
+
+export function getObjectiveCategoryLabel(type) {
+  return type === "savings_goal" ? "Categoria de Poupança (opcional)" : "Categoria (opcional)";
+}
+
 export async function init({ sb, outlet } = {}) {
   sb ||= window.sb;
   if (sb) await loadTheme(sb);
@@ -73,26 +81,44 @@ export async function init({ sb, outlet } = {}) {
   // ========= form create: alternância =========
   function refreshCreateForm() {
     const t = $("#obj-type")?.value || "budget_cap";
-    // Now we show category wrap for both! But with different labels/filters
     const catWrap = $("#obj-cat-wrap");
     if (catWrap) {
       catWrap.style.display = "block";
-      // Update text of the label (first child node is usually text)
-      const labelText = t === "savings_goal" ? "Categoria de Poupança (opcional)" : "Categoria (opcional)";
       if (catWrap.childNodes[0]) {
-        catWrap.childNodes[0].textContent = labelText;
+        catWrap.childNodes[0].textContent = getObjectiveCategoryLabel(t);
       }
     }
 
     toggle($("#obj-cap-wrap"), t === "budget_cap");
     toggle($("#obj-target-wrap"), t === "savings_goal");
 
-    // Load compatible categories
-    const kind = t === "savings_goal" ? "savings" : "expense";
+    const kind = resolveObjectiveCategoryKind(t);
     loadCategories([$("#obj-category")], kind);
   }
   $("#obj-type")?.addEventListener("change", refreshCreateForm);
   window.__refreshObjForm = refreshCreateForm; // usado pelas sugestões
+
+  async function refreshEditCategoryOptions(type = $("#ed-type")?.value || "budget_cap", currentValue = $("#ed-category")?.value || "") {
+    const catSelect = $("#ed-category");
+    if (!catSelect) return;
+    const catLabel = $("#ed-category-label");
+    if (catLabel && catLabel.firstChild) {
+      catLabel.firstChild.textContent = getObjectiveCategoryLabel(type);
+    }
+
+    const kind = resolveObjectiveCategoryKind(type);
+    await loadCategories([catSelect], kind);
+
+    const hasCurrent = [...catSelect.options].some((option) => option.value === String(currentValue));
+    catSelect.value = hasCurrent ? String(currentValue) : "";
+    catSelect.dataset.currentValue = catSelect.value;
+  }
+
+  $("#ed-type")?.addEventListener("change", () => {
+    const type = $("#ed-type")?.value || "budget_cap";
+    const previousValue = $("#ed-category")?.dataset?.currentValue || $("#ed-category")?.value || "";
+    refreshEditCategoryOptions(type, previousValue);
+  });
 
   // ========= guardar novo objetivo =========
   $("#obj-save")?.addEventListener("click", async () => {
@@ -736,15 +762,13 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
       if (el) el.value = val;
     };
 
+    const type = o.type || "budget_cap";
     setVal("ed-id", o.id);
     setVal("ed-title", o.title || "");
-    setVal("ed-type", o.type || "budget_cap");
-    
-    // Load categories for the edit modal based on type
-    const kind = o.type === "savings_goal" ? "savings" : "expense";
-    await loadCategories([$("#ed-category")], kind);
+    setVal("ed-type", type);
 
-    setVal("ed-category", o.category_id || "");
+    await refreshEditCategoryOptions(type, o.category_id || "");
+
     setVal("ed-monthly-cap", o.monthly_cap || "");
     setVal("ed-target", o.target_amount || "");
     setVal("ed-current", o.current_amount || "");

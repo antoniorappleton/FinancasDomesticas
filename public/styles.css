@@ -2622,15 +2622,14 @@ td:nth-child(5) {
 /* Cartão do modal: coluna, com altura limitada ao ecrã */
 #obj-edit-modal .modal__card {
   width: min(640px, calc(100svw - 24px));
-  max-height: var(--vh, 100dvh);
-  /* usa o fix JS para iOS */
+  max-height: min(90vh, calc(var(--vh, 100dvh) - 24px));
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  /* impede “sangrar” ao rolar */
+  padding: 0;
 }
 
 /* Header fixo */
@@ -2661,7 +2660,9 @@ td:nth-child(5) {
 }
 
 #obj-edit-modal .form-grid {
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: calc(90vh - 140px);
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px;
@@ -2684,10 +2685,13 @@ td:nth-child(5) {
 
 /* Footer fixo/sticky com safe-area */
 #obj-edit-modal .actions {
+  position: sticky;
+  bottom: 0;
   z-index: 1;
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-shrink: 0;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1px solid #e5e7eb;
