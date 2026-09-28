@@ -1,7 +1,8 @@
 // src/screens/settings.js
 
 import { repo } from "../lib/repo.js";
-import { exportImportTemplate } from "./export-template.js";
+import { exportImportTemplate, getXLSX } from "./export-template.js";
+import { validateImportFile, validateImportContent, validatePdfPageCount } from "../lib/import-validation.js";
 import { saveTheme as saveGlobalTheme, loadTheme, DEFAULT_THEME, applyTheme } from "../lib/theme.js";
 import { NotificationManager } from "../lib/notifications.js";
 import { Toast } from "../lib/ui.js";
@@ -811,14 +812,6 @@ export async function init({ sb, outlet } = {}) {
     });
   }
 
-  function isPdfByMagic(ab) {
-    if (!ab || ab.byteLength < 4) return false;
-    // Use subarray() instead of byteOffset constructor — safer on Android WebView
-    const u8 = new Uint8Array(ab).subarray(0, 4);
-    // "%PDF" => 0x25 0x50 0x44 0x46
-    return u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46;
-  }
-
   // ── Perfis de banco ──────────────────────────────────────────────────
   // Cada perfil sabe (1) reconhecer se o PDF lhe pertence, (2) opcionalmente
   // ler cabeçalhos de colunas por página, (3) reconhecer a linha de uma
@@ -980,6 +973,7 @@ export async function init({ sb, outlet } = {}) {
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
     }
 
+    let loadingTask;
     try {
       let arrayBuffer;
       if (input instanceof ArrayBuffer) {
@@ -990,7 +984,9 @@ export async function init({ sb, outlet } = {}) {
       }
 
       setImpInfo("A analisar estrutura do PDF...");
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      const pdf = await loadingTask.promise;
+      validatePdfPageCount(pdf.numPages);
       setImpInfo(`PDF carregado. ${pdf.numPages} páginas.`);
 
       let fullTextDebug = [];
@@ -1182,7 +1178,6 @@ export async function init({ sb, outlet } = {}) {
 
       flagInternalTransfers(res, ctx.primaryAccountLabel);
 
-      console.log(`PDF Extracted Lines (Debug, perfil=${profile.id}):`, fullTextDebug);
 
       if (res.length === 0) {
         const info = document.getElementById("imp-info");
@@ -1203,8 +1198,11 @@ export async function init({ sb, outlet } = {}) {
       }
 
       return res;
-    } catch (e) {
-      throw e;
+    } finally {
+      if (loadingTask) {
+        try { await loadingTask.destroy(); }
+        catch { console.warn('Não foi possível libertar o processador PDF.'); }
+      }
     }
   }
 
@@ -1454,10 +1452,10 @@ export async function init({ sb, outlet } = {}) {
 
     const mb = (f.size / (1024 * 1024)).toFixed(1);
 
-    // Detect 0-byte immediately (Android cloud file issue)
-    if (f.size === 0) {
-      if (info) info.textContent =
-        `⚠️ "${f.name}" devolveu 0 bytes. No Android, guarde o PDF em "Transferências" (pasta Downloads local) e selecione a partir daí.`;
+    try {
+      validateImportFile(f);
+    } catch (error) {
+      if (info) info.textContent = error.message;
       if (btnProcess) btnProcess.disabled = true;
       return;
     }
@@ -1486,51 +1484,42 @@ export async function init({ sb, outlet } = {}) {
       btn.textContent = "A processar...";
       setImpInfo("A preparar ficheiro...");
 
-      console.log(`[Import] Selected: "${file.name}" | Type: "${file.type}" | Size: ${file.size} bytes`);
-
-      if (file.size === 0) {
-        throw new Error(
-          `O ficheiro "${file.name}" tem 0 bytes. ` +
-          "No Android: guarde o PDF em \"Transferências\" (Downloads local) e importe a partir daí. " +
-          "Não é possível importar diretamente do Gmail, Google Drive ou links de email."
-        );
-      }
+      validateImportFile(file);
 
       // Make sure pdf.js worker is still configured (can be cleared after SW update)
       ensurePdfWorker();
 
       setImpInfo("A preparar ficheiro...");
       const ab = await readAsArrayBufferSafe(file);
+      const format = validateImportContent(file, ab);
 
-      if (isPdfByMagic(ab)) {
+      if (format === 'pdf') {
         setImpInfo("Detetado PDF por assinatura binária. A ler...");
         await new Promise((r) => setTimeout(r, 100)); // 100ms — Android needs more time to render UI
         parsedItems = await parsePDF(ab);
       } else {
-        const name = (file.name || "").toLowerCase();
-        if (name.endsWith(".pdf")) {
-          setImpInfo("A tentar ler como PDF (pela extensão)...");
-          parsedItems = await parsePDF(ab);
+        setImpInfo("A analisar ficheiro de dados...");
+        const XLSX = await getXLSX();
+        if (!XLSX) throw new Error("Biblioteca Excel não carregada.");
+
+        const wb = XLSX.read(ab, { type: "array" });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) throw new Error('O ficheiro não contém uma folha de movimentos válida.');
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        if (rows.length < 1) throw new Error("Ficheiro vazio ou sem dados.");
+        const headers = rows[0];
+
+        if (isWiseBudgetTemplate(headers)) {
+          setImpInfo("Detetado template WiseBudget. A processar...");
+          const maps = await getPremiumMaps();
+          parsedItems = await parseWiseBudgetFile(rows, maps, headers);
         } else {
-          setImpInfo("A analisar ficheiro de dados...");
-          const XLSX = await getXLSX();
-          if (!XLSX) throw new Error("Biblioteca Excel não carregada.");
-
-          const wb = XLSX.read(ab, { type: "array" });
-          const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-          if (rows.length < 1) throw new Error("Ficheiro vazio ou sem dados.");
-          const headers = rows[0];
-
-          if (isWiseBudgetTemplate(headers)) {
-            setImpInfo("Detetado template WiseBudget. A processar...");
-            const maps = await getPremiumMaps();
-            parsedItems = await parseWiseBudgetFile(rows, maps, headers);
-          } else {
-            setImpInfo("A usar importador genérico...");
-            parsedItems = await parseCSV(file);
+          if (format === 'xlsx') {
+            throw new Error('Este XLSX não segue o template WiseBudget. Use o template ou exporte a folha como CSV.');
           }
+          setImpInfo("A usar importador genérico...");
+          parsedItems = await parseCSV(file);
         }
       }
 

@@ -273,6 +273,10 @@ Ideias naturais para crescimento:
 
 ## Estado Atual
 
+### Plano de melhorias e compatibilidade
+
+Consultar [a revisão cautelosa do plano de 12 semanas](docs/plano-melhorias-compativel.md), incluindo conflitos com contas partilhadas, dependências da migração de IA e critérios de não regressão. Executar `npm test` para os testes locais do service worker (Node.js 22); os fluxos autenticados e as políticas RLS exigem validação separada em ambiente de teste.
+
 WiseBudget ja tem uma base solida:
 
 - autenticacao

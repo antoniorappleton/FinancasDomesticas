@@ -1,4 +1,5 @@
 node_modules/
+tmp/design-review/
 .DS_Store
 dist/
 .env

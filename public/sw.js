@@ -11,6 +11,7 @@ const APP_SHELL = [
   withBase("/"),
   withBase("/index.html"),
   withBase("/styles.css"),
+  withBase("/refined.css"),
   withBase("/main.js"),
   withBase("/manifest.json"),
   withBase("/wisebudget.png"),
@@ -26,6 +27,9 @@ const APP_SHELL = [
   withBase("/src/screens/settings.html"),
   withBase("/src/screens/categories-v3.html"),
   withBase("/src/screens/Metas.html"),
+  withBase("/src/screens/health.html"),
+  withBase("/src/screens/admin-tutorials.html"),
+  withBase("/health.css"),
 
   // screens (JS)
   withBase("/src/screens/dashboard.js"),
@@ -34,6 +38,8 @@ const APP_SHELL = [
   withBase("/src/screens/settings.js"),
   withBase("/src/screens/categories.js"),
   withBase("/src/screens/Metas.js"),
+  withBase("/src/screens/health.js"),
+  withBase("/src/screens/admin-tutorials.js"),
 
   // módulos locais
   withBase("/src/screens/export-template.js"),
@@ -44,8 +50,16 @@ const APP_SHELL = [
   withBase("/src/lib/analytics.js"),
   withBase("/src/lib/categories-crud.js"),
   withBase("/src/lib/validators.js"),
+  withBase("/src/lib/import-validation.js"),
   withBase("/src/lib/ai-chat.css"),
   withBase("/src/lib/ai-chat.js"),
+  withBase("/src/lib/ui.js"),
+  withBase("/src/lib/guide.js"),
+  withBase("/src/lib/onboarding.js"),
+  withBase("/src/lib/notifications.js"),
+  withBase("/src/lib/healthMetrics.js"),
+  withBase("/src/lib/chart-loader.js"),
+  withBase("/src/components/MiniReport.js"),
 ];
 
 // Helpers
@@ -56,11 +70,15 @@ const isRealtime = (u) => /\/realtime\//i.test(u) || isWS(u);
 
 // INSTALL — pré-cache
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
   event.waitUntil(
     caches
       .open(CACHE_STATIC)
-      .then((cache) => cache.addAll(APP_SHELL).catch(() => {})),
+      .then((cache) => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
+      .catch((error) => {
+        console.error("[WiseBudget SW] Precache failed; update not activated.", error);
+        throw error;
+      }),
   );
 });
 
@@ -71,7 +89,10 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => ![CACHE_STATIC, CACHE_DYNAMIC].includes(k))
+          .filter((k) =>
+            (k.startsWith("wisebudget-static-") || k.startsWith("wisebudget-dynamic-")) &&
+            ![CACHE_STATIC, CACHE_DYNAMIC].includes(k),
+          )
           .map((k) => caches.delete(k)),
       );
       await self.clients.claim();

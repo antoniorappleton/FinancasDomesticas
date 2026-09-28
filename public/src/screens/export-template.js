@@ -12,7 +12,7 @@ async function loadScript(src) {
   });
 }
 
-async function getXLSX() {
+export async function getXLSX() {
   if (window.XLSX) return window.XLSX;
   const cdns = [
     // cdnjs (muito estável)

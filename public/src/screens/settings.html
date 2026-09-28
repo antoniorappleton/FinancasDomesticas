@@ -1045,6 +1045,7 @@
   <section class="card">
     <h2 class="section-title">Importação de Extrato (BETA)</h2>
     <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
+    <p class="row-note">PDF com texto selecionável (até 200 páginas), CSV ou XLSX no template WiseBudget; máximo 20 MB. PDFs digitalizados precisam de conversão para texto/CSV. O ficheiro é lido no dispositivo; os movimentos são enviados para a conta ao confirmar a importação.</p>
 
     <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:#fffbeb; border-left:3px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#78350f;">
       📱 <b>Dispositivo Móvel Detetado:</b> O ficheiro deve estar armazenado localmente.
@@ -1054,7 +1055,7 @@
       <style>.card.soft * { box-sizing: border-box; max-width: 100%; }</style>
       <div class="form-grid form-grid-responsive">
         <label>
-          Ficheiro (PDF ou CSV)
+          Ficheiro (PDF, CSV ou XLSX)
           <input id="imp-file" type="file" accept=".pdf,.csv,.xlsx" style="background:#fff; width:100%" />
         </label>
         <label>

@@ -1,5 +1,7 @@
 # Wisebudget PWA Fixes - TODO List
 
+Plano de evolução revisto: [compatibilidade e critérios de não regressão](docs/plano-melhorias-compativel.md). As tarefas abaixo continuam em vigor; a simplificação não deve remover partilha familiar, relatórios ou personalização existentes.
+
 ## Phase 1: Core Infrastructure (DONE)
 - [x] Create src/lib/helpers.js with shared utility functions
 - [x] Convert src/lib/validators.js to ES6 export
@@ -16,6 +18,9 @@
 - [x] Fix CSV import header mapping and error handling in settings.js
 
 ## Phase 3: Testing & Verification
+- [x] Add file size/type/signature guards and PDF page limits; fix shared XLSX loader import
+- [x] Add local import validation and PDF failure cleanup tests
+- [ ] Browser regression after upload guards: bank PDF, bank CSV, WiseBudget XLSX, Android local file and rejected file
 - [ ] Regression test: CSV import functionality with different file types
 - [ ] Regression test: PDF report generation in settings
 - [ ] Verify all module imports work correctly without global dependency issues
