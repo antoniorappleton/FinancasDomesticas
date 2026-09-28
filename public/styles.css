@@ -2612,7 +2612,7 @@ td:nth-child(5) {
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, .45);
-  z-index: 50;
+  z-index: 2000;
 }
 
 #obj-edit-modal[hidden] {
@@ -2628,7 +2628,10 @@ td:nth-child(5) {
   box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* o próprio cartão faz scroll; header e footer ficam sticky */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 0;
 }
 
@@ -2660,11 +2663,7 @@ td:nth-child(5) {
 }
 
 #obj-edit-modal .form-grid {
-  flex: 1 1 auto;
-  min-height: 0;
-  max-height: calc(90vh - 140px);
-  overflow-y: auto;
-  overflow-x: hidden;
+  flex: 0 0 auto;
   padding: 16px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2692,6 +2691,7 @@ td:nth-child(5) {
   gap: 10px;
   align-items: center;
   flex-shrink: 0;
+  margin-top: auto !important;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background: #fff;
   border-top: 1px solid #e5e7eb;

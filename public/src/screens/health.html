@@ -93,3 +93,8 @@
     <!-- Alerts will be rendered dynamically -->
   </div>
 </section>
+
+<!-- Fragmento com varios <svg>: o live-server (dev) injeta o script de reload antes de CADA fecho de svg
+     mas so conta uma injecao no Content-Length, cortando o fim do ficheiro. Com este fecho de body
+     no fim, a injecao acontece uma unica vez aqui. O innerHTML ignora a tag. -->
+</body>
