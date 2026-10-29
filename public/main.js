@@ -319,11 +319,29 @@ function onSignedOut() {
     }
     window.dispatchEvent(new Event("app:ready"));
 
-    // Service Worker Update Toasts
+    // Service Worker: recarrega automaticamente assim que uma versão nova
+    // assume o controlo (evita ficar preso numa versão antiga em sessões
+    // longas ou PWAs instaladas que nunca são fechadas de todo).
     if ("serviceWorker" in navigator) {
+      let swRefreshing = false;
       navigator.serviceWorker.addEventListener("controllerchange", () => {
-        Toast.info("App atualizada! Recarregue se desejar.");
+        if (swRefreshing) return;
+        swRefreshing = true;
+        Toast.info("App atualizada! A recarregar…");
+        setTimeout(() => location.reload(), 600);
       });
+
+      // Verifica ativamente por atualizações sempre que a app volta a
+      // primeiro plano (PWA reaberta do ecrã inicial sem ter sido fechada).
+      const checkForUpdate = () => {
+        navigator.serviceWorker.getRegistration().then((reg) => {
+          reg?.update().catch(() => {});
+        });
+      };
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") checkForUpdate();
+      });
+      window.addEventListener("focus", checkForUpdate);
     }
 
     // Network Status Toasts
