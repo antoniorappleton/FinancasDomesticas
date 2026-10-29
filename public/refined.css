@@ -183,7 +183,7 @@
     .app-header__inner { padding: 14px 18px; }
     .brand__title { font-size: 20px; }
     .brand__subtitle { font-size: 9px; letter-spacing: .02em; }
-    #app-main { padding: 24px 16px calc(var(--footer-h) + 76px); }
+    #app-main { padding: 24px 16px calc(var(--footer-h) + 28px + env(safe-area-inset-bottom)); }
     .card { padding: 20px; margin-bottom: 18px; border-radius: 16px; }
     .dashboard-intro { align-items: flex-start; flex-direction: column; gap: 18px; padding-bottom: 24px; }
     .dashboard-intro h1 { max-width: 440px; font-size: 30px; }
@@ -194,12 +194,21 @@
     .monthly-overview > .section-title { font-size: 17px; gap: 8px; }
     .monthly-overview .kpi-filter-group { order: 3; width: 100%; margin-left: 0 !important; }
     #kpi-privacy-toggle { margin-left: auto; }
-    .app-footer { width: calc(100% - 20px); padding: 7px 4px; gap: 0; border-radius: 16px; bottom: max(10px, env(safe-area-inset-bottom)); }
+    /* Barra de navegação ocupa toda a largura, encostada ao fundo — como nas apps nativas */
+    .app-footer {
+      width: 100%; left: 0; right: 0; transform: none;
+      bottom: 0; border-radius: 0; border: none;
+      border-top: 1px solid rgba(255, 255, 255, .08);
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, .18);
+      padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+      gap: 0;
+    }
     .app-footer .foot-item__label { font-size: 9px; }
+    .app-footer .foot-item[href="#/new"] { border-radius: 10px; margin: 0 2px; }
     .auth-card { padding: 28px; }
     .tx-entry-hero .section-title { font-size: 25px; }
     .tx-type-segment { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-    .tx-actions { bottom: calc(var(--footer-h) + 40px + env(safe-area-inset-bottom)); }
+    .tx-actions { bottom: calc(var(--footer-h) + 16px + env(safe-area-inset-bottom)); }
   }
   @media (max-width: 360px) {
     #app-main { padding-left: 10px; padding-right: 10px; }
