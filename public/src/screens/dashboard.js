@@ -239,7 +239,7 @@ function setupDashboardModal(ds, rawData) {
             type: "bar",
             label: "Sobra (Fixas)",
             data: series.netFixed,
-            backgroundColor: (ctx) => (ctx.raw < 0 ? "#ef4444" : "#22c55e"),
+            backgroundColor: (ctx) => (ctx.raw < 0 ? "#b3433a" : "#216354"),
             order: 3,
             stack: "fixed",
             barPercentage: 0.6,
@@ -259,7 +259,7 @@ function setupDashboardModal(ds, rawData) {
             type: "line",
             label: "Acumulado Anual (Fixas)",
             data: series.cumFixed,
-            borderColor: "#3b82f6", // Blue
+            borderColor: "#216354", // cor de destaque
             borderWidth: 2,
             tension: 0.25,
             fill: false,
@@ -296,7 +296,7 @@ function setupDashboardModal(ds, rawData) {
     extraEl.innerHTML = `
       <div class="muted" style="margin-bottom:8px">
         <strong>Previsão de Saldo ${targetYear}:</strong><br>
-        • <span style="color:#22c55e">■</span> Liquido só com Despesas Fixas: Entradas - Despesas Fixas.<br>
+        • <span style="color:#216354">■</span> Liquido só com Despesas Fixas: Entradas - Despesas Fixas.<br>
         • <span style="color:#94a3b8">■</span> Liquido Real: Entradas - Despesas (Fixas e Variáveis).<br>
         (Futuro c/base no histórico do ano anterior)
       </div>
@@ -735,8 +735,8 @@ function setupDashboardModal(ds, rawData) {
             data: real,
             fill: false,
             tension: 0.25,
-            borderColor: "#1d4ed8",
-            backgroundColor: "rgba(29,78,216,0.18)",
+            borderColor: "#216354",
+            backgroundColor: "rgba(33,99,84,0.18)",
           },
           {
             label: "Previsão (mês)",
@@ -744,8 +744,8 @@ function setupDashboardModal(ds, rawData) {
             fill: true,
             tension: 0.25,
             borderDash: [6, 4],
-            borderColor: "#ec4899",
-            backgroundColor: "rgba(236,72,153,0.18)",
+            borderColor: "#9a9a96",
+            backgroundColor: "rgba(154,154,150,0.18)",
           },
         ],
       },
@@ -2954,8 +2954,8 @@ export async function init({ sb, outlet } = {}) {
                     datasets: [{
                         label: 'Despesa',
                         data: analytics.sortedMonths.map(m => analytics.monthlyHistory.get(m) || 0),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: '#3f3f42',
+                        backgroundColor: 'rgba(63, 63, 66, 0.1)',
                         fill: true,
                         tension: 0.3
                     }]
@@ -2970,13 +2970,14 @@ export async function init({ sb, outlet } = {}) {
             // 2. Composição (Barras)
             const stackLabels = analytics.sortedMonths.map(m => new Date(m + "-01").toLocaleDateString('pt-PT', { month: 'short' }));
             const subTypes = Array.from(analytics.bySubCat12m.keys()).slice(0, 12);
+            const subPal = palette(subTypes.length);
             const datasets = subTypes.map((sub, i) => ({
                 label: sub,
                 data: analytics.sortedMonths.map(m => {
                     const monthMap = themeData.subCatByMonth?.get(m);
                     return monthMap ? (monthMap.get(sub) || 0) : 0;
                 }),
-                backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#a855f7', '#ec4899'][i]
+                backgroundColor: subPal[i]
             }));
 
             new Chart(document.getElementById("chart-theme-stacked").getContext("2d"), {
@@ -2998,7 +2999,7 @@ export async function init({ sb, outlet } = {}) {
                         labels: pieData.map(s => s.label),
                         datasets: [{
                             data: pieData.map(s => s.value),
-                            backgroundColor: ['#3b82f6', '#f97316', '#10b981', '#a855f7', '#ec4899']
+                            backgroundColor: palette(pieData.length)
                         }]
                     },
                     options: { 
@@ -3019,7 +3020,7 @@ export async function init({ sb, outlet } = {}) {
                     labels: ['Fixos', 'Variáveis'],
                     datasets: [{
                         data: [analytics.fixed12m || 0, analytics.variable12m || 0],
-                        backgroundColor: ['#6366f1', '#f43f5e']
+                        backgroundColor: ['#216354', '#9a9a96']
                     }]
                 },
                 options: { 
@@ -3227,21 +3228,7 @@ export async function init({ sb, outlet } = {}) {
     const el = byId("chart-cat-pie");
     const ctx = el?.getContext("2d");
     if (ctx) {
-      const COLORS = [
-        "#ef4444",
-        "#22c55e",
-        "#3b82f6",
-        "#0f766e",
-        "#f59e0b",
-        "#8b5cf6",
-        "#10b981",
-        "#f43f5e",
-        "#64748b",
-        "#e11d48",
-      ];
-      const bg = (parentDist.labels || []).map(
-        (_, i) => COLORS[i % COLORS.length],
-      );
+      const bg = palette((parentDist.labels || []).length);
       const totalParents =
         (parentDist.values || []).reduce((a, b) => a + b, 0) || 1;
 

@@ -9,11 +9,11 @@
     <title>Conta confirmada • Wisebudget</title>
     <style>
       :root {
-        --green: #0b7a5d;
-        --greenDark: #064e3b;
-        --text: #0f172a;
-        --ok: #16a34a;
-        --err: #ef4444;
+        --green: #216354;
+        --greenDark: #163f35;
+        --text: #18181b;
+        --ok: #216354;
+        --err: #b3433a;
       }
       html,
       body {
@@ -46,23 +46,23 @@
         margin: 10vh auto;
       }
       .card.success {
-        background: #ecfdf5;
-        border: 1px solid #10b981;
+        background: #eaf1ee;
+        border: 1px solid var(--ok);
       }
       .card.error {
-        background: #fef9c3;
-        border: 1px solid #facc15;
+        background: #f5e6e4;
+        border: 1px solid var(--err);
       }
       .title {
         font-weight: 800;
         font-size: 1.6rem;
-        color: #1f2937;
+        color: var(--text);
       }
       .card.success .title {
-        color: #065f46;
+        color: var(--ok);
       }
       .card.error .title {
-        color: #854d0e;
+        color: var(--err);
       }
 
       .btn {
@@ -113,7 +113,7 @@
         box.innerHTML = `
       <div class="title" style="font-size:3rem">✅</div>
       <div class="title">Conta confirmada com sucesso!</div>
-      <p style="color:#064e3b; margin:10px 0">O teu email foi validado e a tua conta já está ativa.</p>
+      <p style="color:var(--ok); margin:10px 0">O teu email foi validado e a tua conta já está ativa.</p>
       
       <div style="margin:20px 0; font-size:0.9rem; color:#666">
          A redirecionar em <span id="counter" style="font-weight:bold;color:var(--green)">3</span>s...
@@ -141,10 +141,10 @@
         box.className = "card error";
         box.innerHTML = `
       <div class="title" style="font-size:3rem">
-        <svg width="48" height="48" style="fill: #f59e0b;"><use href="#i-info"/></svg>
+        <svg width="48" height="48" style="fill: var(--err);"><use href="#i-info"/></svg>
       </div>
       <div class="title" style="font-size:1.4rem">Link inválido ou expirado</div>
-      <p style="color:#854d0e; margin:10px 0">Algo correu mal (${err?.message || "Erro desconhecido"}).<br>Pede um novo email de confirmação.</p>
+      <p style="color:var(--err); margin:10px 0">Algo correu mal (${err?.message || "Erro desconhecido"}).<br>Pede um novo email de confirmação.</p>
       <a href="./index.html" class="btn secondary">Voltar à app</a>
     `;
       };

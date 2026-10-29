@@ -394,7 +394,7 @@ export async function init({ sb, outlet } = {}) {
       const invested = Number(p.initial_amount || 0) + aportes;
       const current = series.length ? series[series.length - 1].balance : invested;
       const interest = current - invested;
-      const color = p.color || "#0ea5e9";
+      const color = p.color || "#216354";
       
       const initial = Number(p.initial_amount || 0);
       const dca = Number(p.monthly_contribution || 0);
@@ -432,8 +432,8 @@ export async function init({ sb, outlet } = {}) {
             <div class="cat-card__subtitle" style="display: flex; flex-direction: column; gap: 4px;">
               <div style="display: flex; justify-content: space-between;"><span class="row-note">Investido:</span> <strong>${money(invested)}</strong></div>
               <div style="display: flex; justify-content: space-between;"><span class="row-note">Valor atual:</span> <strong>${money(current)}</strong></div>
-              <div style="display: flex; justify-content: space-between;"><span class="row-note">Juros:</span> <strong style="color: #10b981">+${money(interest)}</strong></div>
-              ${dca > 0 ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between;"><span class="row-note">DCA Mensal:</span> <strong style="color: #2563eb">${money(dca)}</strong></div>` : ''}
+              <div style="display: flex; justify-content: space-between;"><span class="row-note">Juros:</span> <strong style="color: var(--text)">+${money(interest)}</strong></div>
+              ${dca > 0 ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); display: flex; justify-content: space-between;"><span class="row-note">DCA Mensal:</span> <strong style="color: var(--text)">${money(dca)}</strong></div>` : ''}
             </div>
             <div style="text-align: right; background: rgba(255,255,255,0.5); padding: 8px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.03);">
               <div class="row-note" style="margin-bottom: 2px; font-weight: 700;">Em ${years} anos</div>
@@ -460,7 +460,7 @@ export async function init({ sb, outlet } = {}) {
       ["pf-name", "pf-apr", "pf-notes", "pf-monthly", "pf-years"].forEach(id => { if (document.getElementById(id)) document.getElementById(id).value = ""; });
       if (document.getElementById("pf-kind")) document.getElementById("pf-kind").value = "Outro";
       if (document.getElementById("pf-comp")) document.getElementById("pf-comp").value = "monthly";
-      if (document.getElementById("pf-color")) document.getElementById("pf-color").value = "#0ea5e9";
+      if (document.getElementById("pf-color")) document.getElementById("pf-color").value = "#216354";
       if (document.getElementById("pf-initial")) document.getElementById("pf-initial").value = 0;
       if (document.getElementById("pf-start")) document.getElementById("pf-start").value = new Date().toISOString().slice(0, 10);
     } else {
@@ -476,7 +476,7 @@ export async function init({ sb, outlet } = {}) {
     const apr = Number(document.getElementById("pf-apr")?.value || 0) / 100;
     const years = Number(document.getElementById("pf-years")?.value || 0);
     const compounding = document.getElementById("pf-comp")?.value || "monthly";
-    const color = document.getElementById("pf-color")?.value || "#0ea5e9";
+    const color = document.getElementById("pf-color")?.value || "#216354";
 
     if (years <= 0) {
       if (document.getElementById("pf-proj-total")) document.getElementById("pf-proj-total").textContent = money(initial);
@@ -511,7 +511,7 @@ export async function init({ sb, outlet } = {}) {
     if (document.getElementById("pf-proj-profit")) {
       const el = document.getElementById("pf-proj-profit");
       el.textContent = money(profit);
-      el.style.color = profit >= 0 ? "#10b981" : "#ef4444";
+      el.style.color = profit >= 0 ? "var(--text)" : "var(--red-500)";
     }
 
     const chartWrap = document.getElementById("pf-modal-chart");
@@ -532,7 +532,7 @@ export async function init({ sb, outlet } = {}) {
     document.getElementById("pf-kind").value = data.kind || "Outro";
     document.getElementById("pf-apr").value = data.apr || 0;
     document.getElementById("pf-comp").value = data.compounding || "monthly";
-    document.getElementById("pf-color").value = data.color || "#0ea5e9";
+    document.getElementById("pf-color").value = data.color || "#216354";
     document.getElementById("pf-notes").value = data.notes || "";
     document.getElementById("pf-initial").value = data.initial_amount || 0;
     document.getElementById("pf-start").value = data.start_date || new Date().toISOString().slice(0, 10);
@@ -614,16 +614,17 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
         progress = Math.min(100, ratio * 100);
         secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
       }
-      let color = o.type === "savings_goal" ? (ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981") : (ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444");
+      // 2 estados (destaque = no caminho, alerta = fora do caminho) em vez de semáforo a 3 cores
+      let color = o.type === "savings_goal" ? (ratio < 0.5 ? "var(--red-500)" : "var(--ui-fab-bg)") : (ratio < 0.85 ? "var(--ui-fab-bg)" : "var(--red-500)");
       const isBudget = o.type.startsWith("budget_");
-      const warn = isBudget && goal && current > goal ? "color:#b91c1c" : "";
+      const warn = isBudget && goal && current > goal ? "color:var(--red-500)" : "";
       const due = o.due_date ? `<span class="row-note">Limite: ${o.due_date}</span>` : "";
       return `<div class="card" data-id="${o.id}">
           <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
             <div class="cat-card__title"><strong>${o.title}</strong> <span style="margin-left:8px; font-size:0.85em; color:${color}; font-weight:800">${(ratio * 100).toFixed(0)}%</span></div>
             <div style="display:flex;gap:4px">
               <button class="icon-btn" data-edit="${o.id}" title="Editar"><svg width="18" height="18" viewBox="0 0 24 24"><path d="M12.3 6.7l5 5-8.6 8.6c-.3.3-.6.5-1 .6l-3.6.8a1 1 0 0 1-1.2-1.2l.8-3.6c.1-.4.3-.7.6-1L12.3 6.7Zm1.4-1.4 1.6-1.6a2.5 2.5 0 0 1 3.5 0l1.1 1.1a2.5 2.5 0 0 1 0 3.5l-1.6 1.6-5-5Z" fill="currentColor"/></svg></button>
-              <button class="icon-btn" data-delete="${o.id}" title="Eliminar" style="color:#ef4444"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+              <button class="icon-btn" data-delete="${o.id}" title="Eliminar" style="color:var(--red-500)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
             </div>
           </div>
           <div style="margin-top:8px">
@@ -816,9 +817,9 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
       card.style.display = "block";
       const allocations = profile.calculateAllocation();
       const funds = [
-        { name: "Fundo de Emergência", pct: profile.strategy.emergency, val: allocations.emergency, color: "#10b981" },
-        { name: "Fundo de Investimento", pct: profile.strategy.investment, val: allocations.investment, color: "#2563eb" },
-        { name: "Fundo de Poupança", pct: profile.strategy.savings, val: allocations.savings, color: "#3b82f6" }
+        { name: "Fundo de Emergência", pct: profile.strategy.emergency, val: allocations.emergency, color: "var(--ui-fab-bg)" },
+        { name: "Fundo de Investimento", pct: profile.strategy.investment, val: allocations.investment, color: "var(--text)" },
+        { name: "Fundo de Poupança", pct: profile.strategy.savings, val: allocations.savings, color: "var(--muted)" }
       ].filter(f => f.pct > 0);
       list.innerHTML = funds.map(f => `<div class="card soft" style="border-left: 4px solid ${f.color}; padding: 12px; margin: 0">
           <div style="font-size: 0.85em; color: var(--muted); font-weight: 600">${f.name}</div>

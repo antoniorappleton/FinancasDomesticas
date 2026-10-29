@@ -146,24 +146,63 @@ export async function toDataURL(url) {
   });
 }
 
-// Color palette for charts
-export function palette(n) {
-  const base = [
-    "#0ea5e9",
-    "#22c55e",
-    "#f97316",
-    "#a78bfa",
-    "#ef4444",
-    "#14b8a6",
-    "#eab308",
-    "#f472b6",
-    "#94a3b8",
-    "#10b981",
-    "#3b82f6",
+// Color palette for charts — gerada a partir da cor de destaque (vários tons/
+// transparências da mesma cor), não de um arco-íris de tons soltos. Mantém o
+// gráfico legível com várias categorias sem introduzir novas cores à app.
+const PALETTE_FALLBACK_ACCENT = "#216354";
+const PALETTE_GRAYS = ["#9a9a96", "#b8b8b4", "#d4d4d0"];
+
+function hexToRgb(hex) {
+  const clean = hex.replace("#", "");
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
   ];
-  if (n <= base.length) return base.slice(0, n);
+}
+
+function rgbToHex(rgb) {
+  return (
+    "#" +
+    rgb
+      .map((v) =>
+        Math.round(Math.max(0, Math.min(255, v)))
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
+}
+
+function mixHex(hexA, hexB, t) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  return rgbToHex(a.map((c, i) => c + (b[i] - c) * t));
+}
+
+function currentAccent() {
+  try {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue("--ui-fab-bg")
+      .trim();
+    return v || PALETTE_FALLBACK_ACCENT;
+  } catch {
+    return PALETTE_FALLBACK_ACCENT;
+  }
+}
+
+export function palette(n, accent = currentAccent()) {
+  const steps = Math.min(n, 7);
   const out = [];
-  for (let i = 0; i < n; i++) out.push(base[i % base.length]);
+  for (let i = 0; i < steps; i++) {
+    const t = steps === 1 ? 0.5 : i / (steps - 1); // 0 (escuro) .. 1 (claro)
+    out.push(
+      t < 0.5
+        ? mixHex("#000000", accent, t / 0.5)
+        : mixHex(accent, "#ffffff", (t - 0.5) / 0.5),
+    );
+  }
+  for (let i = steps; i < n; i++) out.push(PALETTE_GRAYS[(i - steps) % PALETTE_GRAYS.length]);
   return out;
 }
 
@@ -214,15 +253,17 @@ export const monthKeysBetween = (fromISO, toISO) => {
   return out;
 };
 
-// Shared chart colors
+// Shared chart colors — neutros (3 tons, por peso) + 1 cor de destaque só para o
+// saldo/linha de topo. Sem verde/vermelho/azul: receita vs. despesa distingue-se
+// pela posição/rótulo no gráfico, não pela cor.
 export const CHART_COLORS = {
-  inc: "rgba(16,185,129,0.85)", // green
-  exp: "rgba(239,68,68,0.85)", // red
-  sav: "rgba(59,130,246,0.85)", // blue
-  saldo: "rgba(99,102,241,1.00)", // violet
-  incF: "rgba(16,185,129,0.28)",
-  expF: "rgba(239,68,68,0.25)",
-  savF: "rgba(59,130,246,0.22)",
+  inc: "rgba(24,24,27,0.80)", // neutro escuro
+  exp: "rgba(107,114,128,0.70)", // neutro médio
+  sav: "rgba(161,161,170,0.65)", // neutro claro
+  saldo: "rgba(33,99,84,1.00)", // cor de destaque (acompanha --ui-fab-bg por defeito)
+  incF: "rgba(24,24,27,0.18)",
+  expF: "rgba(107,114,128,0.16)",
+  savF: "rgba(161,161,170,0.14)",
 };
 
 // Chart helpers

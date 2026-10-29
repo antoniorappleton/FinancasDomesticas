@@ -621,17 +621,18 @@ function renderIndicators(metrics, status) {
 }
 
 function renderIndicator(ind, idx) {
+  // Gravidade = tom de destaque (bem) a alerta (mal), sem um hue por estado
   const statusColors = {
-    excellent: "#22c55e",
-    healthy: "#3b82f6",
-    good: "#3b82f6",
-    risk: "#f59e0b",
-    concerning: "#f59e0b",
-    poor: "#ef4444",
-    critical: "#ef4444",
+    excellent: "var(--ui-fab-bg, #216354)",
+    healthy: "var(--ui-fab-bg, #216354)",
+    good: "color-mix(in srgb, var(--ui-fab-bg, #216354) 65%, var(--text, #18181b))",
+    risk: "color-mix(in srgb, var(--red-500, #b3433a) 55%, var(--text, #18181b))",
+    concerning: "color-mix(in srgb, var(--red-500, #b3433a) 55%, var(--text, #18181b))",
+    poor: "var(--red-500, #b3433a)",
+    critical: "var(--red-500, #b3433a)",
   };
 
-  const color = statusColors[ind.status] || "#64748b";
+  const color = statusColors[ind.status] || "var(--muted, #6b7280)";
 
   return `
     <div class="indicator" data-status="${ind.status}">

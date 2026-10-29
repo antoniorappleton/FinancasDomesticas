@@ -380,17 +380,17 @@
   
   .strat-range { -webkit-appearance: none; width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; outline: none; }
   .strat-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid var(--primary); cursor: pointer; }
-  .range--red::-webkit-slider-thumb { border-color: #ef4444; }
-  .range--blue::-webkit-slider-thumb { border-color: #3b82f6; }
-  .range--green::-webkit-slider-thumb { border-color: #10b981; }
-  .range--gray::-webkit-slider-thumb { border-color: #94a3b8; }
+  .range--red::-webkit-slider-thumb { border-color: color-mix(in srgb, var(--primary) 90%, black); }
+  .range--blue::-webkit-slider-thumb { border-color: var(--primary); }
+  .range--green::-webkit-slider-thumb { border-color: color-mix(in srgb, var(--primary) 65%, white); }
+  .range--gray::-webkit-slider-thumb { border-color: var(--muted); }
   
   .suggested-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
   .suggested-item .icon { width: 36px; height: 36px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; color: var(--primary); }
   .suggested-info strong { display: block; font-size: 14px; color: #1e293b; }
   .suggested-info span { font-size: 11px; color: #64748b; }
   .suggested-val { text-align: right; font-weight: 700; color: var(--primary); }
-  .text-success { color: #10b981 !important; }
+  .text-success { color: var(--primary) !important; }
 
   /* DIAGNOSTIC GRID */
   .diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 16px 0; }
@@ -748,14 +748,6 @@
     margin: 4px 0
   }
 
-  .btn {
-    padding: 8px 12px;
-    border: 1px solid #334155;
-    border-radius: 10px;
-    background: #111827;
-    color: #e5e7eb;
-  }
-
   .rpt-ai-content {
     font-size: 14px;
     line-height: 1.6;
@@ -1047,7 +1039,7 @@
     <p class="row-note">Importa transações via PDF ou CSV (Excel). Suporta Millennium, ActivoBank, Santander, etc.</p>
     <p class="row-note">PDF com texto selecionável (até 200 páginas), CSV ou XLSX no template WiseBudget; máximo 20 MB. PDFs digitalizados precisam de conversão para texto/CSV. O ficheiro é lido no dispositivo; os movimentos são enviados para a conta ao confirmar a importação.</p>
 
-    <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:#fffbeb; border-left:3px solid #f59e0b; border-radius:6px; font-size:0.85rem; color:#78350f;">
+    <div id="imp-android-tip" style="display:none; margin-top:8px; padding:10px 12px; background:var(--bg); border-left:3px solid var(--primary); border-radius:6px; font-size:0.85rem; color:var(--text);">
       📱 <b>Dispositivo Móvel Detetado:</b> O ficheiro deve estar armazenado localmente.
     </div>
 
@@ -1405,8 +1397,8 @@
 
 .thm-header__title .material-symbols-outlined {
   font-size: 32px;
-  color: #6366f1;
-  background: #eef2ff;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, white);
   padding: 8px;
   border-radius: 12px;
 }
@@ -1456,9 +1448,9 @@
 }
 
 .btn-profile.active {
-  border-color: #6366f1;
-  background: #f5f3ff;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 8%, white);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
 .profile-preview {
@@ -1487,17 +1479,17 @@
   border-radius: 4px;
 }
 
-.profile-preview.familia::before { background: #e0f2fe; }
-.profile-preview.familia::after { background: #22c55e; }
+.profile-preview.familia::before { background: #1b1b1d; }
+.profile-preview.familia::after { background: #216354; }
 
-.profile-preview.investidor::before { background: #1e293b; }
-.profile-preview.investidor::after { background: #0891b2; }
+.profile-preview.investidor::before { background: #1b1b1d; }
+.profile-preview.investidor::after { background: #2b4a5e; }
 
-.profile-preview.jovem::before { background: #6366f1; }
-.profile-preview.jovem::after { background: #f43f5e; }
+.profile-preview.jovem::before { background: #1b1b1d; }
+.profile-preview.jovem::after { background: #c2185b; }
 
-.profile-preview.executivo::before { background: #0f172a; }
-.profile-preview.executivo::after { background: #1e293b; }
+.profile-preview.executivo::before { background: #1b1b1d; }
+.profile-preview.executivo::after { background: #3f3f42; }
 
 .profile-info strong { display: block; font-size: 15px; color: #1e293b; }
 .profile-info span { font-size: 12px; color: #64748b; }
@@ -1505,7 +1497,7 @@
 .btn-text {
   background: none;
   border: none;
-  color: #6366f1;
+  color: var(--primary);
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
@@ -1513,7 +1505,7 @@
   border-radius: 12px;
 }
 
-.btn-text:hover { background: #f5f3ff; }
+.btn-text:hover { background: color-mix(in srgb, var(--primary) 10%, white); }
 
 /* Rest of professional styles remain/refined */
 .thm-sidebar { padding: 24px 32px; overflow-y: auto; }
@@ -1786,8 +1778,8 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .thm-icon-btn {
-  background: #fee2e2;
-  color: #ef4444;
+  background: var(--red-100, #f5e6e4);
+  color: var(--red-500, #b3433a);
   border: none;
   width: 44px;
   height: 44px;
@@ -1910,7 +1902,7 @@ input[type="color"]::-webkit-color-swatch {
 }
 
 .mock-btn {
-  background: #0ea5e9;
+  background: var(--primary);
   color: #fff;
   font-size: 10px;
   font-weight: 700;

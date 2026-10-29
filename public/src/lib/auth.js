@@ -211,9 +211,9 @@ export function initAuth({ onSignedIn, onSignedOut } = {}) {
     // Since user provided CSS, let's inject it via style attr or ensure it's in CSS file.
     // For now inline styles for safety + class
     banner.style.cssText = `
-      background: #dcfce7;
-      border: 1px solid #16a34a;
-      color: #166534;
+      background: color-mix(in srgb, var(--ui-fab-bg, #216354) 16%, white);
+      border: 1px solid var(--ui-fab-bg, #216354);
+      color: var(--ui-fab-bg, #216354);
       padding: 10px 12px;
       border-radius: 10px;
       margin-bottom: 14px;

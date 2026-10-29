@@ -6,7 +6,7 @@ import { validateImportFile, validateImportContent, validatePdfPageCount } from 
 import { saveTheme as saveGlobalTheme, loadTheme, DEFAULT_THEME, applyTheme } from "../lib/theme.js";
 import { NotificationManager } from "../lib/notifications.js";
 import { Toast } from "../lib/ui.js";
-import { money, ymd, pad2, sum, loadScript, ensureChartStack, getJsPDF, toDataURL } from "../lib/helpers.js";
+import { money, ymd, pad2, sum, loadScript, ensureChartStack, getJsPDF, toDataURL, palette } from "../lib/helpers.js";
 import { validators } from "../lib/validators.js";
 import { calculateHealthMetrics, getHealthStatus } from "../lib/healthMetrics.js";
 
@@ -81,14 +81,7 @@ export async function init({ sb, outlet } = {}) {
   if (deepLinkTab) activateTab(deepLinkTab);
 
   // ===== helpers de legenda/cores (para charts e PDF) =====
-  function palette(n) {
-    const colors = [
-      "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", 
-      "#ec4899", "#06b6d4", "#84cc16", "#3b82f6", "#14b8a6", 
-      "#f97316", "#d946ef", "#4f46e5", "#059669", "#d97706"
-    ];
-    return Array.from({ length: n }, (_, i) => colors[i % colors.length]);
-  }
+  // `palette()` importada de helpers.js — gera tons a partir da cor de destaque.
 
   function legendHTML(items) {
     if (!Array.isArray(items)) return "";
@@ -1286,13 +1279,13 @@ export async function init({ sb, outlet } = {}) {
           ? "border-left: 4px solid var(--orange-400);"
           : "border-left: 4px solid var(--green-500);";
         const badge = isLowConf
-          ? `<span style="background:var(--orange-100); color:var(--orange-700); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold">Rever</span>`
+          ? `<span style="background:var(--red-100); color:var(--red-600); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold">Rever</span>`
           : ``;
         const transferBadge = item._internalTransferPair
-          ? `<span style="background:var(--purple-100, #ede9fe); color:var(--purple-700, #6d28d9); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Valores e datas coincidem com outro movimento deste extrato — pode ser uma transferência entre as tuas próprias contas.">Transf. interna?</span>`
+          ? `<span style="background:var(--border); color:var(--text); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Valores e datas coincidem com outro movimento deste extrato — pode ser uma transferência entre as tuas próprias contas.">Transf. interna?</span>`
           : ``;
         const otherAccountBadge = item._otherAccount
-          ? `<span style="background:var(--gray-100, #f1f5f9); color:var(--gray-700, #334155); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Este movimento pertence a outra conta do mesmo extrato, não à conta principal detetada. Fica desmarcado por defeito.">Outra conta</span>`
+          ? `<span style="background:var(--border); color:var(--muted); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Este movimento pertence a outra conta do mesmo extrato, não à conta principal detetada. Fica desmarcado por defeito.">Outra conta</span>`
           : ``;
 
         // Check if categorized as Savings (Badge Blue)
@@ -1333,7 +1326,7 @@ export async function init({ sb, outlet } = {}) {
                   <div style="display:flex; align-items:center; gap:6px">
                       ${natureHtml}
                       <input type="number" value="${item.amount.toFixed(2)}" class="imp-amt" data-idx="${idx}"
-                             style="width:100px; text-align:right; padding:4px; font-weight:bold; color:${item.amount < 0 ? "var(--red-500)" : "var(--green-600)"}">
+                             style="width:100px; text-align:right; padding:4px; font-weight:bold; color:var(--text)">
                   </div>
                </div>
 
@@ -2362,7 +2355,7 @@ export async function init({ sb, outlet } = {}) {
           datasets: [
             {
               data: [fixedAmt, variableAmt],
-              backgroundColor: ["#16a34a", "#ef4444"],
+              backgroundColor: ["#216354", "#9a9a96"],
             },
           ],
         },
@@ -2383,13 +2376,13 @@ export async function init({ sb, outlet } = {}) {
           label: "Fixas",
           value: fixedAmt,
           pct: totFV ? fixedAmt / totFV : 0,
-          color: "#16a34a",
+          color: "#216354",
         },
         {
           label: "Variáveis",
           value: variableAmt,
           pct: totFV ? variableAmt / totFV : 0,
-          color: "#ef4444",
+          color: "#9a9a96",
         },
       ];
       if ($("#rpt-fv-legend")) {
@@ -2617,7 +2610,7 @@ export async function init({ sb, outlet } = {}) {
             {
               label: "Despesas",
               data: top6.map(([, v]) => v),
-              backgroundColor: "#ef4444",
+              backgroundColor: "#3f3f42",
             },
           ],
         },
@@ -2664,16 +2657,16 @@ export async function init({ sb, outlet } = {}) {
             {
               label: "Esforço Fixo",
               data: effFixed,
-              borderColor: "#16a34a", // Green
-              backgroundColor: "#16a34a",
+              borderColor: "#216354",
+              backgroundColor: "#216354",
               borderWidth: 2,
               tension: 0.25,
             },
             {
               label: "Esforço Total",
               data: effTotal,
-              borderColor: "#ea580c", // Orange
-              backgroundColor: "#ea580c",
+              borderColor: "#9a9a96",
+              backgroundColor: "#9a9a96",
               borderWidth: 2,
               tension: 0.25,
             },
@@ -2732,10 +2725,10 @@ export async function init({ sb, outlet } = {}) {
       insights.push(
         `Esforço Fixo: <strong>${effortFixedRate.toFixed(1)}%</strong>` +
           (effortFixedRate > 50
-            ? " <span style='color:#b91c1c'>(crítico)</span>"
+            ? " <span style='color:#b3433a'>(crítico)</span>"
             : effortFixedRate > 35
-              ? " <span style='color:#f59e0b'>(atenção)</span>"
-              : " <span style='color:#15803d'>(saudável)</span>"),
+              ? " <span style='color:color-mix(in srgb, #b3433a 55%, #18181b)'>(atenção)</span>"
+              : " <span style='color:#216354'>(saudável)</span>"),
       );
       insights.push(
         `Esforço Total: <strong>${effortTotalRate.toFixed(1)}%</strong> (incl. poupança)`,
@@ -3278,11 +3271,12 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         doc.setFillColor(240); 
         doc.roundedRect(M, y, barW, barH, 3, 3, "F");
         
-        let color = "#10b981"; 
+        // 2 estados (destaque = no caminho, alerta = fora do caminho)
+        let color = "#216354";
         if (o.type === "budget_cap") {
-           color = ratio < 0.7 ? "#10b981" : ratio < 1 ? "#f59e0b" : "#ef4444";
+           color = ratio < 0.85 ? "#216354" : "#b3433a";
         } else {
-           color = ratio < 0.3 ? "#ef4444" : ratio < 0.7 ? "#f59e0b" : "#10b981";
+           color = ratio < 0.5 ? "#b3433a" : "#216354";
         }
         doc.setFillColor(color);
         if (progress > 0) {
@@ -3872,7 +3866,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     const propTotal = rows.reduce((s, r) => s + r.prop, 0);
     const diff = propTotal - baseTotal;
     const diffPct = baseTotal ? (diff / baseTotal) * 100 : 0;
-    const color = diff > 0 ? "#ef4444" : "#22c55e";
+    const color = diff > 0 ? "var(--red-500)" : "var(--ui-fab-bg)";
 
     const summary = $("#bud-summary");
     if (summary) {
@@ -4148,11 +4142,11 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     // Header & Menu share the same color base usually, with slight opacity diffs?
     // User asked "Cor/transparência do header, menu".
     // We will use the Header Picker and generate RGBA for both header/menu for consistency.
-    const hHex = inputs.headerBg?.value || "#0f172a";
+    const hHex = inputs.headerBg?.value || "#1b1b1d";
     const header_bg_rgba = hexAlphaToRgba(hHex, "0.95");
     const menu_bg_rgba = hexAlphaToRgba(hHex, "0.98");
 
-    const fab_bg = inputs.fabBg?.value || "#0ea5e9";
+    const fab_bg = inputs.fabBg?.value || "#216354";
 
     const card_blur_px = Number(inputs.cardBlur?.value || 0);
     const card_border_rgba = "rgba(255,255,255,0.12)"; // Fixed default
@@ -4213,18 +4207,20 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     if (activeBar) activeBar.style.backgroundColor = s.fab_bg;
   }
 
+  // Presets: base neutra igual em todos, só a cor de destaque (e um ou outro
+  // detalhe de estilo, como o desfoque) muda — mantém sempre neutro + 1 cor.
   const PRESETS = {
     familia: {
-      bg_color: "#fffdfa",
+      bg_color: "#f7f7f6",
       bg_blur_px: 0,
       bg_image_url: "",
       overlay_color: "rgba(255,255,255,0)",
-      card_bg_rgba: "rgba(255,255,255,0.9)",
-      card_blur_px: 4,
-      header_bg_rgba: "rgba(14, 165, 233, 0.9)",
-      fab_bg: "#22c55e",
-      text_main: "#1e293b",
-      text_secondary: "#64748b"
+      card_bg_rgba: "rgba(255,255,255,0.95)",
+      card_blur_px: 0,
+      header_bg_rgba: "#1b1b1d",
+      fab_bg: "#216354",
+      text_main: "#18181b",
+      text_secondary: "#6b7280"
     },
     investidor: {
       bg_color: "#ffffff",
@@ -4233,10 +4229,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       overlay_color: "rgba(255,255,255,0)",
       card_bg_rgba: "rgba(248, 250, 252, 1)",
       card_blur_px: 0,
-      header_bg_rgba: "#1e293b",
-      fab_bg: "#0891b2",
-      text_main: "#0f172a",
-      text_secondary: "#475569"
+      header_bg_rgba: "#1b1b1d",
+      fab_bg: "#2b4a5e",
+      text_main: "#18181b",
+      text_secondary: "#6b7280"
     },
     jovem: {
       bg_color: "#f8fafc",
@@ -4245,10 +4241,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       overlay_color: "rgba(255,255,255,0)",
       card_bg_rgba: "rgba(255,255,255,0.8)",
       card_blur_px: 10,
-      header_bg_rgba: "#6366f1",
-      fab_bg: "#f43f5e",
-      text_main: "#1e1b4b",
-      text_secondary: "#6366f1"
+      header_bg_rgba: "#1b1b1d",
+      fab_bg: "#c2185b",
+      text_main: "#18181b",
+      text_secondary: "#6b7280"
     },
     executivo: {
       bg_color: "#ffffff",
@@ -4257,10 +4253,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       overlay_color: "rgba(255,255,255,0)",
       card_bg_rgba: "#ffffff",
       card_blur_px: 0,
-      header_bg_rgba: "#0f172a",
-      fab_bg: "#1e293b",
-      text_main: "#0f172a",
-      text_secondary: "#64748b"
+      header_bg_rgba: "#1b1b1d",
+      fab_bg: "#3f3f42",
+      text_main: "#18181b",
+      text_secondary: "#6b7280"
     }
   };
 
@@ -4414,7 +4410,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         data: {
           labels: ["Despesas", "Poupança", "Investimento", "Livre"],
           datasets: [{ data: [s.pctExpenses, s.pctSavings, s.pctInvestment, s.pctFree],
-            backgroundColor: ["#ef4444","#3b82f6","#10b981","#94a3b8"], borderWidth: 0 }]
+            backgroundColor: ["#1e594c","#216354","#6f9a90","#9a9a96"], borderWidth: 0 }]
         },
         options: { cutout:"70%", plugins:{ legend:{display:false} } }
       });
@@ -4482,11 +4478,14 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
     function renderDiagnostics(metrics, status) {
       if (!metrics) return;
       const colorMap = {
-        excellent:"#10b981", healthy:"#3b82f6", good:"#3b82f6",
-        risk:"#f59e0b", poor:"#f59e0b", critical:"#ef4444", concerning:"#f59e0b"
+        excellent: "var(--ui-fab-bg)", healthy: "var(--ui-fab-bg)",
+        good: "color-mix(in srgb, var(--ui-fab-bg) 65%, var(--text))",
+        risk: "color-mix(in srgb, var(--red-500) 55%, var(--text))",
+        concerning: "color-mix(in srgb, var(--red-500) 55%, var(--text))",
+        poor: "var(--red-500)", critical: "var(--red-500)"
       };
       const badge = (val, st) =>
-        `<span style="color:${colorMap[st] || "#64748b"};font-weight:700">${val}</span>`;
+        `<span style="color:${colorMap[st] || "var(--muted)"};font-weight:700">${val}</span>`;
 
       if (savingsRateEl) savingsRateEl.innerHTML = badge(`${metrics.savingsRate}%`,              status.savingsRateStatus);
       if (effortFixEl)   effortFixEl.innerHTML   = badge(`${metrics.effortFixed}%`,             status.effortFixedStatus);

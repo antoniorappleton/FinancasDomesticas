@@ -1,19 +1,19 @@
 export const DEFAULT_THEME = {
   bg_image_url: "",
-  bg_color: "#f5f4ef",
+  bg_color: "#f7f7f6",
   bg_blur_px: 0,
   overlay_color: "rgba(255,255,255,0)",
 
-  card_bg_rgba: "rgba(255,255,255,1)", 
-  card_border_rgba: "rgba(28,52,47,0.12)",
+  card_bg_rgba: "rgba(255,255,255,1)",
+  card_border_rgba: "rgba(24,24,27,0.1)",
   card_blur_px: 0,
 
-  header_bg_rgba: "#142f2b",
-  menu_bg_rgba: "rgba(20,47,43,0.97)",
+  header_bg_rgba: "#1b1b1d",
+  menu_bg_rgba: "rgba(27,27,29,0.97)",
   fab_bg: "#216354",
 
-  text_main: "#203730",
-  text_secondary: "#63716b",
+  text_main: "#18181b",
+  text_secondary: "#6b7280",
 };
 
 /**

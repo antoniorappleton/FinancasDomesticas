@@ -261,14 +261,23 @@ export function getHealthStatus(metrics) {
 export function buildHealthSeries(monthlyData, layer, settings = {}) {
   const labels = monthlyData.map((m) => m.label || m.month || "");
   let values = [];
-  let color = "#3b82f6";
+  // Um só gráfico fica visível de cada vez — usa sempre a cor de destaque,
+  // sem uma cor diferente por métrica.
+  let accent = "#216354";
+  try {
+    accent =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--ui-fab-bg")
+        .trim() || accent;
+  } catch {}
+  let color = accent;
   let type = "line";
   let label = "";
 
   switch (layer) {
     case "net":
       values = monthlyData.map((m) => Number(m.net) || 0);
-      color = "#22c55e";
+      color = accent;
       label = "Saldo Mensal (€)";
       type = "bar";
       break;
@@ -279,7 +288,7 @@ export function buildHealthSeries(monthlyData, layer, settings = {}) {
         cumulative += Number(m.net) || 0;
         return cumulative;
       });
-      color = "#3b82f6";
+      color = accent;
       label = "Liquidez Acumulada (€)";
       break;
 
@@ -289,7 +298,7 @@ export function buildHealthSeries(monthlyData, layer, settings = {}) {
         const fixed = Math.abs(Number(m.fixed)) || 0;
         return income > 0 ? (fixed / income) * 100 : 0;
       });
-      color = "#f59e0b";
+      color = accent;
       label = "Esforço Fixo (%)";
       break;
 
@@ -300,7 +309,7 @@ export function buildHealthSeries(monthlyData, layer, settings = {}) {
         const savings = Math.abs(Number(m.savings)) || 0;
         return income > 0 ? ((expense + savings) / income) * 100 : 0;
       });
-      color = "#ef4444";
+      color = accent;
       label = "Esforço Total (%)";
       break;
 
@@ -310,7 +319,7 @@ export function buildHealthSeries(monthlyData, layer, settings = {}) {
         const savings = Math.abs(Number(m.savings)) || 0;
         return income > 0 ? (savings / income) * 100 : 0;
       });
-      color = "#8b5cf6";
+      color = accent;
       label = "Taxa de Poupança (%)";
       break;
 

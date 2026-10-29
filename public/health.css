@@ -19,23 +19,23 @@
 }
 
 .score-circle[data-status="excellent"] {
-    border-color: #22c55e;
-    color: #22c55e;
+    border-color: var(--ui-fab-bg, #216354);
+    color: var(--ui-fab-bg, #216354);
 }
 
 .score-circle[data-status="good"] {
-    border-color: #3b82f6;
-    color: #3b82f6;
+    border-color: color-mix(in srgb, var(--ui-fab-bg, #216354) 60%, var(--text, #18181b));
+    color: color-mix(in srgb, var(--ui-fab-bg, #216354) 60%, var(--text, #18181b));
 }
 
 .score-circle[data-status="concerning"] {
-    border-color: #f59e0b;
-    color: #f59e0b;
+    border-color: color-mix(in srgb, var(--red-500, #b3433a) 55%, var(--text, #18181b));
+    color: color-mix(in srgb, var(--red-500, #b3433a) 55%, var(--text, #18181b));
 }
 
 .score-circle[data-status="critical"] {
-    border-color: #ef4444;
-    color: #ef4444;
+    border-color: var(--red-500, #b3433a);
+    color: var(--red-500, #b3433a);
 }
 
 .chart-filters {
@@ -60,14 +60,14 @@
 }
 
 .filter-btn:hover {
-    background: #f1f5f9;
+    background: var(--bg, #f7f7f6);
     transform: translateY(-1px);
 }
 
 .filter-btn.active {
-    background: #10b981;
+    background: var(--ui-fab-bg, #216354);
     color: white;
-    border-color: #10b981;
+    border-color: var(--ui-fab-bg, #216354);
 }
 
 .filter-icon {
@@ -94,7 +94,7 @@
     display: flex;
     gap: 16px;
     padding: 16px;
-    background: #f8fafc;
+    background: var(--bg, #f7f7f6);
     border-radius: 8px;
     justify-content: space-around;
 }
@@ -109,14 +109,14 @@
 
 .metric-label {
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--muted, #6b7280);
     font-weight: 500;
 }
 
 .metric-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text, #18181b);
 }
 
 .metric-badge {
@@ -127,23 +127,19 @@
 }
 
 .badge-ok {
-    background: #d1fae5;
-    color: #065f46;
+    background: color-mix(in srgb, var(--ui-fab-bg, #216354) 16%, white);
+    color: var(--ui-fab-bg, #216354);
 }
 
-.badge-warn {
-    background: #fed7aa;
-    color: #92400e;
-}
-
+.badge-warn,
 .badge-danger {
-    background: #fecaca;
-    color: #991b1b;
+    background: var(--red-100, #f5e6e4);
+    color: var(--red-600, #8f352e);
 }
 
 .badge-neutral {
-    background: #e2e8f0;
-    color: #475569;
+    background: var(--border, #e3e3e0);
+    color: var(--muted, #6b7280);
 }
 
 .indicators-grid {
@@ -154,9 +150,9 @@
 
 .indicator {
     padding: 16px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border, #e3e3e0);
     border-radius: 8px;
-    background: #fff;
+    background: var(--surface, #fff);
     transition: all 0.2s;
 }
 
@@ -178,7 +174,7 @@
 
 .indicator-title {
     font-weight: 600;
-    color: #0f172a;
+    color: var(--text, #18181b);
 }
 
 .indicator-help-btn {
@@ -192,13 +188,13 @@
     border: none;
     border-radius: 50%;
     background: transparent;
-    color: #64748b;
+    color: var(--muted, #6b7280);
     cursor: pointer;
 }
 
 .indicator-help-btn:hover {
-    background: #f1f5f9;
-    color: #3b82f6;
+    background: var(--bg, #f7f7f6);
+    color: var(--ui-fab-bg, #216354);
 }
 
 .indicator-help-text {
@@ -209,12 +205,12 @@
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 8px;
-    color: #0f172a;
+    color: var(--text, #18181b);
 }
 
 .indicator-bar {
     height: 8px;
-    background: #e2e8f0;
+    background: var(--border, #e3e3e0);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 8px;
@@ -228,7 +224,7 @@
 
 .indicator-status {
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--muted, #6b7280);
 }
 
 .alerts-list {
@@ -247,21 +243,21 @@
 }
 
 .alert-high {
-    background: #fef2f2;
-    border-left-color: #ef4444;
-    color: #991b1b;
+    background: var(--red-100, #f5e6e4);
+    border-left-color: var(--red-500, #b3433a);
+    color: var(--red-600, #8f352e);
 }
 
 .alert-medium {
-    background: #fffbeb;
-    border-left-color: #f59e0b;
-    color: #92400e;
+    background: var(--bg, #f7f7f6);
+    border-left-color: var(--muted, #6b7280);
+    color: var(--text, #18181b);
 }
 
 .alert-low {
-    background: #f0fdf4;
-    border-left-color: #22c55e;
-    color: #065f46;
+    background: color-mix(in srgb, var(--ui-fab-bg, #216354) 10%, white);
+    border-left-color: var(--ui-fab-bg, #216354);
+    color: var(--ui-fab-bg, #216354);
 }
 
 .alert-icon {

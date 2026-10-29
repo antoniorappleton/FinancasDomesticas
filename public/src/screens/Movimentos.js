@@ -3,23 +3,13 @@ import { repo } from "../lib/repo.js";
 import { loadTheme } from "../lib/theme.js";
 
 // Badges UI helpers (simple enough to keep here or move to a ui-helper if reused elsewhere)
+// Neutro para todos os tipos — o rótulo já diz "Receita"/"Despesa"/"Poupança".
+const NEUTRAL_BADGE_STYLE =
+  "background:var(--border);color:var(--text);border:1px solid var(--border)";
 const typeBadge = (code) => {
-  const map = {
-    INCOME: {
-      label: "Receita",
-      style: "background:#ecfdf5;color:#065f46;border:1px solid #d1fae5",
-    },
-    EXPENSE: {
-      label: "Despesa",
-      style: "background:#fef2f2;color:#7f1d1d;border:1px solid #fee2e2",
-    },
-    SAVINGS: {
-      label: "Poupança",
-      style: "background:#eff6ff;color:#1e3a8a;border:1px solid #dbeafe",
-    },
-  };
-  if (map[code]) {
-    return `<span class="badge" style="${map[code].style}">${map[code].label}</span>`;
+  const labels = { INCOME: "Receita", EXPENSE: "Despesa", SAVINGS: "Poupança" };
+  if (labels[code]) {
+    return `<span class="badge" style="${NEUTRAL_BADGE_STYLE}">${labels[code]}</span>`;
   }
   if (code?.startsWith("TRANSFER"))
     return `<span class="badge">Transferência</span>`;
@@ -29,8 +19,8 @@ const typeBadge = (code) => {
 const statusBadge = (name_pt) => {
   const done = name_pt?.toLowerCase().startsWith("conclu");
   const style = done
-    ? "background:#ecfdf5;color:#065f46;border:1px solid #d1fae5"
-    : "background:#f1f5f9;color:#334155;border:1px solid #e2e8f0";
+    ? "background:color-mix(in srgb, var(--ui-fab-bg) 16%, white);color:var(--ui-fab-bg);border:1px solid transparent"
+    : NEUTRAL_BADGE_STYLE;
   return `<span class="badge" style="${style}">${name_pt || "-"}</span>`;
 };
 
@@ -166,7 +156,7 @@ export async function init(ctx = {}) {
       all = all.concat(rows);
       page++;
     } catch (error) {
-      dom.tbody.innerHTML = `<tr><td colspan="8" style="padding:12px;color:#991b1b">Erro: ${error.message}</td></tr>`;
+      dom.tbody.innerHTML = `<tr><td colspan="8" style="padding:12px;color:var(--red-600)">Erro: ${error.message}</td></tr>`;
     }
   }
 
@@ -195,14 +185,9 @@ export async function init(ctx = {}) {
 
     dom.tbody.innerHTML = filtered
       .map((r) => {
-        // Lógica visual de cores
+        // Receita/despesa distinguem-se pelo sinal (já aplicado abaixo), não pela cor
         const val = r.type_code === "EXPENSE" ? -r.amount : r.amount;
-        const color =
-          r.type_code === "INCOME"
-            ? "#16a34a"
-            : r.type_code === "EXPENSE"
-              ? "#ef4444"
-              : "#2563eb";
+        const color = "var(--text)";
 
         return `
       <tr class="tx-row" data-id="${r.id}" data-type="${r.type_code || ""}" style="cursor:pointer">
@@ -449,7 +434,7 @@ export async function init(ctx = {}) {
         const totalHoje = sumTxs(todayTxs);
         const avgDiario = sumTxs(last30Txs) / 30;
         const diff = totalHoje - avgDiario;
-        const diffColor = diff <= 0 ? "#16a34a" : "#ef4444";
+        const diffColor = diff <= 0 ? "var(--ui-fab-bg)" : "var(--red-500)";
         const diffSign = diff >= 0 ? "+" : "";
 
         ui.total.textContent = money(totalHoje);
@@ -467,7 +452,7 @@ export async function init(ctx = {}) {
                 <div style="font-weight:500;">${t.description || "Sem descrição"}
                   <div style="font-size:0.75rem;color:var(--text-muted);">${ptDate(t.date)}</div>
                 </div>
-                <div style="font-weight:700;color:#ef4444;">${money(t.amount)}</div>
+                <div style="font-weight:700;color:var(--text);">${money(t.amount)}</div>
               </li>`).join("");
 
         ui.list.innerHTML = comparisonHtml + `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">${listHtml}</ul>`;
@@ -491,7 +476,7 @@ export async function init(ctx = {}) {
         let pctHtml = "";
         if (totalPrevSemana > 0) {
           const pct = ((totalSemana - totalPrevSemana) / totalPrevSemana) * 100;
-          const pctColor = pct <= 0 ? "#16a34a" : "#ef4444";
+          const pctColor = pct <= 0 ? "var(--ui-fab-bg)" : "var(--red-500)";
           const pctSign = pct >= 0 ? "+" : "";
           pctHtml = `
             <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
@@ -503,7 +488,7 @@ export async function init(ctx = {}) {
         // Projection: extrapolate based on elapsed days of the week
         const elapsedDays = Math.max(1, (today.getDay() + 6) % 7 + 1);
         const projected = (totalSemana / elapsedDays) * 7;
-        const projColor = projected > (totalPrevSemana || totalSemana) ? "#ef4444" : "#16a34a";
+        const projColor = projected > (totalPrevSemana || totalSemana) ? "var(--red-500)" : "var(--ui-fab-bg)";
         const projHtml = `
           <div style="display:flex;justify-content:space-between;">
             <span style="color:var(--text-muted);font-size:0.85rem;">Projeção semana completa</span>
@@ -522,7 +507,7 @@ export async function init(ctx = {}) {
                 <div style="font-weight:500;">${t.description || "Sem descrição"}
                   <div style="font-size:0.75rem;color:var(--text-muted);">${ptDate(t.date)}</div>
                 </div>
-                <div style="font-weight:700;color:#ef4444;">${money(t.amount)}</div>
+                <div style="font-weight:700;color:var(--text);">${money(t.amount)}</div>
               </li>`).join("");
 
         ui.list.innerHTML = comparisonHtml + `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;">${listHtml}</ul>`;

@@ -144,11 +144,8 @@ export async function init() {
     const isSystem = item.isSystem || item.user_id === null;
     const locked = isSystem;
 
-    // Determine colors based on kind
+    // O nome/ícone já identifica o tipo — o ícone da categoria fica neutro
     let colorVar = "var(--muted)";
-    if (item.kind === "expense") colorVar = "var(--red-500)";
-    if (item.kind === "income") colorVar = "var(--green-500)";
-    if (item.kind === "savings") colorVar = "var(--blue-500)";
 
     const nameStyle = isParent
       ? "font-weight:700; color:var(--text);"
