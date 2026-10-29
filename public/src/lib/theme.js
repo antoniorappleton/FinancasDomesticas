@@ -56,6 +56,17 @@ export function applyTheme(settings) {
   // Typography
   root.style.setProperty("--text", s.text_main || "#0f172a");
   root.style.setProperty("--muted", s.text_secondary || "#64748b");
+
+  // Cor de sistema (barra de estado / barra de gestos do telemóvel) —
+  // acompanha sempre a cor do cabeçalho/menu da app, para não haver uma
+  // tira de cor diferente por baixo da barra de navegação.
+  let themeColorMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeColorMeta) {
+    themeColorMeta = document.createElement("meta");
+    themeColorMeta.setAttribute("name", "theme-color");
+    document.head.appendChild(themeColorMeta);
+  }
+  themeColorMeta.setAttribute("content", s.header_bg_rgba);
 }
 
 /**

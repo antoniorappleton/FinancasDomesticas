@@ -2,7 +2,7 @@
 <html lang="pt-PT">
   <head>
     <script>
-      window.APP_VERSION = "v167";
+      window.APP_VERSION = "v168";
     </script>
     <meta charset="UTF-8" />
     <meta
@@ -12,6 +12,7 @@
     <meta name="theme-color" content="#1b1b1d" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Wisebudget® — Gestão Doméstica</title>
 
     <!-- PANIC SWITCH: desregista SW e limpa caches quando ?sw=off -->
@@ -594,7 +595,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./sw.js?v=167", { scope: "./" })
+          .register("./sw.js?v=168", { scope: "./" })
           .catch(console.error);
       }
     </script>
@@ -813,6 +814,6 @@
     </div>
 
     <!-- Router/App -->
-    <script type="module" src="./main.js?v=167"></script>
+    <script type="module" src="./main.js?v=168"></script>
   </body>
 </html>

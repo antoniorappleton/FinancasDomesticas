@@ -1,6 +1,6 @@
 {
   "name": "homefinance",
-  "version": "1.0.95",
+  "version": "1.0.96",
   "type": "module",
   "main": "main.js",
   "scripts": {
