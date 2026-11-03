@@ -3047,15 +3047,21 @@ export async function init({ sb, outlet } = {}) {
           .filter(d => !d.hidden) // Skip hidden ones
           .map(d => {
             const data = dimData[d.key] || { thisMonth: 0, next: null };
-            const nextText = (data.next && data.next.date instanceof Date) 
-                ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}` 
+            const nextText = (data.next && data.next.date instanceof Date)
+                ? `Próximo: ${data.next.date.getDate()} ${data.next.date.toLocaleDateString('pt-PT', {month:'short'})}`
                 : 'Sem previsão';
+            const nextValue = data.next ? money(data.next.amount) : '—';
+            // Por defeito mostra "Próxima Despesa"; "Total Mês" só aparece ao clicar.
             return `
               <div class="carousel-item">
                 <div class="dimension-card dimension-card--${d.key}" data-dim="${d.key}">
                   <div class="dimension-card__icon"><span class="material-symbols-outlined">${d.icon}</span></div>
                   <h3 class="dimension-card__title">${d.name}</h3>
-                  <div class="dimension-card__value">${money(data.thisMonth)}</div>
+                  <div class="dimension-card__toggle" role="tablist">
+                    <button type="button" class="dim-toggle-btn" data-mode="month">Total Mês</button>
+                    <button type="button" class="dim-toggle-btn dim-toggle-btn--active" data-mode="next">Próxima Despesa</button>
+                  </div>
+                  <div class="dimension-card__value" data-value-month="${money(data.thisMonth)}" data-value-next="${nextValue}">${nextValue}</div>
                   <div class="dimension-card__status">${nextText}</div>
                 </div>
               </div>
@@ -3075,6 +3081,21 @@ export async function init({ sb, outlet } = {}) {
             const dk = card.dataset.dim;
             const data = dimData[dk];
             showDimensionTimeline(data);
+          });
+        });
+
+        // Toggle "Total Mês" / "Próxima Despesa" dentro de cada cartão, sem
+        // abrir o modal (stopPropagation) nem mexer nos outros cartões.
+        lifeBox.querySelectorAll('.dim-toggle-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const card = btn.closest('.dimension-card');
+            if (!card) return;
+            card.querySelectorAll('.dim-toggle-btn').forEach(b => b.classList.toggle('dim-toggle-btn--active', b === btn));
+            const valueEl = card.querySelector('.dimension-card__value');
+            if (valueEl) {
+              valueEl.textContent = btn.dataset.mode === 'month' ? valueEl.dataset.valueMonth : valueEl.dataset.valueNext;
+            }
           });
         });
       }
