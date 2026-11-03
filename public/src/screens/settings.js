@@ -420,7 +420,7 @@ export async function init({ sb, outlet } = {}) {
 
     // --- Subscrições / Streaming / Software ---
     if (
-      /(netflix|spotify|\bhbo\b|disney\+|disney plus|amazon prime|youtube premium|google one|\bicloud\b|dropbox|microsoft 365|office 365|\badobe\b|apple\.com)/.test(
+      /(netflix|spotify|\bhbo\b|\bdisney\b|amazon prime|youtube premium|google one|\bicloud\b|dropbox|microsoft 365|office 365|\badobe\b|apple com)/.test(
         d,
       )
     ) {
@@ -467,6 +467,24 @@ export async function init({ sb, outlet } = {}) {
       const cat = findLeafFirstMatch("expense", ["Cinema", "Lazer"]);
       return cat
         ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Comissões e taxas bancárias (manutenção de conta, imposto do selo,
+    // anuidade de cartão) — comuns a qualquer banco, não só Santander ---
+    if (
+      /(manutencao de conta|imposto do selo|\bcomissao\b|comissoes bancarias|anuidade (do )?cartao|taxa de servico)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Comissões Bancárias",
+        "Despesas Bancárias",
+        "Impostos",
+        "Outros",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.85 }
         : { id: null, confidence: 0.3 };
     }
 
@@ -527,7 +545,7 @@ export async function init({ sb, outlet } = {}) {
         : { id: null, confidence: 0.3 };
     }
     if (
-      /(el corte ingles|\bzara\b|bershka|pull.{0,3}bear|\bprimark\b|\bh ?& ?m\b|\bikea\b)/.test(
+      /(el corte ingles|\bzara\b|bershka|pull.{0,3}bear|\bprimark\b|\bh ?m\b|\bikea\b)/.test(
         d,
       )
     ) {
@@ -551,7 +569,7 @@ export async function init({ sb, outlet } = {}) {
         ? { id: cat.id, confidence: 0.85 }
         : { id: null, confidence: 0.2 };
     }
-    if (/(restaurant|\bcafe\b|\bbar\b|pizzaria|\bpizza\b|\bsushi\b|marisqueira|\btasca\b|churrasqueira|gelataria|snack ?bar|padaria|pastelaria|confeitaria|doceria|\bdoces?\b)/.test(d)) {
+    if (/(restaurant|\bcafe\b|\bbar\b|pizzaria|\bpizza\b|\bsushi\b|marisqueira|\btasca\b|churrasqueira|gelataria|snack ?bar|padaria|pastelaria|confeitaria|doceria|\bdoces?\b|uber ?eats|\bglovo\b|bolt food|\bzomato\b)/.test(d)) {
       const r = findLeafByNameIncludes("expense", "Restaurantes");
       if (r) return { id: r.id, confidence: 0.75 };
       const c = findLeafByNameIncludes("expense", "Cafés/Bar de rua");
@@ -620,7 +638,7 @@ export async function init({ sb, outlet } = {}) {
     // condomínio, empregada doméstica, streaming/software por assinatura).
     const d = String(description || "").toLowerCase();
     if (
-      /\bdd\b|\bdebito direto\b|\bseguro\b|\bmensal\b|\bmensalidade\b|\brenda\b|\bprestacao\b|\bassinatura\b|\bsubscri|\bquota\b|\banuidade\b|\bcondominio\b|\bginasio\b|\bempregada\b|\bnetflix\b|\bspotify\b|google one|\bicloud\b/.test(
+      /\bdd\b|\bdebito direto\b|\bseguro\b|\bmensal\b|\bmensalidade\b|\brenda\b|\bprestacao\b|\bassinatura\b|\bsubscri|\bquota\b|\banuidade\b|\bcondominio\b|\bginasio\b|\bempregada\b|\bnetflix\b|\bspotify\b|google one|\bicloud\b|manutencao de conta|imposto do selo|\bcomissao\b/.test(
         d,
       )
     )
@@ -641,20 +659,119 @@ export async function init({ sb, outlet } = {}) {
 
   function normalizeDescription(raw) {
     let s = String(raw || "").trim();
-    // Basic cleanup
+    // Basic cleanup. "TRF.?\s*IMED\.?" (Santander: "TRF.IMED.") tem de vir
+    // antes de "TRF\.?" sozinho, senão só se remove o "TRF" e fica o "IMED."
+    // pendurado na descrição.
     s = s.replace(
-      /^(COMPRA|PAGAMENTO|MB WAY|TRANSF\.?|TRF\.?|DEBITO|CREDITO)\s+/i,
+      /^(COMPRA|PAGAMENTO|MB WAY|TRANSF\.?|TRF\.?\s*IMED\.?|TRF\.?|DEBITO|CREDITO)\s+/i,
       "",
     );
-    // Remove código de terminal POS (4 dígitos) que fica logo a seguir ao
-    // tipo de movimento, ex.: "COMPRA 0375 PINGO DOCE" → "Pingo doce"
-    s = s.replace(/^\d{3,4}\s+/, "");
+    // Remove código de terminal POS que fica logo a seguir ao tipo de
+    // movimento, ex.: "COMPRA 0375 PINGO DOCE" → "Pingo doce", ou
+    // "COMPRA *8003 GALETO BIA" → "Galeto bia" (Santander usa "*" + código).
+    s = s.replace(/^\*?\d{3,4}\s+/, "");
     s = s.replace(/\s+(TERM|TERM\.|TERMINAL)\s+\d+/i, "");
     s = s.replace(/\s+DATA\s+\d{2}[-/]\d{2}/i, "");
     s = s.replace(/\s+\d{2}[:]\d{2}/, "");
     s = s.replace(/\s+PT$/i, "");
     s = s.replace(/\s+/g, " ");
     return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  }
+
+  // =============== APRENDIZAGEM DE CLASSIFICAÇÕES ====================
+  // Em vez de depender só de regras fixas por palavra-chave, a importação
+  // passa a "lembrar-se" da categoria (e tipo/natureza) que o utilizador
+  // escolheu da última vez para o mesmo comerciante — seja em que banco
+  // for, e mesmo que o extrato do mês seguinte venha de outro banco com
+  // outro layout. Isto fecha o ciclo: quanto mais o utilizador corrige
+  // uma importação, melhor fica a seguinte.
+
+  const MERCHANT_KEY_STOPWORDS = new Set([
+    "compra", "pagamento", "pag", "trf", "imed", "transf", "transferencia",
+    "dd", "debito", "direto", "credito", "cartao", "cartão", "mb", "way",
+    "pos", "multibanco", "visa", "mastercard", "p", "de", "da", "do", "das",
+    "dos", "e", "em", "na", "no", "lda", "sa", "unip", "contactless", "pt",
+    "estrang", "com", "bill", "www", "http", "https",
+  ]);
+
+  // Conjunto de palavras "significativas" de uma descrição: ignora prefixos
+  // de tipo de movimento (que variam de banco para banco — "COMPRA",
+  // "CARTÃO", "POS", etc.) e códigos puramente numéricos, mantendo só o que
+  // identifica o comerciante. Sem posição fixa (não são "as 3 primeiras
+  // palavras"), para aguentar prefixos diferentes consoante o banco.
+  function buildMerchantTokens(description) {
+    const tokens = norm(description)
+      .split(" ")
+      .filter(
+        (t) => t && t.length > 1 && !/^\d+$/.test(t) && !MERCHANT_KEY_STOPWORDS.has(t),
+      );
+    return new Set(tokens);
+  }
+
+  let learnedMerchantRules = null;
+
+  // Lê o histórico de transações já categorizadas (últimos 12 meses) e
+  // guarda, por assinatura de comerciante (conjunto de palavras), a
+  // classificação mais recente que o utilizador aplicou.
+  async function loadLearnedMerchantRules() {
+    if (learnedMerchantRules) return learnedMerchantRules;
+    learnedMerchantRules = [];
+
+    const since = new Date();
+    since.setMonth(since.getMonth() - 12);
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const { data, error } = await sb
+      .from("transactions")
+      .select("description,category_id,expense_nature,date,transaction_types(code)")
+      .not("category_id", "is", null)
+      .gte("date", sinceStr)
+      .order("date", { ascending: true });
+
+    if (error || !data) return learnedMerchantRules;
+
+    const byKey = new Map();
+    data.forEach((r) => {
+      const tokens = buildMerchantTokens(r.description);
+      // Exige pelo menos 2 palavras significativas — assinaturas de 1 palavra
+      // ("loja", "restaurante"...) são demasiado genéricas para aprender.
+      if (tokens.size < 2) return;
+      const sortedKey = [...tokens].sort().join(" ");
+      // Ordenado por data ascendente: o registo mais recente substitui
+      // sempre o anterior para a mesma assinatura — "ganha" a última correção.
+      byKey.set(sortedKey, {
+        tokens,
+        category_id: r.category_id,
+        typeCode: r.transaction_types?.code || null,
+        expense_nature: r.expense_nature || null,
+      });
+    });
+
+    learnedMerchantRules = [...byKey.values()];
+    return learnedMerchantRules;
+  }
+
+  // Encontra, por sobreposição de palavras (não por posição), a regra
+  // aprendida que melhor corresponde a esta descrição — robusto a layouts
+  // diferentes consoante o banco do extrato.
+  function findLearnedMatch(description) {
+    const tokens = buildMerchantTokens(description);
+    if (tokens.size < 2 || !learnedMerchantRules?.length) return null;
+
+    let best = null;
+    let bestScore = 0;
+    for (const rule of learnedMerchantRules) {
+      let shared = 0;
+      for (const t of tokens) if (rule.tokens.has(t)) shared++;
+      if (shared < 2) continue;
+      const score = shared / Math.min(tokens.size, rule.tokens.size);
+      if (score > bestScore) {
+        bestScore = score;
+        best = rule;
+      }
+    }
+    // Exige pelo menos 60% de sobreposição com o conjunto mais pequeno dos dois
+    return bestScore >= 0.6 ? best : null;
   }
 
   // Load Categories (Lazy)
@@ -1101,6 +1218,44 @@ export async function init({ sb, outlet } = {}) {
     },
   };
 
+  // Formato Santander Totta: "DD-MM DD-MM DESCRIÇÃO ... VALOR SALDO", com o
+  // valor já escrito com sinal explícito (ex.: "-2,99" a débito, "15,00" a
+  // crédito) — ao contrário do ActivoBank, não há colunas separadas de
+  // Débito/Crédito nem é preciso heurística de texto: o sinal vem direto do
+  // próprio valor, o que até torna este perfil mais simples e fiável.
+  const SANTANDER_PROFILE = {
+    id: "santander",
+    detect(allTextUpper) {
+      return (
+        /SANTANDER/.test(allTextUpper) ||
+        /TRF\.?\s*IMED/.test(allTextUpper) ||
+        /FACILIDADE DE DESCOBERTO/.test(allTextUpper)
+      );
+    },
+    detectHeaders() {}, // não depende de geometria de colunas
+    // "03-08  03-08  COMPRA ESTRANG*8003 APPLE.COM/BILL" (dia-mês, hífen, sem ano)
+    matchDateLine(raw) {
+      const m = raw
+        .trim()
+        .match(/^(\d{1,2}-\d{1,2})\s+(\d{1,2}-\d{1,2})\s+(.+)$/);
+      if (!m) return null;
+      return { dateToken: m[1], rest: m[3] };
+    },
+    parseDate(token, year) {
+      const m = token.match(/^(\d{1,2})-(\d{1,2})$/);
+      if (!m) return null;
+      const day = Number(m[1]);
+      const month = Number(m[2]);
+      if (!day || !month || month > 12 || day > 31) return null;
+      const mm = String(month).padStart(2, "0");
+      const dd = String(day).padStart(2, "0");
+      return `${year}-${mm}-${dd}`;
+    },
+    determineSign({ targetMoneyStr }) {
+      return targetMoneyStr && targetMoneyStr.trim().startsWith("-") ? -1 : 1;
+    },
+  };
+
   // Fallback para extratos de bancos ainda não suportados: não depende de
   // cabeçalhos de colunas nem de um formato de data fixo. Todos os itens
   // ficam marcados como baixa confiança (badge "Rever" na UI de revisão)
@@ -1137,7 +1292,7 @@ export async function init({ sb, outlet } = {}) {
     },
   };
 
-  const BANK_PROFILES = [ACTIVOBANK_PROFILE];
+  const BANK_PROFILES = [ACTIVOBANK_PROFILE, SANTANDER_PROFILE];
 
   // Deteta pares de movimentos que parecem a mesma transferência a aparecer
   // duas vezes (ex.: transferência entre "Conta Simples" e "Conta PoupeUp" no
@@ -1283,12 +1438,16 @@ export async function init({ sb, outlet } = {}) {
         currentAccountLabel: null,
         primaryAccountLabel: null,
       };
-      // (?<![\d.,-]) evita que o casamento comece a meio de outro número ou logo
-      // a seguir a um hífen de código de referência — sem isto, um ano ("Ferias
-      // 2026 150.00") ou um código de referência ("CACEM 2735-001 104.41")
-      // "empresta" dígitos ao valor monetário seguinte (ex.: 150.00 -> 26150.00,
-      // 104.41 -> 1104.41).
-      const moneyRegex = /(?<![\d.,-])(\d{1,3}(?:[\s\xa0]\d{3})*(?:[.,]\d{2}))/g;
+      // (?<![\d.,]) evita que o casamento comece a meio de outro número — sem
+      // isto, um ano ("Ferias 2026 150.00") "empresta" dígitos ao valor
+      // seguinte (150.00 -> 26150.00). (?<!\d-) evita começar logo a seguir a
+      // um hífen de código de referência ("CACEM 2735-001 104.41" não deve
+      // virar 1104.41). O "-?" inicial permite capturar o sinal quando o
+      // banco já o escreve no próprio valor (ex. Santander: "-2,99"), sem
+      // reabrir a porta ao bug do código de referência: um hífen só entra no
+      // valor se NÃO vier logo a seguir a um dígito (ou seja, só quando é
+      // mesmo um sinal, não um separador de código).
+      const moneyRegex = /(?<![\d.,])(?<!\d-)(-?\d{1,3}(?:[\s\xa0]\d{3})*(?:[.,]\d{2}))/g;
 
       for (const page of pages) {
         profile.detectHeaders(page.items, ctx);
@@ -1301,6 +1460,17 @@ export async function init({ sb, outlet } = {}) {
         if (yearLine) {
           const m = yearLine.text.match(/(\d{4})\/\d{2}\/\d{2}/);
           if (m) pageYear = Number(m[1]);
+        } else {
+          // Fallback genérico (bancos sem o formato "EXTRATO DE AAAA/MM/DD"):
+          // usa o ano da primeira data completa "DD/MM/AAAA" ou "DD-MM-AAAA"
+          // encontrada na página (comum em cabeçalhos de período de outros bancos).
+          for (const l of page.lines) {
+            const m = l.text.match(/\b\d{1,2}[-/]\d{1,2}[-/](\d{4})\b/);
+            if (m) {
+              pageYear = Number(m[1]);
+              break;
+            }
+          }
         }
 
         for (const line of page.lines) {
@@ -1336,7 +1506,10 @@ export async function init({ sb, outlet } = {}) {
           const currentBalanceStr =
             monies.length >= 2 ? monies[monies.length - 1] : null;
 
-          const mov = parseMoneyPt(targetMoneyStr);
+          // mov é sempre a magnitude (valor absoluto): o sinal real vem de
+          // profile.determineSign(), nunca diretamente do texto capturado —
+          // mesmo quando o banco já escreve o sinal no valor (Santander).
+          const mov = Math.abs(parseMoneyPt(targetMoneyStr));
           if (!Number.isFinite(mov) || mov === 0) continue;
 
           const amountMatch = itemsAfterDate.find((m) =>
@@ -1354,6 +1527,7 @@ export async function init({ sb, outlet } = {}) {
             rest,
             moneyRegex,
             currentBalanceStr,
+            targetMoneyStr,
             mov,
             ctx,
           });
@@ -1453,7 +1627,8 @@ export async function init({ sb, outlet } = {}) {
       return;
     }
 
-    await loadImportCategories();
+    await Promise.all([loadImportCategories(), loadLearnedMerchantRules()]);
+    const validCategoryIds = new Set(importCategories.map((c) => c.id));
     area.style.display = "block";
     if (btnConf) btnConf.disabled = false;
     if (info)
@@ -1468,18 +1643,30 @@ export async function init({ sb, outlet } = {}) {
         finalItems.push(item);
         return;
       }
-      if (!item.category_id) {
-        const guess = guessCategoryForLine(item.description, item.amount);
-        if (guess.skip) return; // Skip item entirely
-
-        item.category_id = guess.id;
-        item.confidence = guess.confidence;
-        if (guess.forceType) item.forceType = guess.forceType;
-      }
 
       if (!item._normalized) {
         item.description = normalizeDescription(item.description);
         item._normalized = true;
+      }
+
+      if (!item.category_id) {
+        // 1) Aprendizagem: já classificámos este comerciante antes?
+        const learned = findLearnedMatch(item.description);
+        if (learned && validCategoryIds.has(learned.category_id)) {
+          item.category_id = learned.category_id;
+          item.confidence = 0.97;
+          item._learned = true;
+          if (learned.typeCode) item.forceType = learned.typeCode;
+          if (learned.expense_nature) item.expense_nature = learned.expense_nature;
+        } else {
+          // 2) Fallback: regras fixas por palavra-chave
+          const guess = guessCategoryForLine(item.description, item.amount);
+          if (guess.skip) return; // Skip item entirely
+
+          item.category_id = guess.id;
+          item.confidence = guess.confidence;
+          if (guess.forceType) item.forceType = guess.forceType;
+        }
       }
 
       // Ensure expense_nature is set (default) if category belongs to expense
@@ -1524,6 +1711,9 @@ export async function init({ sb, outlet } = {}) {
         const otherAccountBadge = item._otherAccount
           ? `<span style="background:var(--border); color:var(--muted); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Este movimento pertence a outra conta do mesmo extrato, não à conta principal detetada. Fica desmarcado por defeito.">Outra conta</span>`
           : ``;
+        const learnedBadge = item._learned
+          ? `<span style="background:var(--green-100); color:var(--green-700); font-size:10px; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:4px" title="Categorizado automaticamente porque escolheste esta categoria para o mesmo comerciante numa importação anterior.">Lembrado</span>`
+          : ``;
 
         // Check if categorized as Savings (Badge Blue)
         let catBadge = "";
@@ -1558,7 +1748,7 @@ export async function init({ sb, outlet } = {}) {
                   <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:14px; margin:0">
                      <input type="checkbox" ${item.selected ? "checked" : ""} data-idx="${idx}" class="imp-cb">
                      ${item.date}
-                     ${badge} ${catBadge} ${transferBadge} ${otherAccountBadge}
+                     ${badge} ${catBadge} ${learnedBadge} ${transferBadge} ${otherAccountBadge}
                   </label>
                   <div style="display:flex; align-items:center; gap:6px">
                       ${natureHtml}
