@@ -254,6 +254,24 @@ export async function init({ sb, outlet } = {}) {
     return null;
   }
 
+  // Devolve a primeira sub-categoria (folha) de uma categoria-mãe cujo nome
+  // contenha `parentNeedle` — ex.: 1ª filha de "Poupança". Usado como rede de
+  // segurança quando a categoria-mãe em si não é selecionável (não é folha).
+  function findLeafChildOfParentNamed(kind, parentNeedle) {
+    const nParent = norm(parentNeedle);
+    const parent = importCategories.find(
+      (c) => c.kind === kind && !c.parent_id && norm(c.name).includes(nParent),
+    );
+    if (!parent) return null;
+    const pool =
+      kind === "expense"
+        ? leafCatsExpense
+        : kind === "income"
+          ? leafCatsIncome
+          : leafCatsSavings;
+    return pool.find((c) => c.parent_id === parent.id) || null;
+  }
+
   function guessCategoryForLine(description, amount) {
     const d = norm(description);
     const isIncome = amount > 0;
@@ -261,20 +279,55 @@ export async function init({ sb, outlet } = {}) {
 
     // 1) Internal/Savings
     // --- PoupeUp (FORÇAR: TRF P/ = Saída | TRF DE = Entrada) ---
+    // Nota: "TRF" pode já ter sido removido pelo normalizeDescription (import
+    // de PDF normaliza a descrição antes de chamar esta função), por isso o
+    // prefixo "trf" é sempre opcional nestas duas regras.
     // TRF DE PoupeUp -> Entrada (INCOME) -> sugerir "Extras" (editável)
-    if (/trf\s+de\s+poupeup/.test(d)) {
+    if (/\b(trf\s+)?de\s+poupeup\b/.test(d)) {
       const extras = findLeafByNameIncludes("income", "Extras");
       return extras
         ? { id: extras.id, confidence: 0.75, skip: false, forceType: "INCOME" }
         : { id: null, confidence: 0.4, skip: false, forceType: "INCOME" };
     }
 
-    // TRF P/ PoupeUp -> dinheiro a sair da conta corrente para a poupança
-    if (/trf\s+p\/\s*poupeup/.test(d) || /trf\s+p\s+poupeup/.test(d)) {
-      const pouLeaf = findLeafExact("savings", "Poupança");
+    // TRF P/ PoupeUp -> dinheiro a sair da conta corrente para a poupança.
+    // Importante: isto tem de aterrar sempre numa sub-categoria de poupança
+    // (folha) para que a transação fique com type_id=SAVINGS — só assim é
+    // que entra no cálculo de "computeSavingsForGoal" e atualiza as Metas/
+    // Objetivos. Se ficar sem categoria (ex.: "Poupança" só existe como
+    // categoria-mãe, sem ser ela própria uma folha), a transação cai no
+    // fallback de EXPENSE/INCOME por sinal do valor — e o objetivo nunca
+    // é atualizado.
+    if (/\b(trf\s+)?p\/\s*poupeup\b/.test(d) || /\b(trf\s+)?p\s+poupeup\b/.test(d)) {
+      // 1) Tenta apanhar o fundo específico pelo nome que surge a seguir a
+      // "PoupeUp" no extrato (ex.: "TRF P/ PoupeUp Fundo de Emergência",
+      // "TRF P/ PoupeUp Férias"), para creditar logo a meta certa.
+      const fundCandidates = [];
+      if (/emergencia/.test(d)) fundCandidates.push("Fundo de Emergência", "Emergência");
+      if (/ferias/.test(d)) fundCandidates.push("Férias");
+      if (/investimento/.test(d)) fundCandidates.push("Investimento");
+      if (/margem livre/.test(d)) fundCandidates.push("Margem Livre");
+      if (/mensal/.test(d)) fundCandidates.push("Poupança Mensal");
+      const fundLeaf = findLeafFirstMatch("savings", fundCandidates);
+
+      // 2) Sem nome de fundo reconhecível: cai para "Poupança" se essa for
+      // uma folha, depois para a 1ª sub-categoria de "Poupança" (caso seja
+      // só uma categoria-mãe, como a criada no assistente de diagnóstico),
+      // e por fim para qualquer categoria de poupança existente — mas nunca
+      // deixa cair para fora de "savings".
+      const pouLeaf =
+        fundLeaf ||
+        findLeafExact("savings", "Poupança") ||
+        findLeafChildOfParentNamed("savings", "Poupança") ||
+        leafCatsSavings[0] ||
+        null;
+
+      // forceType garante type_id=SAVINGS mesmo que a conta ainda não tenha
+      // nenhuma categoria de poupança criada (category_id fica null nesse
+      // caso, mas a transação continua a contar como poupança).
       return pouLeaf
-        ? { id: pouLeaf.id, confidence: 0.95, skip: false }
-        : { id: null, confidence: 0.2, skip: false };
+        ? { id: pouLeaf.id, confidence: fundLeaf ? 0.9 : 0.7, skip: false, forceType: "SAVINGS" }
+        : { id: null, confidence: 0.2, skip: false, forceType: "SAVINGS" };
     }
 
     if (isSavings) {
