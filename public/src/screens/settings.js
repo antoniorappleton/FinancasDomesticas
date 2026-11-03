@@ -241,6 +241,19 @@ export async function init({ sb, outlet } = {}) {
     return pool.find((c) => norm(c.name) === ex) || null;
   }
 
+  // Tenta várias sub-categorias candidatas por ordem de preferência (da mais
+  // específica à mais genérica) e devolve a primeira que existir na conta do
+  // utilizador. Permite sugerir categorias de nicho (ex.: "Ginásio") sem
+  // partir se o utilizador só tiver a categoria-mãe mais genérica (ex.:
+  // "Lazer") criada.
+  function findLeafFirstMatch(kind, candidateNames) {
+    for (const name of candidateNames) {
+      const cat = findLeafByNameIncludes(kind, name);
+      if (cat) return cat;
+    }
+    return null;
+  }
+
   function guessCategoryForLine(description, amount) {
     const d = norm(description);
     const isIncome = amount > 0;
@@ -290,17 +303,25 @@ export async function init({ sb, outlet } = {}) {
     }
 
     // 3) Expenses
-    if (/(galp|bp|repsol|cepsa|combust|gasolina|diesel)/.test(d)) {
+
+    // --- Combustível (marcas + termos genéricos de estação de serviço) ---
+    if (
+      /(galp|\bbp\b|repsol|cepsa|prio\b|\bq8\b|petrogal|combust|gasolina|gasoleo|\bdiesel\b|est servico|estacao de servico|\bposto\b)/.test(
+        d,
+      )
+    ) {
       const cat = findLeafByNameIncludes("expense", "Combustível");
       return cat
-        ? { id: cat.id, confidence: 0.9 }
+        ? { id: cat.id, confidence: 0.85 }
         : { id: null, confidence: 0.2 };
     }
-    if (/(via verde|viaverde|portag|estacion)/.test(d)) {
-      const cat = findLeafByNameIncludes(
-        "expense",
+    if (/(via verde|viaverde|portag|estacion|\bparque\b|parking|\bempark\b|\bsaba\b)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", [
         "Via Verde/Estacionamentos/Portagens",
-      );
+        "Via Verde",
+        "Estacionamento",
+        "Transportes",
+      ]);
       return cat
         ? { id: cat.id, confidence: 0.9 }
         : { id: null, confidence: 0.2 };
@@ -311,15 +332,173 @@ export async function init({ sb, outlet } = {}) {
         ? { id: cat.id, confidence: 0.9 }
         : { id: null, confidence: 0.2 };
     }
-    if (
-      /(continente|pingo doce|lidl|aldi|auchan|intermarche|supermerc)/.test(d)
-    ) {
-      const cat = findLeafByNameIncludes("expense", "Supermercado");
+
+    // --- Condomínio ---
+    if (/condominio/.test(d)) {
+      const cat = findLeafFirstMatch("expense", ["Condomínio", "Casa"]);
       return cat
         ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Seguro de Saúde (marcas de seguradoras de saúde) ---
+    if (/(\bmedis\b|multicare|advancecare|\bokmedis\b)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", [
+        "Seguro de Saúde",
+        "Seguros",
+        "Saúde",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.9 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Seguros gerais (automóvel, habitação, vida, etc.) ---
+    if (
+      /(\bageas\b|fidelidade|tranquilidade|lusitania|allianz|generali|\bzurich\b|liberty seguros|real seguros|ok teleseguro|\btranquilidade\b)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", ["Seguros", "Casa"]);
+      return cat
+        ? { id: cat.id, confidence: 0.85 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Subscrições / Streaming / Software ---
+    if (
+      /(netflix|spotify|\bhbo\b|disney\+|disney plus|amazon prime|youtube premium|google one|\bicloud\b|dropbox|microsoft 365|office 365|\badobe\b|apple\.com)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Subscrições",
+        "Streaming",
+        "Lazer",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.85 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Ginásio / Fitness ---
+    if (
+      /(ginasio|fitness|holmes place|\bsolinca\b|fitness hut|rockets pro|power clinic|\bpilates\b|\byoga\b|crossfit)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Ginásio",
+        "Desporto",
+        "Saúde",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Lavandaria / Limpeza a seco ---
+    if (/(5.?a.?sec|5 ?sec\b|lavandaria|limpeza a seco)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", [
+        "Lavandaria",
+        "Serviços Domésticos",
+        "Casa",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Cinema / Lazer cultural ---
+    if (/(\bcinemas?\b|\bteatro\b|bilheteira|\bconcertos?\b)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", ["Cinema", "Lazer"]);
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Correios / Encomendas ---
+    if (/(\bctt\b|correios|\bdpd\b|chronopost|\bgls\b)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", ["Correios", "Casa", "Outros"]);
+      return cat
+        ? { id: cat.id, confidence: 0.75 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Transportes públicos / Viagens ---
+    if (
+      /(\bmetro\b|\bcp\b|fertagus|transtejo|\bcarris\b|flixbus|rede expressos|\bferries\b|\bferry\b|comboio)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Transportes Públicos",
+        "Transportes",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Cuidados Pessoais (antes da Saúde genérica, para não cair em "clínica") ---
+    if (
+      /(clinica do pelo|cabeleireiro|barbearia|estetica|manicure|pedicure|\bspa\b|depilacao)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Cuidados Pessoais",
+        "Pessoal",
+        "Saúde",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.8 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Lojas de eletrodomésticos/eletrónica/desporto/vestuário/casa ---
+    if (/(\bworten\b|\bfnac\b|media markt|radio popular)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", [
+        "Eletrodomésticos",
+        "Compras",
+        "Casa",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.75 }
+        : { id: null, confidence: 0.3 };
+    }
+    if (/(decathlon|sport ?zone|forum sport)/.test(d)) {
+      const cat = findLeafFirstMatch("expense", ["Desporto", "Compras"]);
+      return cat
+        ? { id: cat.id, confidence: 0.75 }
+        : { id: null, confidence: 0.3 };
+    }
+    if (
+      /(el corte ingles|\bzara\b|bershka|pull.{0,3}bear|\bprimark\b|\bh ?& ?m\b|\bikea\b)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", ["Vestuário", "Compras"]);
+      return cat
+        ? { id: cat.id, confidence: 0.7 }
+        : { id: null, confidence: 0.3 };
+    }
+
+    // --- Supermercado / Mercearia (marcas + lojas de bairro + especialistas) ---
+    if (
+      /(continente|pingo doce|lidl|aldi|auchan|intermarche|minipreco|meu super|boa vizinhanca|supermerc|\bmercearia\b|\btalho\b|peixaria|frutaria|\bfruta|\bhorta\b)/.test(
+        d,
+      )
+    ) {
+      const cat = findLeafFirstMatch("expense", [
+        "Supermercado",
+        "Alimentação",
+      ]);
+      return cat
+        ? { id: cat.id, confidence: 0.85 }
         : { id: null, confidence: 0.2 };
     }
-    if (/(restaurante|cafe|pastelaria|bar)/.test(d)) {
+    if (/(restaurant|\bcafe\b|\bbar\b|pizzaria|\bpizza\b|\bsushi\b|marisqueira|\btasca\b|churrasqueira|gelataria|snack ?bar|padaria|pastelaria|confeitaria|doceria|\bdoces?\b)/.test(d)) {
       const r = findLeafByNameIncludes("expense", "Restaurantes");
       if (r) return { id: r.id, confidence: 0.75 };
       const c = findLeafByNameIncludes("expense", "Cafés/Bar de rua");
@@ -383,10 +562,12 @@ export async function init({ sb, outlet } = {}) {
       return catObj.nature;
 
     // 2) Heuristics (Description) - "Mixed parent" fix (PRIORITY OVER PARENT)
-    // Heuristics: DD, Seguro, Mensal, Renda, Prestação
+    // Heuristics: débitos diretos, seguros, mensalidades/quotas, assinaturas,
+    // prestações e serviços recorrentes tipicamente contratados (ginásio,
+    // condomínio, empregada doméstica, streaming/software por assinatura).
     const d = String(description || "").toLowerCase();
     if (
-      /\bdd\b|\bdebito direto\b|\bseguro\b|\bmensal\b|\brenda\b|\bprestacao\b/.test(
+      /\bdd\b|\bdebito direto\b|\bseguro\b|\bmensal\b|\bmensalidade\b|\brenda\b|\bprestacao\b|\bassinatura\b|\bsubscri|\bquota\b|\banuidade\b|\bcondominio\b|\bginasio\b|\bempregada\b|\bnetflix\b|\bspotify\b|google one|\bicloud\b/.test(
         d,
       )
     )
@@ -409,9 +590,12 @@ export async function init({ sb, outlet } = {}) {
     let s = String(raw || "").trim();
     // Basic cleanup
     s = s.replace(
-      /^(COMPRA|PAGAMENTO|MB WAY|TRANSF\.?|DEBITO|CREDITO)\s+/i,
+      /^(COMPRA|PAGAMENTO|MB WAY|TRANSF\.?|TRF\.?|DEBITO|CREDITO)\s+/i,
       "",
     );
+    // Remove código de terminal POS (4 dígitos) que fica logo a seguir ao
+    // tipo de movimento, ex.: "COMPRA 0375 PINGO DOCE" → "Pingo doce"
+    s = s.replace(/^\d{3,4}\s+/, "");
     s = s.replace(/\s+(TERM|TERM\.|TERMINAL)\s+\d+/i, "");
     s = s.replace(/\s+DATA\s+\d{2}[-/]\d{2}/i, "");
     s = s.replace(/\s+\d{2}[:]\d{2}/, "");
