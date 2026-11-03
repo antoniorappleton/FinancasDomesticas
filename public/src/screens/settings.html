@@ -26,10 +26,10 @@
         <h4>💡 Como funciona o teu Plano?</h4>
         <p>A <strong>Estratégia</strong> define as regras para o teu dinheiro <em>antes</em> de o gastares. Ela liga-se ao resto da app assim:</p>
         <ul>
-          <li><strong>Despesas</strong>: Define o teu custo de vida. A app usa isto para avisar se estás a gastar acima do plano.</li>
-          <li><strong>Poupança (Metas)</strong>: É o dinheiro "retido". Alimenta automaticamente os teus <em>Objetivos</em> (ex: Férias, Carro).</li>
-          <li><strong>Investimento</strong>: Dinheiro destinado a crescer a longo prazo.</li>
-          <li><strong>Livre / Margem</strong>: O dinheiro que sobra para lazer ou imprevistos.</li>
+          <li><strong>Orçamento de Despesas</strong>: Define o teu custo de vida. A app cria um Objetivo que avisa se estás a gastar acima do plano.</li>
+          <li><strong>Investimento Mensal</strong>: Dinheiro destinado a crescer a longo prazo (ex: ETFs, PPR). Vira um Objetivo mensal — as transferências que registares nessa categoria contam para ele.</li>
+          <li><strong>Fundo de Emergência</strong>: Meta de acumulação à parte (não é uma fatia %) — alvo definido abaixo em "meses de despesas fixas". Financia-se a partir da Margem Livre até estar completo.</li>
+          <li><strong>Margem Livre</strong>: O que sobra depois de Despesas e Investimento — para lazer, imprevistos ou alimentar o Fundo de Emergência e outras Metas.</li>
         </ul>
         <p class="small"><em>Nota: O separador <strong>Financeiro</strong> gere as tuas contas bancárias reais. A <strong>Estratégia</strong> gere as tuas intenções mensais.</em></p>
       </div>
@@ -110,16 +110,12 @@
             <input type="range" id="range-expenses" min="0" max="100" value="50" class="strat-range range--red">
           </div>
           <div class="slider-control">
-            <div class="slider-label"><span>Poupança (Metas)</span> <strong id="val-pct-savings">20%</strong></div>
-            <input type="range" id="range-savings" min="0" max="100" value="20" class="strat-range range--blue">
-          </div>
-          <div class="slider-control">
             <div class="slider-label"><span>Investimento</span> <strong id="val-pct-investment">20%</strong></div>
             <input type="range" id="range-investment" min="0" max="100" value="20" class="strat-range range--green">
           </div>
           <div class="slider-control">
-            <div class="slider-label"><span>Livre / Margem</span> <strong id="val-pct-free">10%</strong></div>
-            <input type="range" id="range-free" min="0" max="100" value="10" class="strat-range range--gray">
+            <div class="slider-label"><span>Margem Livre</span> <strong id="val-pct-free">30%</strong></div>
+            <input type="range" id="range-free" min="0" max="100" value="30" class="strat-range range--gray">
           </div>
         </div>
       </div>

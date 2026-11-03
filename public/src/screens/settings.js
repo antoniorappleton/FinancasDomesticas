@@ -2401,7 +2401,7 @@ export async function init({ sb, outlet } = {}) {
         // 1. Fetch categories for name resolution (Parent Name)
         const { data: allCats } = await sb
           .from("categories")
-          .select("id,name,parent_id");
+          .select("id,name,parent_id,kind");
         if (allCats) {
           allCats.forEach((c) => catMap.set(c.id, c));
         }
@@ -2447,26 +2447,32 @@ export async function init({ sb, outlet } = {}) {
                 const target = isYearly ? Number(o.target_amount) : Number(o.monthly_cap);
                 let spent = 0;
 
+                // Objetivos "budget_cap" ligados a uma categoria de poupança (ex.:
+                // Investimento Mensal, Margem Livre) medem transferências SAVINGS,
+                // não despesas — como em Metas.js / computeSpentForGoal.
+                const isSavingsCategory = o.category_id && catMap.get(o.category_id)?.kind === "savings";
+                const trackedTypeId = isSavingsCategory ? SAVINGS_TYPE.data.id : EXPENSE_TYPE.data.id;
+
                 if (isYearly) {
-                  // Metas Anuais precisam de dados de todo o ano corrente (apenas EXPENSE conforme Metas.js)
                   const yearStart = `${new Date().getFullYear()}-01-01`;
                   const yearEnd = `${new Date().getFullYear()}-12-31`;
                   let q = sb.from("transactions").select("amount")
-                    .eq("type_id", EXPENSE_TYPE.data.id)
+                    .eq("type_id", trackedTypeId)
                     .gte("date", yearStart)
                     .lte("date", yearEnd);
-                  
+
                   if (o.category_id) q = q.eq("category_id", o.category_id);
-                  
+
                   const { data: yearTxs } = await q;
                   spent = (yearTxs || []).reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
                 } else {
-                  // Metas Mensais usam os dados já carregados para o período do relatório (apenas EXPENSE)
-                  const filterRows = rows.filter(r => r.type_id === EXPENSE_TYPE.data.id && (!o.category_id || r.category_id === o.category_id));
+                  // Metas Mensais usam os dados já carregados para o período do relatório
+                  const filterRows = rows.filter(r => r.type_id === trackedTypeId && (!o.category_id || r.category_id === o.category_id));
                   spent = filterRows.reduce((a, b) => a + Math.abs(Number(b.amount || 0)), 0);
                 }
                 o._current = spent;
                 o._target = target;
+                o._isSavingsCategory = isSavingsCategory;
               } else {
                 // Savings Goal: Preferir valor manual se existir (> 0), caso contrário calcular acumulado histórico
                 const manual = Number(o.current_amount || 0);
@@ -3460,11 +3466,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       // Badges de percentagem da estratégia
       const stratCols = [
         ["Despesas", `${_strategyPDF.pct_expenses}%`],
-        ["Poupança", `${_strategyPDF.savings_fund_pct}%`],
         ["Investimento", `${_strategyPDF.investment_fund_pct}%`],
-        ["Livre", `${_strategyPDF.pct_free}%`]
+        ["Margem Livre", `${_strategyPDF.pct_free}%`]
       ];
-      const sCellW = (W - 2 * M) / 4;
+      const sCellW = (W - 2 * M) / 3;
       doc.setFontSize(9);
       stratCols.forEach((col, i) => {
         const x = M + i * sCellW;
@@ -3478,11 +3483,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       y += 32;
 
       const relevantTitles = [
-        "Fundo de Emergência", 
-        "Investimento (Mensal)", 
-        "Poupança (Mensal)", 
-        "Margem Livre (Mensal)", 
-        "Poupança Geral (Anual)"
+        "Orçamento de Despesas",
+        "Investimento Mensal",
+        "Fundo de Emergência",
+        "Margem Livre"
       ];
 
       const drawGoal = (o) => {
@@ -3508,13 +3512,13 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         doc.setFillColor(240); 
         doc.roundedRect(M, y, barW, barH, 3, 3, "F");
         
-        // 2 estados (destaque = no caminho, alerta = fora do caminho)
-        let color = "#216354";
-        if (o.type === "budget_cap") {
-           color = ratio < 0.85 ? "#216354" : "#b3433a";
-        } else {
-           color = ratio < 0.5 ? "#b3433a" : "#216354";
-        }
+        // 2 estados (destaque = no caminho, alerta = fora do caminho). Para
+        // poupança (savings_goal, ou budget_cap ligado a categoria de
+        // poupança), "mais" é sempre melhor: alerta é ficar abaixo de metade.
+        const isSavingsLike = o.type !== "budget_cap" || o._isSavingsCategory;
+        let color = isSavingsLike
+          ? (ratio < 0.5 ? "#b3433a" : "#216354")
+          : (ratio < 0.85 ? "#216354" : "#b3433a");
         doc.setFillColor(color);
         if (progress > 0) {
            doc.roundedRect(M, y, barW * progress, barH, 3, 3, "F");
@@ -3523,7 +3527,9 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       };
 
       if (_objectivesPDF && _objectivesPDF.length > 0) {
-        const strategyObjs = _objectivesPDF.filter(o => relevantTitles.includes(o.title));
+        const strategyObjs = _objectivesPDF
+          .filter(o => relevantTitles.includes(o.title))
+          .sort((a, b) => relevantTitles.indexOf(a.title) - relevantTitles.indexOf(b.title));
         const otherObjs = _objectivesPDF.filter(o => !relevantTitles.includes(o.title));
         
         // 1. Objetivos do Plano de Ação
@@ -4616,21 +4622,22 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
 
     const ranges = {
       expenses:   q("#range-expenses"),
-      savings:    q("#range-savings"),
       investment: q("#range-investment"),
       free:       q("#range-free")
     };
     const displays = {
       expenses:       q("#val-pct-expenses"),
-      savings:        q("#val-pct-savings"),
       investment:     q("#val-pct-investment"),
       free:           q("#val-pct-free"),
       emergencyTotal: q("#val-emergency-total")
     };
 
+    // Plano de Ação: 3 fatias que somam 100% (Despesas / Investimento /
+    // Margem Livre) + Fundo de Emergência, que é uma meta de acumulação à
+    // parte (não uma fatia %, financiada pela Margem Livre até ser atingida).
     let s = {
       income: 0, fixedExpenses: 0, emergencyMonths: 6,
-      pctExpenses: 50, pctSavings: 20, pctInvestment: 20, pctFree: 10
+      pctExpenses: 50, pctInvestment: 20, pctFree: 30
     };
     let _monthCount = 0;
     let stratChart = null;
@@ -4645,9 +4652,9 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       stratChart = new Chart(canvas, {
         type: "doughnut",
         data: {
-          labels: ["Despesas", "Poupança", "Investimento", "Livre"],
-          datasets: [{ data: [s.pctExpenses, s.pctSavings, s.pctInvestment, s.pctFree],
-            backgroundColor: ["#1e594c","#216354","#6f9a90","#9a9a96"], borderWidth: 0 }]
+          labels: ["Despesas", "Investimento", "Margem Livre"],
+          datasets: [{ data: [s.pctExpenses, s.pctInvestment, s.pctFree],
+            backgroundColor: ["#1e594c","#216354","#9a9a96"], borderWidth: 0 }]
         },
         options: { cutout:"70%", plugins:{ legend:{display:false} } }
       });
@@ -4661,11 +4668,10 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         list.innerHTML = `<p class="muted">Define o teu rendimento para veres as sugestões.</p>`;
         return;
       }
-      const mSavings  = s.income * (s.pctSavings    / 100);
       const mInvest   = s.income * (s.pctInvestment / 100);
       const mFree     = s.income * (s.pctFree       / 100);
       const mExpenses = s.income * (s.pctExpenses   / 100);
-      
+
       const emergGoal = s.fixedExpenses * s.emergencyMonths;
       const emCov     = _healthMetrics?.emergencyFund?.currentCoverage ?? 0;
       const emNeeded  = Math.max(0, emergGoal - (_healthMetrics?.liquidityAccumulated ?? 0));
@@ -4680,20 +4686,20 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           <div class="suggested-val ${cls}">${val}</div>
         </div>`;
 
+      // Ordem alinhada com os 4 Objetivos que "Ativar Este Plano" cria.
       list.innerHTML =
-        item("savings",        "Retenção Mensal",           `${s.pctSavings}% do rendimento`,           money(mSavings)) +
-        item("trending_up",    "Investimento Mensal",       `${s.pctInvestment}% a crescer`,            money(mInvest)) +
-        item("wallet",         "Orçamento de Despesas",     
-          isShortForFixed 
+        item("wallet",         "Orçamento de Despesas",
+          isShortForFixed
             ? `<span style="color:var(--red-500); font-weight:700">⚠️ Insuficiente para fixas (${money(s.fixedExpenses)})</span>`
-            : `Cobre ${money(s.fixedExpenses)} de fixas | Sobra ${money(remainsForVar)}`, 
-          money(mExpenses), 
+            : `Cobre ${money(s.fixedExpenses)} de fixas | Sobra ${money(remainsForVar)}`,
+          money(mExpenses),
           isShortForFixed ? "text-danger" : "") +
-        item("beach_access",   "Margem Livre",              `${s.pctFree}% para estilo de vida`,        money(mFree)) +
-        item("emergency_home", "Fundo de Emergência (alvo)",
+        item("trending_up",    "Investimento Mensal",       `${s.pctInvestment}% a crescer`,            money(mInvest)) +
+        item("emergency_home", "Fundo de Emergência",
           `Atual: ${emCov.toFixed(1)} meses | Alvo: ${s.emergencyMonths} meses`,
           emNeeded > 0 ? `Faltam ${money(emNeeded)}` : "✅ Atingido",
-          emNeeded > 0 ? "" : "text-success");
+          emNeeded > 0 ? "" : "text-success") +
+        item("beach_access",   "Margem Livre",              `${s.pctFree}% para estilo de vida e Metas`, money(mFree));
     }
 
     // ── Recalcular ─────────────────────────────────────────────────────
@@ -4704,7 +4710,7 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       const emergTotal = s.fixedExpenses * s.emergencyMonths;
       if (displays.emergencyTotal) displays.emergencyTotal.textContent = money(emergTotal);
 
-      const total = s.pctExpenses + s.pctSavings + s.pctInvestment + s.pctFree;
+      const total = s.pctExpenses + s.pctInvestment + s.pctFree;
       warningEl?.classList.toggle("hidden", total <= 100);
 
       renderPie();
@@ -4753,29 +4759,19 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
       const expensesPct = Math.min(90, Math.max(10, round5(effortTotal - savingsRate)));
       const remainder = Math.max(0, 100 - expensesPct);
 
-      // Orçamento combinado Poupança+Investimento: usa a taxa de poupança real,
-      // com um mínimo de 60% do remanescente quando ainda não há histórico de poupança.
-      const combinedPct = Math.min(remainder, round5(savingsRate) || round5(remainder * 0.6));
-
-      // Reparte o combinado mantendo a proporção já definida entre Poupança/Investimento
-      const prevSavings = s.pctSavings || 0;
+      // O remanescente (tudo o que não é despesa) reparte-se entre Investimento
+      // e Margem Livre, mantendo a proporção já definida entre os dois — por
+      // defeito 40% para Investimento, 60% para Margem Livre.
       const prevInvestment = s.pctInvestment || 0;
-      const ratioSavings = (prevSavings + prevInvestment) > 0
-        ? prevSavings / (prevSavings + prevInvestment)
-        : 0.6;
+      const prevFree = s.pctFree || 0;
+      const ratioInvestment = (prevInvestment + prevFree) > 0
+        ? prevInvestment / (prevInvestment + prevFree)
+        : 0.4;
 
-      let savingsPct = round5(combinedPct * ratioSavings);
-      let investmentPct = combinedPct - savingsPct;
-      let freePct = 100 - expensesPct - savingsPct - investmentPct;
-
-      // Ajuste de arredondamento: absorve na Margem Livre para garantir soma = 100
-      if (freePct < 0) {
-        investmentPct = Math.max(0, investmentPct + freePct);
-        freePct = 100 - expensesPct - savingsPct - investmentPct;
-      }
+      let investmentPct = round5(remainder * ratioInvestment);
+      let freePct = remainder - investmentPct;
 
       s.pctExpenses = expensesPct;
-      s.pctSavings = savingsPct;
       s.pctInvestment = investmentPct;
       s.pctFree = freePct;
 
@@ -4843,6 +4839,18 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
         }
       }
 
+      // Desativa (sem apagar histórico) um Objetivo antigo que já não faz
+      // parte do Plano de Ação atual — usado para limpar "Poupança (Mensal)"
+      // e "Poupança Geral (Anual)" de contas que ativaram o plano antes desta
+      // simplificação para 4 itens.
+      async function deactivateObjectiveByTitle(uid, title) {
+        await sb.from("objectives")
+          .update({ is_active: false })
+          .eq("user_id", uid)
+          .eq("title", title)
+          .eq("is_active", true);
+      }
+
       // Guardar no Supabase e gerar Plano de Ação
       q("#btn-save-strategy")?.addEventListener("click", async () => {
         const btn = q("#btn-save-strategy");
@@ -4851,18 +4859,19 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           btn.disabled = true;
           btn.innerHTML = '<span class="material-symbols-outlined">sync</span> A processar...';
           Toast.info("A guardar e gerar o seu plano...");
-          
+
           const uid = await getUserId();
           if (!uid) throw new Error("Sessão inválida.");
-          
-          // 1. Guardar a estratégia
+
+          // 1. Guardar a estratégia (3 fatias: Despesas/Investimento/Livre;
+          // savings_fund_pct fica a 0 — deixou de ser uma fatia separada)
           const { error } = await sb.from("user_settings").upsert({
             user_id:             uid,
             avg_monthly_income:  s.income,
             avg_fixed_expenses:  s.fixedExpenses,
             emergency_months:    s.emergencyMonths,
             pct_expenses:        s.pctExpenses,
-            savings_fund_pct:    s.pctSavings,
+            savings_fund_pct:    0,
             investment_fund_pct: s.pctInvestment,
             pct_free:            s.pctFree,
             updated_at:          new Date().toISOString()
@@ -4891,43 +4900,42 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
 
           // Categoria mãe: "Poupança"
           const parentPoupancaId = await ensureCat("Poupança");
-          
-          // Subcategorias
+
+          // Subcategorias (apenas as 3 que o Plano de Ação usa)
           const idEmergencia = await ensureCat("Fundo de Emergência", parentPoupancaId);
           const idInvestimento = await ensureCat("Investimento", parentPoupancaId);
-          const idPoupancaMensal = await ensureCat("Poupança Mensal", parentPoupancaId);
           const idMargemLivre = await ensureCat("Margem Livre", parentPoupancaId);
 
-          // 3. Gerar Objetivos (Metas)
-          
-          // Fundo de Emergência (Acumulado)
+          // 3. Gerar os 4 Objetivos do Plano de Ação, pela ordem mostrada acima
+
+          const mExpenses = s.income * (s.pctExpenses / 100);
+          if (mExpenses > 0) {
+            await upsertObjective(uid, "Orçamento de Despesas", "budget_cap", null, mExpenses, null);
+          }
+
+          const invMonthly = s.income * (s.pctInvestment / 100);
+          if (invMonthly > 0) {
+            await upsertObjective(uid, "Investimento Mensal", "budget_cap", idInvestimento, invMonthly, null);
+          }
+
+          // Fundo de Emergência (Acumulado) — meta à parte, não uma fatia %
           const emergenciaTarget = s.fixedExpenses * s.emergencyMonths;
           if (emergenciaTarget > 0) {
             await upsertObjective(uid, "Fundo de Emergência", "savings_goal", idEmergencia, null, emergenciaTarget);
           }
 
-          // Tetos Mensais
-          const invMonthly = s.income * (s.pctInvestment / 100);
-          if (invMonthly > 0) {
-            await upsertObjective(uid, "Investimento (Mensal)", "budget_cap", idInvestimento, invMonthly, null);
-          }
-
-          const poupMonthly = s.income * (s.pctSavings / 100);
-          if (poupMonthly > 0) {
-            await upsertObjective(uid, "Poupança (Mensal)", "budget_cap", idPoupancaMensal, poupMonthly, null);
-          }
-
           const freeMonthly = s.income * (s.pctFree / 100);
           if (freeMonthly > 0) {
-            await upsertObjective(uid, "Margem Livre (Mensal)", "budget_cap", idMargemLivre, freeMonthly, null);
+            await upsertObjective(uid, "Margem Livre", "budget_cap", idMargemLivre, freeMonthly, null);
           }
 
-          // Objetivo Anual Combinado (Parent)
-          // Na tabela objectives, um target_amount > 0 com monthly_cap null é um "Orçamento Anual"
-          const totalAnnualSavings = (invMonthly + poupMonthly + freeMonthly) * 12;
-          if (totalAnnualSavings > 0) {
-            await upsertObjective(uid, "Poupança Geral (Anual)", "budget_cap", parentPoupancaId, null, totalAnnualSavings);
-          }
+          // Limpa Objetivos de versões anteriores do Plano de Ação que já não existem
+          await Promise.all([
+            deactivateObjectiveByTitle(uid, "Poupança (Mensal)"),
+            deactivateObjectiveByTitle(uid, "Poupança Geral (Anual)"),
+            deactivateObjectiveByTitle(uid, "Investimento (Mensal)"),
+            deactivateObjectiveByTitle(uid, "Margem Livre (Mensal)"),
+          ]);
 
           Toast.success("Plano ativado! Categorias e Metas criadas.");
         } catch (err) {
@@ -4958,9 +4966,12 @@ Sê direto, empático mas rigoroso. Usa negrito para destacar valores ou pontos 
           s.fixedExpenses   = Number(saved.avg_fixed_expenses)  || 0;
           s.emergencyMonths = Number(saved.emergency_months)    || 6;
           s.pctExpenses     = Number(saved.pct_expenses)        || 50;
-          s.pctSavings      = Number(saved.savings_fund_pct)    || 20;
           s.pctInvestment   = Number(saved.investment_fund_pct) || 20;
-          s.pctFree         = Number(saved.pct_free)            || 10;
+          // "Poupança (Metas)" deixou de ser uma fatia separada — soma-se à
+          // Margem Livre, para não perder a % que contas antigas já tinham
+          // alocado a essa fatia.
+          s.pctFree = (Number(saved.pct_free) || 0) + (Number(saved.savings_fund_pct) || 0);
+          if (s.pctExpenses + s.pctInvestment + s.pctFree <= 0) s.pctFree = 30;
         }
       }
 

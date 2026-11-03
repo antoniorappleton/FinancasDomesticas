@@ -188,6 +188,37 @@ export async function init({ sb, outlet } = {}) {
     return { total, byCat };
   }
 
+  // Objetivos "budget_cap" ligados a uma categoria de poupança (ex.:
+  // Investimento Mensal, Margem Livre) não medem despesas — medem quanto já
+  // foi transferido este mês para essa categoria. Sem isto, computeSpentForGoal
+  // procurava sempre em transações EXPENSE e nunca encontrava nada, pelo que
+  // estes objetivos ficavam sempre a 0%, mesmo com as transferências registadas.
+  async function computeMonthSavingsTotals() {
+    const SAVINGS = await getTypeId("SAVINGS");
+    const today = new Date();
+    const from = firstDay(today.getFullYear(), today.getMonth());
+    const to = firstDay(today.getFullYear(), today.getMonth() + 1);
+
+    const { data, error } = await sb
+      .from("transactions")
+      .select("amount,category_id")
+      .eq("type_id", SAVINGS)
+      .gte("date", from)
+      .lt("date", to);
+
+    if (error) return { total: 0, byCat: new Map() };
+
+    const byCat = new Map();
+    let total = 0;
+    for (const r of data || []) {
+      const v = Number(r.amount || 0);
+      total += v;
+      const k = r.category_id ?? "uncat";
+      byCat.set(k, (byCat.get(k) || 0) + v);
+    }
+    return { total, byCat };
+  }
+
   async function computeYearExpenseTotals() {
     const EXPENSE = await getTypeId("EXPENSE");
     const today = new Date();
@@ -346,8 +377,16 @@ export async function init({ sb, outlet } = {}) {
     `;
   }
 
-  function computeSpentForGoal(o, monthAgg, yearAgg) {
+  function computeSpentForGoal(o, monthAgg, yearAgg, monthSavAgg, catKindById) {
     if (o.type !== "budget_cap") return 0;
+
+    // "Orçamento mensal" ligado a uma categoria de poupança (ex.: Investimento
+    // Mensal, Margem Livre): o que conta é quanto já foi transferido este mês
+    // para essa categoria, não despesas.
+    if (o.category_id && catKindById?.get(o.category_id) === "savings") {
+      return monthSavAgg ? Number(monthSavAgg.byCat.get(o.category_id) || 0) : 0;
+    }
+
     if (Number(o.target_amount) > 0 && !Number(o.monthly_cap)) {
       return yearAgg ? yearAgg.total : 0;
     }
@@ -594,17 +633,22 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
     }
     const monthAgg = await computeMonthExpenseTotals();
     const yearAgg = await computeYearExpenseTotals();
+    const monthSavAgg = await computeMonthSavingsTotals();
+    const { data: catsForKind } = await sb.from("categories").select("id,kind");
+    const catKindById = new Map((catsForKind || []).map((c) => [c.id, c.kind]));
     const cardsArr = await Promise.all((objs || []).map(async (o) => {
       let secondary = "";
       let progress = 0, current = 0, goal = 0, ratio = 0;
+      let isSavingsCategory = o.category_id && catKindById.get(o.category_id) === "savings";
       if (o.type === "budget_cap") {
-        current = computeSpentForGoal(o, monthAgg, yearAgg);
+        current = computeSpentForGoal(o, monthAgg, yearAgg, monthSavAgg, catKindById);
         const isYearly = Number(o.target_amount) > 0 && !Number(o.monthly_cap);
         goal = isYearly ? Number(o.target_amount || 0) : Number(o.monthly_cap || 0);
         ratio = goal ? current / goal : 0;
         progress = Math.min(100, ratio * 100);
-        let label = isYearly ? "Anual" : (!o.category_id ? "Mensal" : "Teto");
-        secondary = `${label}: ${money(goal)} · Gasto: ${money(current)}`;
+        let label = isYearly ? "Anual" : (!o.category_id ? "Mensal" : isSavingsCategory ? "Mensal" : "Teto");
+        let verb = isSavingsCategory ? "Acumulado" : "Gasto";
+        secondary = `${label}: ${money(goal)} · ${verb}: ${money(current)}`;
       } else if (o.type === "savings_goal") {
         const manual = Number(o.current_amount || 0);
         const auto = await computeSavingsForGoal(o);
@@ -614,10 +658,13 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
         progress = Math.min(100, ratio * 100);
         secondary = `Meta: ${money(goal)} · Acumulado: ${money(current)}`;
       }
-      // 2 estados (destaque = no caminho, alerta = fora do caminho) em vez de semáforo a 3 cores
-      let color = o.type === "savings_goal" ? (ratio < 0.5 ? "var(--red-500)" : "var(--ui-fab-bg)") : (ratio < 0.85 ? "var(--ui-fab-bg)" : "var(--red-500)");
+      // 2 estados (destaque = no caminho, alerta = fora do caminho) em vez de semáforo a 3 cores.
+      // Para poupança (savings_goal ou budget_cap ligado a categoria de poupança),
+      // "mais" é sempre melhor: alerta é ficar abaixo de metade, não ultrapassar.
+      const isSavingsLike = o.type === "savings_goal" || isSavingsCategory;
+      let color = isSavingsLike ? (ratio < 0.5 ? "var(--red-500)" : "var(--ui-fab-bg)") : (ratio < 0.85 ? "var(--ui-fab-bg)" : "var(--red-500)");
       const isBudget = o.type.startsWith("budget_");
-      const warn = isBudget && goal && current > goal ? "color:var(--red-500)" : "";
+      const warn = isBudget && !isSavingsCategory && goal && current > goal ? "color:var(--red-500)" : "";
       const due = o.due_date ? `<span class="row-note">Limite: ${o.due_date}</span>` : "";
       return `<div class="card" data-id="${o.id}">
           <div class="cat-card__row" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -646,9 +693,10 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
         await refreshList();
       }));
     }
-    const caps = (objs || []).filter(o => o.type === "budget_cap" && o.monthly_cap);
-    const over = caps.filter(o => computeSpentForGoal(o, monthAgg, yearAgg) > Number(o.monthly_cap || 0));
-    $("#obj-summary").innerHTML = caps.length > 0 ? `Tetos ativos: <strong>${caps.length}</strong> · A ultrapassar: <strong>${over.length}</strong>` : "Sem tetos ativos este mês.";
+    // Tetos de despesa (não de poupança — ultrapassar uma meta de poupança não é um alerta)
+    const expenseCaps = (objs || []).filter(o => o.type === "budget_cap" && o.monthly_cap && catKindById.get(o.category_id) !== "savings");
+    const over = expenseCaps.filter(o => computeSpentForGoal(o, monthAgg, yearAgg, monthSavAgg, catKindById) > Number(o.monthly_cap || 0));
+    $("#obj-summary").innerHTML = expenseCaps.length > 0 ? `Tetos ativos: <strong>${expenseCaps.length}</strong> · A ultrapassar: <strong>${over.length}</strong>` : "Sem tetos ativos este mês.";
   }
 
   function mulberry32(seed) {
@@ -810,16 +858,18 @@ document.getElementById("pf-save")?.addEventListener("click", async () => {
     if (!card || !list) return;
     try {
       const profile = await repo.getFinancialProfile();
-      if (!profile || (profile.strategy.emergency === 0 && profile.strategy.investment === 0 && profile.strategy.savings === 0)) { card.style.display = "none"; return; }
+      // "Fundo de Emergência" não é uma fatia % do Plano de Ação (é uma meta de
+      // acumulação à parte, definida em meses de despesas fixas) — só
+      // Investimento e Margem Livre têm percentagem.
+      if (!profile || (profile.strategy.investment === 0 && profile.strategy.free === 0)) { card.style.display = "none"; return; }
       const averageIncome = profile.averages.net;
       if (averageIncome <= 0) { card.style.display = "none"; return; }
       if (avgIncomeEl) avgIncomeEl.textContent = money(averageIncome);
       card.style.display = "block";
       const allocations = profile.calculateAllocation();
       const funds = [
-        { name: "Fundo de Emergência", pct: profile.strategy.emergency, val: allocations.emergency, color: "var(--ui-fab-bg)" },
-        { name: "Fundo de Investimento", pct: profile.strategy.investment, val: allocations.investment, color: "var(--text)" },
-        { name: "Fundo de Poupança", pct: profile.strategy.savings, val: allocations.savings, color: "var(--muted)" }
+        { name: "Investimento Mensal", pct: profile.strategy.investment, val: allocations.investment, color: "var(--text)" },
+        { name: "Margem Livre", pct: profile.strategy.free, val: allocations.free, color: "var(--muted)" }
       ].filter(f => f.pct > 0);
       list.innerHTML = funds.map(f => `<div class="card soft" style="border-left: 4px solid ${f.color}; padding: 12px; margin: 0">
           <div style="font-size: 0.85em; color: var(--muted); font-weight: 600">${f.name}</div>
